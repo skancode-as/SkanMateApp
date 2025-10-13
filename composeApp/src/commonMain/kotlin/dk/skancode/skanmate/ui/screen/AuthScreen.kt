@@ -39,6 +39,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.ui.component.Button
 import dk.skancode.skanmate.ui.component.InputField
@@ -53,13 +54,13 @@ fun AuthScreen(
     viewModel: AuthViewModel,
     navigate: () -> Unit,
 ) {
-    var email by remember { mutableStateOf("") }
-    var pin by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf(TextFieldValue()) }
+    var pin by remember { mutableStateOf(TextFieldValue()) }
     var isLoading by remember { mutableStateOf(false) }
 
     val submit = {
         isLoading = true
-        viewModel.signIn(email, pin) { ok ->
+        viewModel.signIn(email.text, pin.text) { ok ->
             if (ok) {
                 navigate()
             }
@@ -160,23 +161,17 @@ fun AuthScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                             ) {
                                 Text(
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 12.dp),
                                     text = "Sign in",
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 AnimatedVisibility(isLoading) {
-                                    Box(
+                                    CircularProgressIndicator(
                                         modifier = Modifier.size(20.dp),
-                                        contentAlignment = Alignment.Center,
-                                        propagateMinConstraints = true,
-                                    ) {
-                                        CircularProgressIndicator(
-                                            color = LocalContentColor.current,
-                                            trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
-                                            strokeWidth = 2.dp,
-                                        )
-                                    }
+                                        color = LocalContentColor.current,
+                                        trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
+                                        strokeWidth = 2.dp,
+                                    )
                                 }
                             }
                         }

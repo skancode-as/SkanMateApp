@@ -205,23 +205,30 @@ fun Button(
     val contentColor = if (enabled) colors.contentColor else if (colors.disabledContentColor == Color.Unspecified) colors.contentColor else colors.disabledContentColor
     val (minHeight, maxHeight) = key(heightValues) { heightValues.heightValues() }
 
-    Row(
+    Box(
         modifier = modifier
-            .fillMaxWidth(1f)
+            .fillMaxWidth()
             .heightIn(minHeight, maxHeight)
             .shadow(elevation = shadowElevation, shape = shape)
             .background(color = containerColor, shape = shape)
             .clickable(enabled) {
                 onClick()
             },
-        horizontalArrangement = horizontalArrangement,
-        verticalAlignment = verticalAlignment,
+
+        propagateMinConstraints = true,
     ) {
-        CompositionLocalProvider(LocalContentColor provides contentColor) {
-            this@Row.content()
+        Row(
+            modifier = Modifier
+                .padding(contentPadding)
+                .fillMaxWidth(),
+            horizontalArrangement = horizontalArrangement,
+            verticalAlignment = verticalAlignment,
+        ) {
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
+                this@Row.content()
+            }
         }
     }
-
 }
 
 internal interface ButtonElevation {

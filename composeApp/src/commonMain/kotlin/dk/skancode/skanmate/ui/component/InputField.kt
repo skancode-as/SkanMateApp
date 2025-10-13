@@ -9,6 +9,7 @@ import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,13 +36,18 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -58,8 +64,11 @@ import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -80,8 +89,9 @@ import kotlin.math.roundToInt
 
 @Composable
 fun ScanableInputField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    scanIconOnClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     readOnly: Boolean = false,
@@ -101,11 +111,15 @@ fun ScanableInputField(
     interactionSource: MutableInteractionSource? = null,
     shape: Shape = RoundedCornerShape(4.dp),
     colors: TextFieldColors = TextFieldDefaults.colors(),
+    onFocusChange: (Boolean) -> Unit = {},
     scanModule: ScanModule = LocalScanModule.current,
 ) {
     val trailingIcon: (@Composable () -> Unit)? = if (!scanModule.isHardwareScanner()) {
         (@Composable {
+            val keyboardController = LocalSoftwareKeyboardController.current
             IconButton({
+                keyboardController?.hide()
+                scanIconOnClick()
                 scanModule.enableScan()
             }) {
                 Icon(
@@ -139,13 +153,15 @@ fun ScanableInputField(
         interactionSource = interactionSource,
         shape = shape,
         colors = colors,
+        onFocusChange = onFocusChange,
     )
 }
 
+
 @Composable
 fun InputField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     readOnly: Boolean = false,
@@ -165,7 +181,8 @@ fun InputField(
     minLines: Int = 1,
     interactionSource: MutableInteractionSource? = null,
     shape: Shape = RoundedCornerShape(4.dp),
-    colors: TextFieldColors = TextFieldDefaults.colors()
+    colors: TextFieldColors = TextFieldDefaults.colors(),
+    onFocusChange: (Boolean) -> Unit = {},
 ) {
     val paddingValues = PaddingValues(16.dp)
     val interactionSource = interactionSource ?: remember { MutableInteractionSource() }
@@ -191,11 +208,22 @@ fun InputField(
                 value = value,
                 modifier =
                     modifier
+                        .onFocusChanged {
+                            val isFocused = it.isFocused
+                            if (isFocused) {
+                                onValueChange(value.copy(
+                                    selection = TextRange(0, value.text.length)
+                                ))
+                            }
+                            onFocusChange(isFocused)
+                        }
                         .defaultMinSize(
                             minWidth = TextFieldDefaults.MinWidth,
                             minHeight = TextFieldDefaults.MinHeight
                         ),
-                onValueChange = onValueChange,
+                onValueChange = { v ->
+                    onValueChange(v)
+                },
                 enabled = enabled,
                 readOnly = readOnly,
                 textStyle = mergedTextStyle,
@@ -221,7 +249,7 @@ fun InputField(
                             content = {
                                 val transformedText =
                                     remember(value, visualTransformation) {
-                                        visualTransformation.filter(AnnotatedString(value))
+                                        visualTransformation.filter(AnnotatedString(value.text))
                                     }
                                         .text
                                         .text

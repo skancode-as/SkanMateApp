@@ -60,8 +60,6 @@ class TableServiceImpl(
     }
 
     private suspend fun fetchTables(token: String): List<TableSummaryModel> {
-        println("Token to fetch tables with: $token")
-
         val res = tableStore.fetchTableSummaries(token)
 
         if (!res.ok || res.data == null) return emptyList()

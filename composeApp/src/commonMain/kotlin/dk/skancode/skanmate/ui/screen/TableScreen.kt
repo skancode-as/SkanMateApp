@@ -1,6 +1,7 @@
 package dk.skancode.skanmate.ui.screen
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
@@ -21,13 +23,16 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -40,13 +45,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import dk.skancode.skanmate.ScanEvent
-import dk.skancode.skanmate.ScanEventHandler
 import dk.skancode.skanmate.data.model.ColumnType
+import dk.skancode.skanmate.ui.component.Button
+import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.RegisterScanEventHandler
 import dk.skancode.skanmate.ui.component.ScanableInputField
 import dk.skancode.skanmate.ui.state.ColumnUiState
@@ -54,6 +61,7 @@ import dk.skancode.skanmate.ui.state.ColumnValue
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
+import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
@@ -69,6 +77,10 @@ fun TableScreen(
 ) {
     val table = viewModel.tableFlow.find { it.id == id }
     val tableUiState by viewModel.uiState.collectAsState()
+
+    val submitData: () -> Unit = {
+
+    }
 
     Scaffold(
         topBar = {
@@ -89,32 +101,41 @@ fun TableScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             )
-        }
+        },
     ) { paddingValues ->
         if (table == null || tableUiState.status == FetchStatus.NotFound) {
             TableNotFound(
                 modifier = Modifier.padding(paddingValues),
             )
         } else {
-            LaunchedEffect(viewModel) {
-                viewModel.setCurrentTableId(id)
-            }
+            Surface(
+                modifier = Modifier.padding(paddingValues).imePadding(),
+            ) {
+                LaunchedEffect(viewModel) {
+                    viewModel.setCurrentTableId(id)
+                }
 
-            RegisterScanEventHandler { e ->
-                when (e) {
-                    is ScanEvent.Barcode -> {
-                        if (e.ok && e.barcode != null) {
-                            println(e.barcode)
+                RegisterScanEventHandler(handler = viewModel)
+
+                TableContent(
+                    tableUiState = tableUiState,
+                    setFocusedColumn = { id, focused ->
+                        if (focused && tableUiState.focusedColumnId != id) {
+                            viewModel.setFocusedColumn(id)
+                        } else if (!focused && tableUiState.focusedColumnId == id) {
+                            viewModel.setFocusedColumn(null)
+                        }
+                    },
+                    submitData = {
+                        viewModel.submitData { ok ->
+                            if (ok) {
+                                viewModel.resetColumnData()
+                            }
                         }
                     }
+                ) { columns ->
+                    viewModel.updateColumns(columns)
                 }
-            }
-
-            TableContent(
-                modifier = Modifier.padding(paddingValues),
-                tableUiState = tableUiState,
-            ) { columns ->
-                viewModel.updateColumns(columns)
             }
         }
     }
@@ -124,6 +145,8 @@ fun TableScreen(
 fun TableContent(
     modifier: Modifier = Modifier,
     tableUiState: TableUiState,
+    setFocusedColumn: (String, Boolean) -> Unit = { _, _ -> },
+    submitData: () -> Unit = {},
     updateColumns: (List<ColumnUiState>) -> Unit,
 ) {
     Box(
@@ -140,21 +163,55 @@ fun TableContent(
                     modifier = Modifier.size(24.dp).align(Alignment.Center)
                 )
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(12),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize(),
                 ) {
-                    tableColumns(
-                        columns = columns.filter { col -> !col.type.autogenerated },
-                        updateCol = { col ->
-                            updateColumns(
-                                columns
-                                    .map { c -> if (c.id == col.id) col else c }
+                    LazyVerticalGrid(
+                        modifier = Modifier.weight(1f, fill = true),
+                        columns = GridCells.Fixed(12),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        tableColumns(
+                            columns = columns.filter { col -> !col.type.autogenerated },
+                            updateCol = { col ->
+                                updateColumns(
+                                    columns
+                                        .map { c -> if (c.id == col.id) col else c }
+                                )
+                            },
+                            setFocus = setFocusedColumn,
+                            onDone = {
+                                submitData()
+                            },
+                            enabled = !tableUiState.isSubmitting
+                        )
+                    }
+
+                    Button(
+                        modifier = Modifier.padding(16.dp),
+                        onClick = submitData,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(.1f),
+                            disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        enabled = !tableUiState.isSubmitting
+                    ) {
+                        Text("Submit")
+                        AnimatedVisibility(tableUiState.isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = LocalContentColor.current,
+                                trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
+                                strokeWidth = 2.dp,
                             )
                         }
-                    )
+                    }
                 }
             }
         }
@@ -164,19 +221,27 @@ fun TableContent(
 fun LazyGridScope.tableColumns(
     columns: List<ColumnUiState>,
     updateCol: (ColumnUiState) -> Unit,
+    setFocus: (String, Boolean) -> Unit = {_,_ ->},
+    onDone: () -> Unit = {},
     enabled: Boolean = true,
 ) {
     itemsIndexed(
         items = columns,
-        key = { _, c -> c.id},
+        key = { _, c -> c.id },
         span = { _, col ->
             GridItemSpan((maxLineSpan * col.width).roundToInt())
         },
-        contentType = {_, col -> col.type}
+        contentType = { _, col -> col.type }
     ) { idx, col ->
         TableColumn(
-            col,
-            enabled,
+            col = col,
+            enabled = enabled,
+            setFocus = setFocus,
+            onKeyboardAction = { action ->
+                when (action) {
+                    ImeAction.Done -> onDone()
+                }
+            }
         ) { newCol ->
             updateCol(col.copy(value = newCol))
         }
@@ -187,6 +252,9 @@ fun LazyGridScope.tableColumns(
 fun TableColumn(
     col: ColumnUiState,
     enabled: Boolean = true,
+    isLast: Boolean = false,
+    onKeyboardAction: (ImeAction) -> Unit = {},
+    setFocus: (String, Boolean) -> Unit = {_,_ ->},
     updateValue: (ColumnValue) -> Unit = {},
 ) {
     val modifier = Modifier.fillMaxWidth()
@@ -202,6 +270,8 @@ fun TableColumn(
             enabled = enabled,
         )
     } else {
+        val imeAction = if (isLast) ImeAction.Done else ImeAction.Next
+
         TableColumnInput(
             modifier = modifier,
             label = col.name,
@@ -223,6 +293,9 @@ fun TableColumn(
             },
             type = col.type,
             enabled = enabled,
+            setFocus = { setFocus(col.id, it) },
+            imeAction = imeAction,
+            onKeyboardAction = { onKeyboardAction(imeAction) }
         )
     }
 }
@@ -237,6 +310,7 @@ fun TableColumnInput(
     enabled: Boolean = type.autogenerated,
     imeAction: ImeAction = ImeAction.Next,
     onKeyboardAction: KeyboardActionScope.() -> Unit = {},
+    setFocus: (Boolean) -> Unit = {},
 ) {
     val keyboardOptions = remember(type) {
         when (type) {
@@ -262,29 +336,52 @@ fun TableColumnInput(
         }
     }
 
-    var text by remember { mutableStateOf(value) }
+    var text by remember(value) { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    val onValueChange: (TextFieldValue) -> Unit = { text = it }
+    val labelComposable: (@Composable () -> Unit) = {
+        Text(label)
+    }
+    val placeholder: (@Composable () -> Unit) = {
+        Text(
+            text = "Input $label...",
+            maxLines = 1,
+        )
+    }
+    val onFocusChange: (Boolean) -> Unit = {
+        setFocus(it)
+    }
+    val keyboardActions = KeyboardActions {
+        setValue(text.text)
+        onKeyboardAction()
+        defaultKeyboardAction(imeAction = imeAction)
+    }
 
-    ScanableInputField(
-        modifier = modifier,
-        value = text,
-        onValueChange = { text = it},
-        label = {
-            Text(label)
-        },
-        enabled = enabled,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = KeyboardActions {
-            setValue(text)
-            onKeyboardAction()
-            defaultKeyboardAction(imeAction = imeAction)
-        },
-        placeholder = {
-            Text(
-                text = "Input $label...",
-                maxLines = 1,
-            )
-        }
-    )
+    if (type is ColumnType.Text) {
+        ScanableInputField(
+            modifier = modifier,
+            value = text,
+            onValueChange = onValueChange,
+            scanIconOnClick = { setFocus(true) },
+            label = labelComposable,
+            enabled = enabled,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            placeholder = placeholder,
+            onFocusChange = onFocusChange,
+        )
+    } else {
+        InputField(
+            modifier = modifier,
+            value = text,
+            onValueChange = onValueChange,
+            label = labelComposable,
+            enabled = enabled,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            placeholder = placeholder,
+            onFocusChange = onFocusChange,
+        )
+    }
 }
 
 @Composable
