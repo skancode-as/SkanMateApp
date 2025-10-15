@@ -1,7 +1,11 @@
 package dk.skancode.skanmate.ui.component
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import dk.skancode.skanmate.util.keyboardVisibleAsState
 import org.ncgroup.kscan.Barcode
 import org.ncgroup.kscan.BarcodeFormat
 import org.ncgroup.kscan.BarcodeResult
@@ -16,6 +20,13 @@ fun CameraBarcodeScanner(
     onCancelled: () -> Unit = {},
 ) {
     if (showScanner) {
+        val isKeyboardVisible by keyboardVisibleAsState()
+        if (isKeyboardVisible) {
+            val localSoftwareKeyboardController = LocalSoftwareKeyboardController.current
+            LaunchedEffect(localSoftwareKeyboardController) {
+                localSoftwareKeyboardController?.hide()
+            }
+        }
         ScannerView(
             modifier = modifier,
             codeTypes = listOf(BarcodeFormat.FORMAT_ALL_FORMATS),

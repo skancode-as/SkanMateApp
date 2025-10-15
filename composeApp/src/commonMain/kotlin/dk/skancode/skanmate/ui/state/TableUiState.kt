@@ -2,6 +2,7 @@ package dk.skancode.skanmate.ui.state
 
 import dk.skancode.skanmate.data.model.ColumnModel
 import dk.skancode.skanmate.data.model.ColumnType
+import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.data.model.TableModel
 
 sealed class FetchStatus {
@@ -41,47 +42,19 @@ fun TableModel?.toUiState(isFetching: Boolean): MutableTableUiState =
     )
 
 fun ColumnModel.toUiState(): ColumnUiState = ColumnUiState(
-    id,
-    name,
-    ColumnValue.fromType(type),
-    type,
-    width,
+    id = id,
+    name = name,
+    dbName = dbName,
+    value = ColumnValue.fromType(type),
+    type = type,
+    width = width,
 )
 
 data class ColumnUiState(
     val id: String,
     val name: String,
+    val dbName: String,
     val value: ColumnValue,
     val type: ColumnType,
     val width: Float,
 )
-
-sealed class ColumnValue {
-    data class Boolean(val checked: kotlin.Boolean = false) : ColumnValue() {
-        override fun clone(): ColumnValue = this.copy()
-    }
-    data class Text(val text: String = "") : ColumnValue() {
-        override fun clone(): ColumnValue = this.copy()
-    }
-    data class Numeric(val num: Number? = null) : ColumnValue() {
-        override fun clone(): ColumnValue = this.copy()
-    }
-
-    data object Null : ColumnValue() {
-        override fun clone(): ColumnValue = this
-    }
-
-    abstract fun clone(): ColumnValue
-
-    companion object {
-        fun fromType(t: ColumnType): ColumnValue = when (t) {
-            ColumnType.Boolean -> Boolean()
-            ColumnType.Numeric -> Numeric()
-            ColumnType.Text -> Text()
-            ColumnType.Timestamp -> Text()
-            ColumnType.User -> Text()
-            ColumnType.Unknown -> Null
-            ColumnType.Id -> Null
-        }
-    }
-}

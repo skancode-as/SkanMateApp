@@ -45,6 +45,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -57,7 +60,7 @@ import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.RegisterScanEventHandler
 import dk.skancode.skanmate.ui.component.ScanableInputField
 import dk.skancode.skanmate.ui.state.ColumnUiState
-import dk.skancode.skanmate.ui.state.ColumnValue
+import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
@@ -77,10 +80,7 @@ fun TableScreen(
 ) {
     val table = viewModel.tableFlow.find { it.id == id }
     val tableUiState by viewModel.uiState.collectAsState()
-
-    val submitData: () -> Unit = {
-
-    }
+    val focusManager = LocalFocusManager.current
 
     Scaffold(
         topBar = {
@@ -127,6 +127,7 @@ fun TableScreen(
                         }
                     },
                     submitData = {
+                        focusManager.clearFocus(true)
                         viewModel.submitData { ok ->
                             if (ok) {
                                 viewModel.resetColumnData()
@@ -237,13 +238,14 @@ fun LazyGridScope.tableColumns(
             col = col,
             enabled = enabled,
             setFocus = setFocus,
+            isLast = idx == columns.size,
             onKeyboardAction = { action ->
                 when (action) {
                     ImeAction.Done -> onDone()
                 }
             }
-        ) { newCol ->
-            updateCol(col.copy(value = newCol))
+        ) { newColValue ->
+            updateCol(col.copy(value = newColValue))
         }
     }
 }
@@ -258,10 +260,11 @@ fun TableColumn(
     updateValue: (ColumnValue) -> Unit = {},
 ) {
     val modifier = Modifier.fillMaxWidth()
+    val focusRequester = remember { FocusRequester() }
 
     if (col.type == ColumnType.Boolean && col.value is ColumnValue.Boolean) {
         TableColumnCheckbox(
-            modifier = modifier,
+            modifier = modifier.focusRequester(focusRequester),
             label = col.name,
             checked = col.value.checked,
             setChecked = { checked ->
@@ -273,7 +276,7 @@ fun TableColumn(
         val imeAction = if (isLast) ImeAction.Done else ImeAction.Next
 
         TableColumnInput(
-            modifier = modifier,
+            modifier = modifier.focusRequester(focusRequester),
             label = col.name,
             value = when (col.value) {
                 is ColumnValue.Text -> col.value.text
@@ -336,8 +339,12 @@ fun TableColumnInput(
         }
     }
 
-    var text by remember(value) { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
-    val onValueChange: (TextFieldValue) -> Unit = { text = it }
+    var selection by remember { mutableStateOf(TextRange(value.length)) }
+    var text by remember(value) { mutableStateOf(TextFieldValue(value, selection)) }
+    val onValueChange: (TextFieldValue) -> Unit = {
+        text = it
+        selection = it.selection
+    }
     val labelComposable: (@Composable () -> Unit) = {
         Text(label)
     }
@@ -349,6 +356,7 @@ fun TableColumnInput(
     }
     val onFocusChange: (Boolean) -> Unit = {
         setFocus(it)
+        if (!it) setValue(text.text)
     }
     val keyboardActions = KeyboardActions {
         setValue(text.text)

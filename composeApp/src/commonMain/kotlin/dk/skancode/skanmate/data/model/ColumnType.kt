@@ -24,7 +24,6 @@ private class ColumnTypeSerializer(): KSerializer<ColumnType> {
     override fun deserialize(decoder: Decoder): ColumnType {
         return ColumnType.from(decoder.decodeString())
     }
-
 }
 
 @Serializable(with = ColumnTypeSerializer::class)

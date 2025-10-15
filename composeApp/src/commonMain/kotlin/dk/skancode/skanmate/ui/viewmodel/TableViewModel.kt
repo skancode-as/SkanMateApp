@@ -4,19 +4,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dk.skancode.skanmate.ScanEvent
 import dk.skancode.skanmate.ScanEventHandler
+import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.data.model.TableSummaryModel
+import dk.skancode.skanmate.data.model.rowDataOf
 import dk.skancode.skanmate.data.service.TableService
 import dk.skancode.skanmate.ui.state.ColumnUiState
-import dk.skancode.skanmate.ui.state.ColumnValue
 import dk.skancode.skanmate.ui.state.MutableTableUiState
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.state.toUiState
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.seconds
 
 class TableViewModel(
     val tableService: TableService,
@@ -25,6 +25,7 @@ class TableViewModel(
     val tableFlow: StateFlow<List<TableSummaryModel>>
         get() = _tableFlow
 
+    @OptIn(FlowPreview::class)
     private val _uiState = MutableStateFlow(MutableTableUiState())
     val uiState: StateFlow<TableUiState>
         get() = _uiState
@@ -54,6 +55,7 @@ class TableViewModel(
         }
     }
 
+    @OptIn(FlowPreview::class)
     fun updateColumns(cols: List<ColumnUiState>) {
         _uiState.update { it.copy(columns = cols) }
     }
@@ -73,12 +75,27 @@ class TableViewModel(
             it.copy(isSubmitting = true)
         }
         viewModelScope.launch {
-            delay(5.seconds)
-
-            _uiState.update {
-                it.copy(isSubmitting = false)
+            var res = false
+            try {
+                val state = _uiState.value
+                if (state.model != null) {
+                    val (ok, errors) = tableService.submitRow(
+                        tableId = state.model.id,
+                        row = rowDataOf(state.columns),
+                    )
+                    errors?.columnErrors?.map { (k, v) ->
+                        state.columns.find { col -> col.dbName == k }?.also { col ->
+                            println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}}")
+                        }
+                    }
+                    res = ok
+                }
+            } finally {
+                _uiState.update {
+                    it.copy(isSubmitting = false)
+                }
+                cb(res)
             }
-            cb(true)
         }
     }
 

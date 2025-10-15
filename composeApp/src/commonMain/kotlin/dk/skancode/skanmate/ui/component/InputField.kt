@@ -9,7 +9,6 @@ import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,13 +35,9 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,8 +58,8 @@ import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -81,6 +76,7 @@ import androidx.compose.ui.util.fastFirstOrNull
 import dk.skancode.skanmate.LocalScanModule
 import dk.skancode.skanmate.ScanModule
 import dk.skancode.skanmate.util.darken
+import dk.skancode.skanmate.util.keyboardVisibleAsState
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.scan_barcode
@@ -116,9 +112,12 @@ fun ScanableInputField(
 ) {
     val trailingIcon: (@Composable () -> Unit)? = if (!scanModule.isHardwareScanner()) {
         (@Composable {
-            val keyboardController = LocalSoftwareKeyboardController.current
-            IconButton({
-                keyboardController?.hide()
+            val focusManager = LocalFocusManager.current
+            val isImeVisible by keyboardVisibleAsState()
+            IconButton( {
+                if (isImeVisible) {
+                    focusManager.clearFocus()
+                }
                 scanIconOnClick()
                 scanModule.enableScan()
             }) {
@@ -553,7 +552,6 @@ private class TextFieldMeasurePolicy(
         val bottomPaddingValue = paddingValues.calculateBottomPadding().roundToPx()
 
         var occupiedSpaceHorizontally = 0
-        var occupiedSpaceVertically = 0
 
         val looseConstraints = constraints.copy(minWidth = 0, minHeight = 0)
 
@@ -561,7 +559,6 @@ private class TextFieldMeasurePolicy(
         val leadingPlaceable =
             measurables.fastFirstOrNull { it.layoutId == LeadingId }?.measure(looseConstraints)
         occupiedSpaceHorizontally += widthOrZero(leadingPlaceable)
-        occupiedSpaceVertically = max(occupiedSpaceVertically, heightOrZero(leadingPlaceable))
 
         // measure trailing icon
         val trailingPlaceable =
@@ -569,7 +566,6 @@ private class TextFieldMeasurePolicy(
                 .fastFirstOrNull { it.layoutId == TrailingId }
                 ?.measure(looseConstraints.offset(horizontal = -occupiedSpaceHorizontally))
         occupiedSpaceHorizontally += widthOrZero(trailingPlaceable)
-        occupiedSpaceVertically = max(occupiedSpaceVertically, heightOrZero(trailingPlaceable))
 
         // measure prefix
         val prefixPlaceable =
@@ -577,7 +573,6 @@ private class TextFieldMeasurePolicy(
                 .fastFirstOrNull { it.layoutId == PrefixId }
                 ?.measure(looseConstraints.offset(horizontal = -occupiedSpaceHorizontally))
         occupiedSpaceHorizontally += widthOrZero(prefixPlaceable)
-        occupiedSpaceVertically = max(occupiedSpaceVertically, heightOrZero(prefixPlaceable))
 
         // measure suffix
         val suffixPlaceable =
@@ -585,14 +580,6 @@ private class TextFieldMeasurePolicy(
                 .fastFirstOrNull { it.layoutId == SuffixId }
                 ?.measure(looseConstraints.offset(horizontal = -occupiedSpaceHorizontally))
         occupiedSpaceHorizontally += widthOrZero(suffixPlaceable)
-        occupiedSpaceVertically = max(occupiedSpaceVertically, heightOrZero(suffixPlaceable))
-
-        // measure label
-        val labelConstraints =
-            looseConstraints.offset(
-                vertical = -bottomPaddingValue,
-                horizontal = -occupiedSpaceHorizontally
-            )
 
         // measure input field
         val effectiveTopOffset = topPaddingValue
@@ -613,13 +600,6 @@ private class TextFieldMeasurePolicy(
                 .fastFirstOrNull { it.layoutId == PlaceholderId }
                 ?.measure(placeholderConstraints)
 
-        occupiedSpaceVertically =
-            max(
-                occupiedSpaceVertically,
-                max(heightOrZero(textFieldPlaceable), heightOrZero(placeholderPlaceable)) +
-                        effectiveTopOffset +
-                        bottomPaddingValue
-            )
         val width =
             calculateWidth(
                 leadingWidth = widthOrZero(leadingPlaceable),
@@ -630,12 +610,6 @@ private class TextFieldMeasurePolicy(
                 placeholderWidth = widthOrZero(placeholderPlaceable),
                 constraints = constraints,
             )
-
-        // measure supporting text
-        val supportingConstraints =
-            looseConstraints
-                .offset(vertical = -occupiedSpaceVertically)
-                .copy(minHeight = 0, maxWidth = width)
 
         val totalHeight =
             calculateHeight(

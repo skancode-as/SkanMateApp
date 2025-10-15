@@ -1,3 +1,5 @@
 package dk.skancode.skanmate.data.model
 
-data class StoreResponse<T>(val ok: Boolean, val data: T?, val msg: String)
+import kotlinx.serialization.json.JsonElement
+
+data class StoreResponse<T>(val ok: Boolean, val data: T?, val msg: String, val details: JsonElement? = null)

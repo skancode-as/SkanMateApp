@@ -5,15 +5,19 @@ import dk.skancode.skanmate.data.model.FullTableDTO
 import dk.skancode.skanmate.data.model.FullTableResponseDTO
 import dk.skancode.skanmate.data.model.StoreResponse
 import dk.skancode.skanmate.data.model.SuccessResponse
+import dk.skancode.skanmate.data.model.TableData
 import dk.skancode.skanmate.data.model.TableSummaryDTO
-import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.data.model.TableSummaryResponseDTO
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import kotlinx.serialization.json.Json
 
 class TableStore(val client: HttpClient, val baseUrl: String) {
     suspend fun fetchTableSummaries(token: String): StoreResponse<List<TableSummaryDTO>> {
@@ -78,6 +82,35 @@ class TableStore(val client: HttpClient, val baseUrl: String) {
                         msg = body.error,
                     )
                 }
+            }
+        }
+    }
+
+    suspend fun submitTableData(
+        tableId: String,
+        data: TableData,
+        token: String,
+    ): StoreResponse<Unit> {
+        return tryCatch {
+            val json = Json.encodeToString(data)
+            println(data)
+            println(json)
+
+            return handleResponse(
+                res = client.post("$baseUrl/tables/$tableId") {
+                    headers {
+                        set(HttpHeaders.Authorization, "bearer $token")
+                        set(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    }
+                    setBody(data)
+                },
+                successCode = HttpStatusCode.NoContent,
+            ) {
+                StoreResponse(
+                    ok = true,
+                    data = null,
+                    msg = "Success",
+                )
             }
         }
     }

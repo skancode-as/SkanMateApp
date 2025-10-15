@@ -132,8 +132,8 @@ fun TableCard(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = table.description ?: "No description provided",
-                style = MaterialTheme.typography.bodySmall.merge(color = LocalContentColor.current.copy(alpha = .9f)),
+                text = if(table.description.isNullOrBlank()) "No description provided" else table.description,
+                style = MaterialTheme.typography.bodySmall.merge(color = LocalContentColor.current.copy(alpha = .8f)),
             )
         }
     }

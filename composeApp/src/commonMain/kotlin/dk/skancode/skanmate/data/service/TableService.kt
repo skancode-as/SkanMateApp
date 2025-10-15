@@ -1,6 +1,9 @@
 package dk.skancode.skanmate.data.service
 
+import dk.skancode.skanmate.data.model.RowData
+import dk.skancode.skanmate.data.model.TableData
 import dk.skancode.skanmate.data.model.TableModel
+import dk.skancode.skanmate.data.model.TableRowErrors
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.data.store.TableStore
 import kotlinx.coroutines.CoroutineScope
@@ -14,6 +17,7 @@ interface TableService {
 
     suspend fun fetchTable(id: String): TableModel?
     suspend fun updateTableFlow(): Boolean
+    suspend fun submitRow(tableId: String, row: RowData): Pair<Boolean, TableRowErrors?>
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -21,7 +25,7 @@ class TableServiceImpl(
     val tableStore: TableStore,
     tokenFlow: SharedFlow<String?>,
     externalScope: CoroutineScope,
-): TableService {
+) : TableService {
     private val _tableFlow = MutableSharedFlow<List<TableSummaryModel>>(1)
     override val tableFlow: SharedFlow<List<TableSummaryModel>>
         get() = _tableFlow
@@ -59,10 +63,28 @@ class TableServiceImpl(
         return res.isNotEmpty()
     }
 
+    override suspend fun submitRow(tableId: String, row: RowData): Pair<Boolean, TableRowErrors?> {
+        val token = _token
+        if (token == null) return false to null
+        val res = tableStore.submitTableData(
+            tableId = tableId,
+            data = TableData(rows = listOf(row)),
+            token = token
+        )
+        val errors = if (!res.ok) {
+            TableRowErrors.decode(res.details)
+        } else null
+
+        return res.ok to errors
+    }
+
+
     private suspend fun fetchTables(token: String): List<TableSummaryModel> {
         val res = tableStore.fetchTableSummaries(token)
 
-        if (!res.ok || res.data == null) return emptyList()
+        if (!res.ok || res.data == null){
+            return emptyList()
+        }
 
         return res.data.map { it.toModel() }
     }
