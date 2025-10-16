@@ -1,6 +1,9 @@
 package dk.skancode.skanmate
 
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.ui.graphics.painter.Painter
 import com.russhwolf.settings.Settings
 
 typealias BarcodeType = String
@@ -29,3 +32,11 @@ interface ScanModule {
 expect fun rememberScanModule(): ScanModule
 
 expect val platformSettingsFactory: Settings.Factory
+
+@Composable
+expect fun CameraView(
+    cameraUi: @Composable BoxScope.(CameraController) -> Unit,
+)
+
+@Composable
+expect fun loadImageAsState(imagePath: String): State<Painter>

@@ -136,6 +136,7 @@ class TableViewModel(
                             is ColumnValue.Text -> ColumnValue.Text(v)
                             is ColumnValue.Boolean,
                             is ColumnValue.Numeric,
+                            is ColumnValue.File,
                             ColumnValue.Null -> focusedColumn.value.clone()
                         }
                     )

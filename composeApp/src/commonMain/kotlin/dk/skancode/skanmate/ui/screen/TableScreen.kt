@@ -2,6 +2,7 @@ package dk.skancode.skanmate.ui.screen
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -28,7 +30,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import dk.skancode.skanmate.ui.component.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -53,7 +55,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dk.skancode.skanmate.CameraView
 import dk.skancode.skanmate.data.model.ColumnType
 import dk.skancode.skanmate.ui.component.Button
 import dk.skancode.skanmate.ui.component.InputField
@@ -61,6 +65,10 @@ import dk.skancode.skanmate.ui.component.RegisterScanEventHandler
 import dk.skancode.skanmate.ui.component.ScanableInputField
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.data.model.ColumnValue
+import dk.skancode.skanmate.loadImageAsState
+import dk.skancode.skanmate.ui.component.CustomButtonElevation
+import dk.skancode.skanmate.ui.component.FullWidthButton
+import dk.skancode.skanmate.ui.component.SizeValues
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
@@ -68,6 +76,7 @@ import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.camera
 import skanmate.composeapp.generated.resources.triangle_alert
 import kotlin.math.roundToInt
 
@@ -89,7 +98,11 @@ fun TableScreen(
                     Text(table?.name ?: "Oh no!")
                 },
                 navigationIcon = {
-                    IconButton(onClick = navigateBack) {
+                    IconButton(
+                        onClick = navigateBack,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = LocalContentColor.current),
+                        elevation = CustomButtonElevation(all = Dp.Unspecified)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null
@@ -191,7 +204,7 @@ fun TableContent(
                         )
                     }
 
-                    Button(
+                    FullWidthButton(
                         modifier = Modifier.padding(16.dp),
                         onClick = submitData,
                         colors = ButtonDefaults.outlinedButtonColors(
@@ -272,6 +285,14 @@ fun TableColumn(
             },
             enabled = enabled,
         )
+    } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
+        TableColumnFile(
+            label = col.name,
+            value = col.value.localUrl,
+            setValue = {
+                updateValue(col.value.copy(localUrl = it))
+            }
+        )
     } else {
         val imeAction = if (isLast) ImeAction.Done else ImeAction.Next
 
@@ -319,6 +340,7 @@ fun TableColumnInput(
         when (type) {
             ColumnType.Unknown,
             ColumnType.Boolean,
+            ColumnType.File,
             ColumnType.Id,
             ColumnType.Timestamp,
             ColumnType.User -> KeyboardOptions.Default.copy(imeAction = imeAction)
@@ -389,6 +411,65 @@ fun TableColumnInput(
             placeholder = placeholder,
             onFocusChange = onFocusChange,
         )
+    }
+}
+
+@Composable
+fun TableColumnFile(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String?,
+    setValue: (String?) -> Unit,
+) {
+    var showCamera by remember { mutableStateOf(false) }
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(label)
+        AnimatedContent(value) { targetValue ->
+            if (targetValue == null) {
+                IconButton(
+                    modifier = Modifier.requiredSizeIn(24.dp, 48.dp),
+                    onClick = { showCamera = true },
+                ) {
+                    Icon(
+                        imageVector = vectorResource(Res.drawable.camera),
+                        contentDescription = null,
+                    )
+                }
+            } else {
+                val painter by loadImageAsState(imagePath = targetValue)
+
+                Image(painter, null)
+            }
+        }
+        if (showCamera) {
+            val aspectRatio = 16/9f
+            CameraView { controller ->
+                IconButton(
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
+                    aspectRatio = aspectRatio,
+                    onClick = {
+                        controller.takePicture { res ->
+                            if (!res.ok) {
+                                println(res.error)
+                            } else {
+                                setValue(res.filePath)
+                            }
+
+                            showCamera = !res.ok
+                        }
+                    },
+                    sizeValues = SizeValues(minHeight = 48.dp, maxHeight = 64.dp, (48*aspectRatio).dp, (64*aspectRatio).dp)
+                ) {
+                    Icon(
+                        imageVector = vectorResource(Res.drawable.camera),
+                        contentDescription = null,
+                    )
+                }
+            }
+        }
     }
 }
 

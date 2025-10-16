@@ -19,6 +19,7 @@ ktor = "3.3.0"
 coroutines = "1.9.0"
 kmp-settings = "1.3.0"
 kotlinx-datetime = "0.7.1-0.6.x-compat"
+cameraCore = "1.3.3"
 
 [libraries]
 barcodescannermodule = { module = "com.github.TobiasTheDanish:BarcodeScannerModule", version.ref = "barcodeModuleVersion" }
@@ -43,6 +44,10 @@ ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-conte
 ktor-json-ktx = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 multiplatform-settings = { group = "com.russhwolf", name = "multiplatform-settings", version.ref = "kmp-settings" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinx-datetime" }
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCore" }
+androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "cameraCore" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "cameraCore" }
+androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "cameraCore" }
 
 
 [plugins]

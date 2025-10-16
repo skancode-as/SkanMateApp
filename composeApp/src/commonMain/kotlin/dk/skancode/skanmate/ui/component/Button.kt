@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -36,6 +37,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -117,7 +119,7 @@ fun PanelButton(
         enabled = enabled && !loading,
         interactionSource = interactionSource,
         shape = shape,
-        heightValues = heightValues,
+        sizeValues = heightValues,
         contentPadding = PaddingValues(0.dp),
     ) {
         if (leftPanel != null) {
@@ -182,7 +184,7 @@ fun PanelButton(
 }
 
 @Composable
-fun Button(
+fun FullWidthButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
@@ -200,15 +202,98 @@ fun Button(
     contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable RowScope.() -> Unit,
 ) {
+    Button(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = horizontalArrangement,
+        verticalAlignment = verticalAlignment,
+        onClick = onClick,
+        elevation = elevation,
+        colors = colors,
+        enabled = enabled,
+        interactionSource = interactionSource,
+        shape = shape,
+        sizeValues = heightValues.copy(minWidth = Dp.Unspecified, maxWidth = Dp.Unspecified),
+        contentPadding = contentPadding,
+        content = content,
+    )
+}
+
+@Composable
+fun IconButton(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    elevation: CustomButtonElevation = CustomButtonElevation(),
+    colors: ButtonColors = ButtonDefaults.outlinedButtonColors(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        disabledContainerColor = MaterialTheme.colorScheme.background.darken(.1f),
+    ),
+    enabled: Boolean = true,
+    interactionSource: InteractionSource = rememberInteractionSource(),
+    shape: Shape = RoundedCornerShape(8.dp),
+    sizeValues: SizeValues = SizeValues(min = 48.dp, max = 64.dp),
+    contentPadding: PaddingValues = PaddingValues(12.dp),
+    aspectRatio: Float = 1f,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Button(
+        modifier = modifier,
+        onClick = onClick,
+        elevation = elevation,
+        colors = colors,
+        enabled = enabled,
+        interactionSource = interactionSource,
+        shape = shape,
+        sizeValues = sizeValues,
+        contentPadding = PaddingValues(0.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .padding(contentPadding)
+                .aspectRatio(aspectRatio)
+            ,
+            contentAlignment = Alignment.Center,
+            propagateMinConstraints = true,
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+fun Button(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    verticalAlignment : Alignment.Vertical= Alignment.CenterVertically,
+    elevation: CustomButtonElevation = CustomButtonElevation(),
+    colors: ButtonColors = ButtonDefaults.outlinedButtonColors(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        disabledContainerColor = MaterialTheme.colorScheme.background.darken(.1f),
+    ),
+    enabled: Boolean = true,
+    interactionSource: InteractionSource = rememberInteractionSource(),
+    shape: Shape = RoundedCornerShape(4.dp),
+    sizeValues: SizeValues = SizeValues(minHeight = 36.dp, maxHeight = 64.dp),
+    contentPadding: PaddingValues = PaddingValues(16.dp),
+    content: @Composable RowScope.() -> Unit,
+) {
     val shadowElevation by elevation.shadowElevation(enabled, interactionSource)
     val containerColor = if (enabled) colors.containerColor else if (colors.disabledContainerColor == Color.Unspecified) colors.containerColor.darken(.1f) else colors.disabledContainerColor
     val contentColor = if (enabled) colors.contentColor else if (colors.disabledContentColor == Color.Unspecified) colors.contentColor else colors.disabledContentColor
-    val (minHeight, maxHeight) = key(heightValues) { heightValues.heightValues() }
+    val (minHeight, maxHeight) = key(sizeValues) { sizeValues.heightValues() }
+    val (minWidth, maxWidth) = key(sizeValues) { sizeValues.widthValues() }
 
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .heightIn(minHeight, maxHeight)
+            .sizeIn(
+                minWidth = minWidth,
+                minHeight = minHeight,
+                maxWidth = maxWidth,
+                maxHeight = maxHeight,
+            )
             .shadow(elevation = shadowElevation, shape = shape)
             .background(color = containerColor, shape = shape)
             .clickable(enabled) {
@@ -246,6 +331,13 @@ data class CustomButtonElevation(
     private val hoveredElevation: Dp = ElevationTokens.Level3,
     private val disabledElevation: Dp = ElevationTokens.Level1,
 ): ButtonElevation {
+    constructor(all: Dp) : this(
+        defaultElevation = all,
+        pressedElevation = all,
+        focusedElevation = all,
+        hoveredElevation = all,
+        disabledElevation = all,
+    )
     @Composable
     override fun shadowElevation(
         enabled: Boolean,

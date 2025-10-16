@@ -41,6 +41,7 @@ private class ColumnValueSerializer(): KSerializer<ColumnValue> {
             ColumnValue.Null -> encoder.encodeNull()
             is ColumnValue.Numeric -> if(value.num != null) encoder.encodeDouble(value.num.toDouble()) else encoder.encodeNull()
             is ColumnValue.Text -> encoder.encodeString(value.text)
+            is ColumnValue.File -> if(value.objectUrl != null) encoder.encodeString(value.objectUrl) else encoder.encodeNull()
         }
     }
 
@@ -60,6 +61,9 @@ sealed class ColumnValue {
     data class Numeric(val num: Number? = null) : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
     }
+    data class File(val localUrl: String? = null, val objectUrl: String? = null) : ColumnValue() {
+        override fun clone(): ColumnValue = this.copy()
+    }
 
     data object Null : ColumnValue() {
         override fun clone(): ColumnValue = this
@@ -76,6 +80,7 @@ sealed class ColumnValue {
             ColumnType.User -> Null
             ColumnType.Unknown -> Null
             ColumnType.Id -> Null
+            ColumnType.File -> File()
         }
     }
 }
