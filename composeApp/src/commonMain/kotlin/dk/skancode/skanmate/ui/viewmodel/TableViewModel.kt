@@ -93,6 +93,7 @@ class TableViewModel(
                                     println("Could not upload image")
                                 } else {
                                     println("Image uploaded to $objectUrl")
+                                    // TODO: delete local image after upload
                                 }
 
                                 col.copy(

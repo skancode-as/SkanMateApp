@@ -1,14 +1,22 @@
 package dk.skancode.skanmate
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dk.skancode.skanmate.data.service.AuthServiceImpl
 import dk.skancode.skanmate.data.service.TableServiceImpl
 import dk.skancode.skanmate.data.store.AuthStore
 import dk.skancode.skanmate.data.store.TableStore
 import dk.skancode.skanmate.nav.AppNavHost
+import dk.skancode.skanmate.ui.component.CameraOverlay
+import dk.skancode.skanmate.ui.component.LocalUiCameraController
+import dk.skancode.skanmate.ui.component.UiCameraController
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
@@ -21,7 +29,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-private const val BASE_URL = "https://skanmate-git-feat-insert-data-endpoint-skan-code-team.vercel.app/api/v1"
+private const val BASE_URL =
+    "https://skanmate-git-feat-insert-data-endpoint-skan-code-team.vercel.app/api/v1"
 private val httpClient = HttpClient {
     install(ContentNegotiation) {
         json(jsonSerializer)
@@ -63,13 +72,32 @@ fun App() {
 
     MaterialTheme {
         val scanModule = rememberScanModule()
+        val uiCameraController = remember { UiCameraController() }
+        val showCamera by uiCameraController.isStarted.collectAsState()
 
-        CompositionLocalProvider(LocalScanModule provides scanModule) {
-            AppNavHost(
-                authViewModel = authViewModel,
-                initializerViewModel = initializerViewModel,
-                tableViewModel = tableViewModel,
-            )
+        CompositionLocalProvider(
+            LocalScanModule provides scanModule,
+            LocalUiCameraController provides uiCameraController,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                propagateMinConstraints = true,
+            ) {
+                AppNavHost(
+                    authViewModel = authViewModel,
+                    initializerViewModel = initializerViewModel,
+                    tableViewModel = tableViewModel,
+                )
+                if (showCamera) {
+                    Scaffold { padding ->
+                        CameraView(
+                            modifier = Modifier.padding(padding),
+                            cameraUi = { CameraOverlay(controller = it) }
+                        )
+                    }
+                }
+            }
         }
     }
 }

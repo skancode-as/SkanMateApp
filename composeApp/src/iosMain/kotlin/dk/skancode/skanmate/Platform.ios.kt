@@ -3,11 +3,8 @@ package dk.skancode.skanmate
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -20,8 +17,6 @@ import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.makeFromEncoded
 import platform.Foundation.*
@@ -78,20 +73,19 @@ actual val platformSettingsFactory: Settings.Factory = NSUserDefaultsSettings.Fa
 
 @Composable
 actual fun CameraView(
+    modifier: Modifier,
     cameraUi: @Composable BoxScope.(CameraController) -> Unit,
 ) {
     IosCameraView(
+        modifier = modifier,
         cameraUi = cameraUi,
     )
 }
 
 @OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
 @Composable
-actual fun loadImageAsState(imagePath: String): State<Painter> {
-    val fallbackBitmap = ImageBitmap(1, 1)
-    val painterState = remember { mutableStateOf(BitmapPainter(fallbackBitmap)) }
-
-    val stateFlow = remember { MutableStateFlow(fallbackBitmap) }
+actual fun loadImage(imagePath: String?): ImageResource<Painter> {
+    val imageResource = rememberImageResource()
 
     val fileManager = remember { NSFileManager.defaultManager }
     val documentDir = remember {
@@ -102,26 +96,24 @@ actual fun loadImageAsState(imagePath: String): State<Painter> {
         )[0] as? String
     }
 
-    LaunchedEffect(fileManager, documentDir) {
+    LaunchedEffect(fileManager, documentDir, imagePath) {
         if (documentDir != null && fileManager.fileExistsAtPath("$documentDir/$imagePath")) {
+            imageResource.load()
             val data: NSData = NSData.create(contentsOfFile = "$documentDir/$imagePath")!!
 
             val imageBitmap = try {
                 Image.makeFromEncoded(data).toComposeImageBitmap()
             } catch (e: Exception) {
                 println(e)
-                null
+                imageResource.error(e.message ?: "Could not make Image bitmap from NSData")
+                return@LaunchedEffect
             }
-            if (imageBitmap != null) {
-                stateFlow.update { imageBitmap }
-            }
+
+            imageResource.update (BitmapPainter(imageBitmap))
         }
     }
 
-    val bitmap = stateFlow.collectAsState()
-    painterState.value = BitmapPainter(bitmap.value)
-
-    return painterState
+    return imageResource
 }
 
 @OptIn(ExperimentalForeignApi::class)

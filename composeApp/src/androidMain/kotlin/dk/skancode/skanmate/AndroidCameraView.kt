@@ -8,6 +8,8 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCapture.FLASH_MODE_OFF
+import androidx.camera.core.ImageCapture.FLASH_MODE_ON
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -15,8 +17,10 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -24,9 +28,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.util.Locale
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 @Composable
 fun AndroidCameraView(
+    modifier: Modifier,
     cameraUi: @Composable BoxScope.(CameraController) -> Unit,
 ) {
     val context = LocalContext.current
@@ -39,12 +46,12 @@ fun AndroidCameraView(
     val controller = remember(context) { AndroidCameraController(context, cameraExecutor) }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         propagateMinConstraints = true,
     ) {
         AndroidView(
             factory = { previewView },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
             update = {
                 val cameraProvider = cameraProviderFuture.get()
                 val preview = Preview.Builder()
@@ -61,17 +68,39 @@ fun AndroidCameraView(
                 cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, imageCapture, preview)
 
                 controller.imageCapture = imageCapture
+            },
+            onRelease = {
+                val cameraProvider = cameraProviderFuture.get()
+                cameraProvider.unbindAll()
             }
         )
-        cameraUi(controller)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            cameraUi(controller)
+        }
     }
 }
 
+@OptIn(ExperimentalAtomicApi::class)
 class AndroidCameraController(
     val context: Context,
     val cameraExecutor: Executor,
 ): CameraController {
     lateinit var imageCapture: ImageCapture
+    private val _flashState = AtomicBoolean(false)
+    override val flashState: Boolean
+        get() = _flashState.load()
+
+    override fun setFlashState(v: Boolean): Boolean {
+        if (!this::imageCapture.isInitialized) return false
+
+        imageCapture.flashMode = if (v) FLASH_MODE_ON else FLASH_MODE_OFF
+        _flashState.store(v)
+
+        return true
+    }
 
     override fun takePicture(cb: (TakePictureResponse) -> Unit) {
         if (!this::imageCapture.isInitialized) {

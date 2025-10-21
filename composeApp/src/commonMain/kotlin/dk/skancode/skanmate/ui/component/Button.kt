@@ -26,8 +26,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,7 +37,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.VerticalDivider
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -80,7 +79,7 @@ data class SizeValues(
 
 @Composable
 fun rememberInteractionSource(): MutableInteractionSource {
-    return remember {MutableInteractionSource()}
+    return remember { MutableInteractionSource() }
 }
 
 @Composable
@@ -88,7 +87,7 @@ fun PanelButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    verticalAlignment : Alignment.Vertical= Alignment.CenterVertically,
+    verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     elevation: CustomButtonElevation = CustomButtonElevation(),
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(
         containerColor = MaterialTheme.colorScheme.background,
@@ -135,7 +134,8 @@ fun PanelButton(
                 ) { targetIsLoading ->
                     if (targetIsLoading) {
                         CircularProgressIndicator(
-                            modifier = Modifier.padding(contentPadding).sizeIn(minHeight = minHeight, maxHeight = maxHeight),
+                            modifier = Modifier.padding(contentPadding)
+                                .sizeIn(minHeight = minHeight, maxHeight = maxHeight),
                             color = LocalContentColor.current,
                             trackColor = containerColor,
                         )
@@ -188,7 +188,7 @@ fun FullWidthButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    verticalAlignment : Alignment.Vertical= Alignment.CenterVertically,
+    verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     elevation: CustomButtonElevation = CustomButtonElevation(),
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(
         containerColor = MaterialTheme.colorScheme.background,
@@ -236,8 +236,16 @@ fun IconButton(
     aspectRatio: Float = 1f,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val (minHeight, maxHeight) = key(sizeValues) { sizeValues.heightValues() }
+    val (minWidth, maxWidth) = key(sizeValues) { sizeValues.widthValues() }
     Button(
-        modifier = modifier,
+        modifier = modifier
+            .requiredSizeIn(
+                minWidth = minWidth,
+                minHeight = minHeight,
+                maxWidth = maxWidth,
+                maxHeight = maxHeight
+            ),
         onClick = onClick,
         elevation = elevation,
         colors = colors,
@@ -249,10 +257,8 @@ fun IconButton(
     ) {
         Box(
             modifier = Modifier
-                .minimumInteractiveComponentSize()
                 .padding(contentPadding)
-                .aspectRatio(aspectRatio)
-            ,
+                .aspectRatio(aspectRatio),
             contentAlignment = Alignment.Center,
             propagateMinConstraints = true,
         ) {
@@ -266,7 +272,7 @@ fun Button(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    verticalAlignment : Alignment.Vertical= Alignment.CenterVertically,
+    verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     elevation: CustomButtonElevation = CustomButtonElevation(),
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(
         containerColor = MaterialTheme.colorScheme.background,
@@ -281,8 +287,12 @@ fun Button(
     content: @Composable RowScope.() -> Unit,
 ) {
     val shadowElevation by elevation.shadowElevation(enabled, interactionSource)
-    val containerColor = if (enabled) colors.containerColor else if (colors.disabledContainerColor == Color.Unspecified) colors.containerColor.darken(.1f) else colors.disabledContainerColor
-    val contentColor = if (enabled) colors.contentColor else if (colors.disabledContentColor == Color.Unspecified) colors.contentColor else colors.disabledContentColor
+    val containerColor =
+        if (enabled) colors.containerColor else if (colors.disabledContainerColor == Color.Unspecified) colors.containerColor.darken(
+            .1f
+        ) else colors.disabledContainerColor
+    val contentColor =
+        if (enabled) colors.contentColor else if (colors.disabledContentColor == Color.Unspecified) colors.contentColor else colors.disabledContentColor
     val (minHeight, maxHeight) = key(sizeValues) { sizeValues.heightValues() }
     val (minWidth, maxWidth) = key(sizeValues) { sizeValues.widthValues() }
 
@@ -330,7 +340,7 @@ data class CustomButtonElevation(
     private val focusedElevation: Dp = ElevationTokens.Level2,
     private val hoveredElevation: Dp = ElevationTokens.Level3,
     private val disabledElevation: Dp = ElevationTokens.Level1,
-): ButtonElevation {
+) : ButtonElevation {
     constructor(all: Dp) : this(
         defaultElevation = all,
         pressedElevation = all,
@@ -338,6 +348,7 @@ data class CustomButtonElevation(
         hoveredElevation = all,
         disabledElevation = all,
     )
+
     @Composable
     override fun shadowElevation(
         enabled: Boolean,
@@ -350,21 +361,27 @@ data class CustomButtonElevation(
                     is HoverInteraction.Enter -> {
                         interactions.add(interaction)
                     }
+
                     is HoverInteraction.Exit -> {
                         interactions.remove(interaction.enter)
                     }
+
                     is FocusInteraction.Focus -> {
                         interactions.add(interaction)
                     }
+
                     is FocusInteraction.Unfocus -> {
                         interactions.remove(interaction.focus)
                     }
+
                     is PressInteraction.Press -> {
                         interactions.add(interaction)
                     }
+
                     is PressInteraction.Release -> {
                         interactions.remove(interaction.press)
                     }
+
                     is PressInteraction.Cancel -> {
                         interactions.remove(interaction.press)
                     }
@@ -441,13 +458,17 @@ internal object ElevationDefaults {
             else -> null
         }
     }
+
     private val OutgoingSpecEasing: Easing = CubicBezierEasing(0.40f, 0.00f, 0.60f, 1.00f)
 
-    private val DefaultIncomingSpec = TweenSpec<Dp>(durationMillis = 120, easing = FastOutSlowInEasing)
+    private val DefaultIncomingSpec =
+        TweenSpec<Dp>(durationMillis = 120, easing = FastOutSlowInEasing)
 
-    private val DefaultOutgoingSpec = TweenSpec<Dp>(durationMillis = 150, easing = OutgoingSpecEasing)
+    private val DefaultOutgoingSpec =
+        TweenSpec<Dp>(durationMillis = 150, easing = OutgoingSpecEasing)
 
-    private val HoveredOutgoingSpec = TweenSpec<Dp>(durationMillis = 120, easing = OutgoingSpecEasing)
+    private val HoveredOutgoingSpec =
+        TweenSpec<Dp>(durationMillis = 120, easing = OutgoingSpecEasing)
 }
 
 internal suspend fun Animatable<Dp, *>.animateElevation(

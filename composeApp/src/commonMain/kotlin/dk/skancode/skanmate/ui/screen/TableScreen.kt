@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
@@ -38,8 +39,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,17 +59,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dk.skancode.skanmate.CameraView
+import dk.skancode.skanmate.ImageResourceState
 import dk.skancode.skanmate.data.model.ColumnType
 import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.RegisterScanEventHandler
 import dk.skancode.skanmate.ui.component.ScanableInputField
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.data.model.ColumnValue
-import dk.skancode.skanmate.loadImageAsState
+import dk.skancode.skanmate.loadImage
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
 import dk.skancode.skanmate.ui.component.FullWidthButton
-import dk.skancode.skanmate.ui.component.SizeValues
+import dk.skancode.skanmate.ui.component.ImageCaptureListener
+import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
@@ -422,7 +424,24 @@ fun TableColumnFile(
     value: String?,
     setValue: (name: String?, path: String?, data: ByteArray?) -> Unit,
 ) {
-    var showCamera by remember { mutableStateOf(false) }
+    val uiCameraController = LocalUiCameraController.current
+    DisposableEffect(uiCameraController, setValue) {
+        val listener = ImageCaptureListener { res ->
+            if (!res.ok) {
+                println(res.error)
+            } else {
+                setValue(res.filename, res.filePath, res.fileData)
+                uiCameraController.stopCamera()
+            }
+        }
+        uiCameraController.registerListener(listener)
+
+        onDispose {
+            uiCameraController.unregisterListener(listener)
+            uiCameraController.stopCamera()
+        }
+    }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -432,7 +451,7 @@ fun TableColumnFile(
             if (targetValue == null) {
                 IconButton(
                     modifier = Modifier.requiredSizeIn(24.dp, 48.dp),
-                    onClick = { showCamera = true },
+                    onClick = { uiCameraController.startCamera() },
                 ) {
                     Icon(
                         imageVector = vectorResource(Res.drawable.camera),
@@ -440,33 +459,21 @@ fun TableColumnFile(
                     )
                 }
             } else {
-                val painter by loadImageAsState(imagePath = targetValue)
+                val imageResource = loadImage(imagePath = targetValue)
 
-                Image(painter, null)
-            }
-        }
-        if (showCamera) {
-            CameraView { controller ->
-                IconButton(
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
-                    onClick = {
-                        controller.takePicture { res ->
-                            if (!res.ok) {
-                                println(res.error)
-                            } else {
-                                setValue(res.filename, res.filePath, res.fileData)
-                            }
-
-                            showCamera = !res.ok
-                        }
-                    },
-                    sizeValues = SizeValues(min = 36.dp, max = 52.dp)
-                ) {
-                    Icon(
-                        modifier = Modifier.minimumInteractiveComponentSize(),
-                        imageVector = vectorResource(Res.drawable.camera),
-                        contentDescription = null,
+                val isLoadingImage by imageResource.isLoading
+                if (isLoadingImage) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .requiredSize(64.dp),
                     )
+                } else {
+                    val painter by imageResource.state
+                    when(painter) {
+                        is ImageResourceState.Image<*> ->
+                            Image((painter as ImageResourceState.Image<*>).data, null)
+                        else -> Text("Cannot display image")
+                    }
                 }
             }
         }

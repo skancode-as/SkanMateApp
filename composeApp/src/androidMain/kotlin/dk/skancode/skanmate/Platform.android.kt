@@ -2,12 +2,12 @@ package dk.skancode.skanmate
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
@@ -31,26 +31,46 @@ actual val platformSettingsFactory: Settings.Factory = SkanMateApplication.setti
 
 @Composable
 actual fun CameraView(
+    modifier: Modifier,
     cameraUi: @Composable BoxScope.(CameraController) -> Unit,
 ) {
-    AndroidCameraView(cameraUi = cameraUi)
+    AndroidCameraView(modifier = modifier, cameraUi = cameraUi)
 }
 
 @Composable
-actual fun loadImageAsState(imagePath: String): State<Painter> {
-    val fallbackBitmap = ImageBitmap(1, 1)
-    val context = LocalContext.current
+actual fun loadImage(imagePath: String?): ImageResource<Painter> {
+    val resource = rememberImageResource()
 
-    val bitmap: Bitmap? = remember(context, imagePath) {
+    val context = LocalContext.current
+    LaunchedEffect(context, imagePath, resource) {
+        if (imagePath == null) return@LaunchedEffect
+        resource.load()
+
         val inputStream = context.contentResolver.openInputStream(imagePath.toUri())
 
         if (inputStream == null) {
             println("Could not open input stream at imagePath: $imagePath")
-            null
+            resource.error("Could not open input stream at imagePath: $imagePath")
+            return@LaunchedEffect
         }
 
-        BitmapFactory.decodeStream(inputStream)
+        val bitmap: Bitmap? =
+            BitmapFactory.decodeStream(inputStream)?.rotate(90)
+
+        if (bitmap != null) {
+            resource.update(
+                painter = BitmapPainter(bitmap.asImageBitmap())
+            )
+        }
     }
 
-    return rememberUpdatedState(BitmapPainter(bitmap?.asImageBitmap() ?: fallbackBitmap))
+    return resource
+}
+
+fun Bitmap.rotate(degrees: Number): Bitmap {
+    val matrix = Matrix().apply { preRotate(degrees.toFloat()) }
+    val rotatedBitmap = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
+    this.recycle()
+
+    return rotatedBitmap
 }
