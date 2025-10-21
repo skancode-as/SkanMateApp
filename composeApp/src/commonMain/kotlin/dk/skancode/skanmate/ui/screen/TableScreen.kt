@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,7 +60,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.CameraView
 import dk.skancode.skanmate.data.model.ColumnType
-import dk.skancode.skanmate.ui.component.Button
 import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.RegisterScanEventHandler
 import dk.skancode.skanmate.ui.component.ScanableInputField
@@ -289,10 +289,11 @@ fun TableColumn(
         TableColumnFile(
             label = col.name,
             value = col.value.localUrl,
-            setValue = {
-                updateValue(col.value.copy(localUrl = it))
+            setValue = { name, path, data ->
+                updateValue(col.value.copy(localUrl = path, fileName = name, bytes = data))
             }
         )
+
     } else {
         val imeAction = if (isLast) ImeAction.Done else ImeAction.Next
 
@@ -419,7 +420,7 @@ fun TableColumnFile(
     modifier: Modifier = Modifier,
     label: String,
     value: String?,
-    setValue: (String?) -> Unit,
+    setValue: (name: String?, path: String?, data: ByteArray?) -> Unit,
 ) {
     var showCamera by remember { mutableStateOf(false) }
     Column(
@@ -445,25 +446,24 @@ fun TableColumnFile(
             }
         }
         if (showCamera) {
-            val aspectRatio = 16/9f
             CameraView { controller ->
                 IconButton(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
-                    aspectRatio = aspectRatio,
                     onClick = {
                         controller.takePicture { res ->
                             if (!res.ok) {
                                 println(res.error)
                             } else {
-                                setValue(res.filePath)
+                                setValue(res.filename, res.filePath, res.fileData)
                             }
 
                             showCamera = !res.ok
                         }
                     },
-                    sizeValues = SizeValues(minHeight = 48.dp, maxHeight = 64.dp, (48*aspectRatio).dp, (64*aspectRatio).dp)
+                    sizeValues = SizeValues(min = 36.dp, max = 52.dp)
                 ) {
                     Icon(
+                        modifier = Modifier.minimumInteractiveComponentSize(),
                         imageVector = vectorResource(Res.drawable.camera),
                         contentDescription = null,
                     )

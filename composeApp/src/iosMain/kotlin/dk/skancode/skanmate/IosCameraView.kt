@@ -144,6 +144,8 @@ class IosCameraController(
                     TakePictureResponse(
                         ok = false,
                         filePath = null,
+                        filename = null,
+                        fileData = null,
                         error = error.description ?: "Unknown error occurred"
                     )
                 )
@@ -166,6 +168,8 @@ class IosCameraController(
                     TakePictureResponse(
                         ok = true,
                         filePath = fileName,
+                        filename = fileName,
+                        fileData = photoData.toByteArray(),
                         error = null,
                     )
                 } else {
@@ -173,6 +177,8 @@ class IosCameraController(
                     TakePictureResponse(
                         ok = false,
                         filePath = null,
+                        filename = null,
+                        fileData = null,
                         error = "No photo data was received"
                     )
                 }
@@ -180,6 +186,8 @@ class IosCameraController(
                 TakePictureResponse(
                     ok = false,
                     filePath = null,
+                    filename = null,
+                    fileData = null,
                     error = "No photo data was received"
                 )
             }

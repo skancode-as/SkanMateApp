@@ -2,7 +2,6 @@ package dk.skancode.skanmate
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -17,7 +16,6 @@ import com.russhwolf.settings.Settings
 import dk.skancode.skanmate.util.LocalCameraScanManager
 import dk.skancode.barcodescannermodule.compose.LocalScannerModule
 import androidx.core.net.toUri
-import java.io.ByteArrayOutputStream
 
 @Composable
 actual fun rememberScanModule(): ScanModule {
@@ -47,7 +45,7 @@ actual fun loadImageAsState(imagePath: String): State<Painter> {
         val inputStream = context.contentResolver.openInputStream(imagePath.toUri())
 
         if (inputStream == null) {
-            println("Could not find open input stream at imagePath: $imagePath")
+            println("Could not open input stream at imagePath: $imagePath")
             null
         }
 

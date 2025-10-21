@@ -1,5 +1,6 @@
 package dk.skancode.skanmate
 
+import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.icu.text.SimpleDateFormat
@@ -78,6 +79,8 @@ class AndroidCameraController(
                 TakePictureResponse(
                     ok = false,
                     filePath = null,
+                    filename = null,
+                    fileData = null,
                     error = "Controller was not fully initialized"
                 )
             )
@@ -85,7 +88,7 @@ class AndroidCameraController(
         }
 
         val name = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.getDefault())
-            .format(System.currentTimeMillis())
+            .format(System.currentTimeMillis()) + ".jpg"
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
@@ -99,17 +102,42 @@ class AndroidCameraController(
             .OutputFileOptions
             .Builder(context.contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
             .build()
-        imageCapture.takePicture(outputFileOptions, cameraExecutor, CaptureListener(cb))
+        imageCapture.takePicture(
+            outputFileOptions,
+            cameraExecutor,
+            CaptureListener(
+                cb = cb,
+                imageName = name,
+                contentResolver = context.contentResolver,
+            ),
+        )
     }
 
-    private data class CaptureListener(val cb: (TakePictureResponse) -> Unit): ImageCapture.OnImageSavedCallback {
+    private data class CaptureListener(
+        val cb: (TakePictureResponse) -> Unit,
+        val imageName: String,
+        val contentResolver: ContentResolver,
+    ): ImageCapture.OnImageSavedCallback {
         override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
             val imagePath = outputFileResults.savedUri?.toString()
             println("Image saved on location: $imagePath")
+
+            val bytes: ByteArray? = if (outputFileResults.savedUri != null) {
+                val inputStream = contentResolver.openInputStream(outputFileResults.savedUri!!)
+                if (inputStream == null) {
+                    println("Could not open input stream at imagePath: $imagePath")
+                    null
+                } else {
+                    inputStream.readBytes()
+                }
+            } else null
+
             cb(
                 TakePictureResponse(
                     ok = true,
                     filePath = imagePath,
+                    filename = imageName,
+                    fileData = bytes,
                     error = null,
                 )
             )
@@ -121,6 +149,8 @@ class AndroidCameraController(
                 TakePictureResponse(
                     ok = false,
                     filePath = null,
+                    filename = null,
+                    fileData = null,
                     error = exception.message ?: "Image capture failed with exception: $exception"
                 )
             )

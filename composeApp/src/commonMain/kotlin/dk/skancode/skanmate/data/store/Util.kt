@@ -4,6 +4,9 @@ import dk.skancode.skanmate.data.model.ErrorResponse
 import dk.skancode.skanmate.data.model.StoreResponse
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 
 suspend inline fun<reified T> tryCatch(action: suspend () -> StoreResponse<T>): StoreResponse<T> {
@@ -26,7 +29,15 @@ suspend inline fun<reified T> handleResponse(res: HttpResponse, successCode: Htt
         }
 
         else -> {
-            val body: ErrorResponse = res.body()
+            val body: ErrorResponse = when (res.headers[HttpHeaders.ContentType]) {
+                ContentType.Application.Json.toString() -> res.body()
+                else -> ErrorResponse(
+                    requestId = "Unknown",
+                    code = res.status.toString(),
+                    error = res.bodyAsText(),
+                    details = null,
+                )
+            }
             println(body)
 
             StoreResponse(

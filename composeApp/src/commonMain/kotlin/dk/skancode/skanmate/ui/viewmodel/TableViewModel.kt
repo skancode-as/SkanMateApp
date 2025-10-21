@@ -79,12 +79,41 @@ class TableViewModel(
             try {
                 val state = _uiState.value
                 if (state.model != null) {
+                    val columns: List<ColumnUiState> = state.columns.map { col ->
+                        when {
+                            col.value is ColumnValue.File && col.value.fileName != null && col.value.bytes != null -> {
+                                val bytes = col.value.bytes
+
+                                val objectUrl = tableService.uploadImage(
+                                    tableId = state.model.id,
+                                    filename = col.value.fileName,
+                                    data = bytes,
+                                )
+                                if (objectUrl == null) {
+                                    println("Could not upload image")
+                                } else {
+                                    println("Image uploaded to $objectUrl")
+                                }
+
+                                col.copy(
+                                    value = col.value.copy(objectUrl = objectUrl)
+                                )
+                            }
+                            col.value is ColumnValue.File -> {
+                                col.copy(
+                                    value = col.value.copy(objectUrl = "")
+                                )
+                            }
+                            else -> col
+                        }
+                    }
+
                     val (ok, errors) = tableService.submitRow(
                         tableId = state.model.id,
-                        row = rowDataOf(state.columns),
+                        row = rowDataOf(columns),
                     )
                     errors?.columnErrors?.map { (k, v) ->
-                        state.columns.find { col -> col.dbName == k }?.also { col ->
+                        columns.find { col -> col.dbName == k }?.also { col ->
                             println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}}")
                         }
                     }

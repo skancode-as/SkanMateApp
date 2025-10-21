@@ -1,11 +1,11 @@
 package dk.skancode.skanmate.data.service
 
 import dk.skancode.skanmate.data.model.RowData
-import dk.skancode.skanmate.data.model.TableData
 import dk.skancode.skanmate.data.model.TableModel
 import dk.skancode.skanmate.data.model.TableRowErrors
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.data.store.TableStore
+import io.ktor.http.ContentType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -17,6 +17,7 @@ interface TableService {
 
     suspend fun fetchTable(id: String): TableModel?
     suspend fun updateTableFlow(): Boolean
+    suspend fun uploadImage(tableId: String, filename: String, data: ByteArray): String?
     suspend fun submitRow(tableId: String, row: RowData): Pair<Boolean, TableRowErrors?>
 }
 
@@ -63,12 +64,52 @@ class TableServiceImpl(
         return res.isNotEmpty()
     }
 
+    override suspend fun uploadImage(
+        tableId: String,
+        filename: String,
+        data: ByteArray,
+    ): String? {
+        val token = _token
+        if (token == null) {
+            // TODO: better error handling
+            return null
+        }
+
+        val urlRes = tableStore.getPresignedURL(
+            tableId,
+            filename,
+            token
+        )
+
+        if (!urlRes.ok || urlRes.data == null) {
+            // TODO: better error handling
+            return null
+        }
+
+        val uploadRes = tableStore.uploadImage(
+            presignedUrl = urlRes.data.presignedUrl,
+            data = data,
+            imageType = ContentType.Image.JPEG,
+        )
+
+        return when {
+            uploadRes.ok -> {
+                urlRes.data.objectUrl
+            }
+            else -> {
+                println(uploadRes.msg)
+
+                null
+            }
+        }
+    }
+
     override suspend fun submitRow(tableId: String, row: RowData): Pair<Boolean, TableRowErrors?> {
         val token = _token
         if (token == null) return false to null
         val res = tableStore.submitTableData(
             tableId = tableId,
-            data = TableData(rows = listOf(row)),
+            data = listOf(row),
             token = token
         )
         val errors = if (!res.ok) {
