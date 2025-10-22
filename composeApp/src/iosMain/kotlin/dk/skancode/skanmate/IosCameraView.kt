@@ -4,14 +4,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.viewinterop.UIKitView
+import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.currentDateTimeUTC
 import dk.skancode.skanmate.util.format
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -19,6 +24,8 @@ import kotlinx.cinterop.readValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceInput
@@ -40,6 +47,7 @@ import platform.AVFoundation.AVVideoCodecKey
 import platform.AVFoundation.fileDataRepresentation
 import platform.AVFoundation.isFlashActive
 import platform.AVFoundation.position
+import platform.AVFoundation.videoZoomFactor
 import platform.CoreGraphics.CGRectZero
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSError
@@ -80,13 +88,16 @@ fun IosCameraView(
         }
     }
 
-    val controller = remember { IosCameraController(
-        device = device,
-        output = output,
-        session = session
-    ) }
+    val controller = remember {
+        IosCameraController(
+            device = device,
+            output = output,
+            session = session,
+        )
+    }
 
-    val cameraPreviewLayer = remember { AVCaptureVideoPreviewLayer(session = session) }
+    val cameraPreviewLayer: AVCaptureVideoPreviewLayer =
+        remember { AVCaptureVideoPreviewLayer(session = session) }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -95,51 +106,56 @@ fun IosCameraView(
         val density = LocalDensity.current
         val layoutDirection = LocalLayoutDirection.current
 
-        val (botToTop, leftToRight) = remember(density, layoutDirection) {
+        val (leftInset, rightInset) = remember(density, layoutDirection) {
             val insets = WindowInsets()
 
-            val botToTop = insets.getBottom(density) to insets.getTop(density)
-            val leftToRight = insets.getLeft(density, layoutDirection) to insets.getRight(density, layoutDirection)
+            val leftToRight = insets.getLeft(density, layoutDirection) to insets.getRight(
+                density,
+                layoutDirection
+            )
 
-            botToTop to leftToRight
+            leftToRight
         }
-        val (botInset, topInset) = botToTop
-        val (leftInset, rightInset) = leftToRight
         val windowSize = LocalWindowInfo.current.containerSize
 
-        UIKitView(
-            factory = {
-                val container = object : UIView(frame = CGRectZero.readValue()) {
-                    override fun layoutSubviews() {
-                        CATransaction.begin()
-                        CATransaction.setValue(true, kCATransactionDisableActions)
-                        layer.setFrame(frame)
-                        cameraPreviewLayer.setFrame(frame)
-                        CATransaction.commit()
+        Box(
+            modifier = modifier.fillMaxWidth().wrapContentHeight(),
+            propagateMinConstraints = true,
+        ) {
+            UIKitView(
+                factory = {
+                    val container = object : UIView(frame = CGRectZero.readValue()) {
+                        override fun layoutSubviews() {
+                            CATransaction.begin()
+                            CATransaction.setValue(true, kCATransactionDisableActions)
+                            layer.setFrame(frame)
+                            cameraPreviewLayer.setFrame(frame)
+                            CATransaction.commit()
+                        }
                     }
-                }
-                container.layer.addSublayer(cameraPreviewLayer)
-                cameraPreviewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill
-                controller.onCreate()
-                container
-            },
-            update = { view ->
-                println("UIKitView::update($view)")
-            },
-            onRelease = {
-                controller.onRelease()
-            },
-            modifier = Modifier
-                .size(
-                    width = with(density) { (windowSize.width - (rightInset + leftInset)).toDp() },
-                    height = with(density) { (windowSize.height - (topInset + botInset)).toDp() }
-                )
-                .fillMaxSize(),
-        )
-
+                    container.layer.addSublayer(cameraPreviewLayer)
+                    cameraPreviewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill
+                    controller.onCreate()
+                    container
+                },
+                update = { view ->
+                    println("UIKitView::update($view)")
+                    controller.onUpdate()
+                },
+                onRelease = {
+                    controller.onRelease()
+                },
+                modifier = Modifier
+                    .size(
+                        width = with(density) { (windowSize.width - (rightInset + leftInset)).toDp() },
+                        height = with(density) { ((windowSize.width - (rightInset + leftInset)) * 5f / 4f).toDp() }
+                    )
+                    .fillMaxSize(),
+            )
+        }
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxSize(),
         ) {
             cameraUi(controller)
         }
@@ -148,7 +164,7 @@ fun IosCameraView(
 
 @OptIn(ExperimentalAtomicApi::class)
 class IosCameraController(
-    device: AVCaptureDevice,
+    private val device: AVCaptureDevice,
     private val output: AVCapturePhotoOutput,
     private val session: AVCaptureSession,
     private val externalScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
@@ -158,15 +174,48 @@ class IosCameraController(
     override val flashState: Boolean
         get() = _flashState.load()
 
+    override val minZoom: Float = 1f
+    override val maxZoom: Float
+        get() = device.activeFormat.videoMaxZoomFactor.toFloat()
+
+    private var _zoom = MutableStateFlow(1.0f)
+
+    override var zoom: Float
+        get() = _zoom.value
+        set(value) = updateZoom(value)
+
+    override val zoomState: State<Float>
+        @Composable get() = _zoom.collectAsState()
+
+    @OptIn(ExperimentalForeignApi::class)
     fun onCreate() {
         externalScope.launch {
             session.startRunning()
         }
     }
 
+    @OptIn(ExperimentalForeignApi::class)
+    fun onUpdate() {
+        println("IosCameraController::onUpdate()")
+    }
+
     fun onRelease() {
         if (session.running) {
             session.stopRunning()
+        }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private fun updateZoom(newZoom: Float) {
+        if (device.lockForConfiguration(null)) {
+            val actualNewZoom = newZoom.clamp(minZoom, maxZoom).toDouble()
+
+            _zoom.update { actualNewZoom.toFloat() }
+            device.videoZoomFactor = actualNewZoom
+
+            device.unlockForConfiguration()
+        } else {
+            throw Exception("Could not lock device for configuration")
         }
     }
 

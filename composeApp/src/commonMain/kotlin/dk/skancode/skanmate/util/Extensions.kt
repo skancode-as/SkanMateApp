@@ -6,6 +6,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorModel
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.math.max
+import kotlin.math.min
 
 @Composable
 fun<T> StateFlow<List<T>>.find(predicate: (T) -> Boolean): T? {
@@ -71,3 +73,25 @@ infix fun Double.notEqual(b: Double): Boolean {
 }
 
 private const val epsilon = 0.001
+
+
+fun Float.clamp(minValue: Float, maxValue: Float): Float {
+    return min(
+        maxValue,
+        max(minValue, this)
+    )
+}
+
+fun Double.clamp(minValue: Double, maxValue: Double): Double {
+    return min(
+        maxValue,
+        max(minValue, this)
+    )
+}
+
+fun Int.clamp(minValue: Int, maxValue: Int): Int {
+    return min(
+        maxValue,
+        max(minValue, this)
+    )
+}

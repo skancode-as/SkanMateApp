@@ -1,7 +1,16 @@
 package dk.skancode.skanmate
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+
 
 interface CameraController {
+    val minZoom: Float
+    val maxZoom: Float
+    var zoom: Float
+
+    @get:Composable
+    val zoomState: State<Float>
     val flashState: Boolean
 
     // Attempts to set the flash state of the camera. Returns true if configuration success

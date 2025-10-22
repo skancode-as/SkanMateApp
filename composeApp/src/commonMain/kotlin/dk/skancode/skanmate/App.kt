@@ -1,5 +1,7 @@
 package dk.skancode.skanmate
 
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -20,6 +22,7 @@ import dk.skancode.skanmate.ui.component.UiCameraController
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
+import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.jsonSerializer
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -90,10 +93,23 @@ fun App() {
                     tableViewModel = tableViewModel,
                 )
                 if (showCamera) {
+                    var scale by remember { mutableFloatStateOf(1f)}
+                    val transformableState = rememberTransformableState { zoomChange, _, _ ->
+                        scale = zoomChange
+                    }
                     Scaffold { padding ->
                         CameraView(
-                            modifier = Modifier.padding(padding),
-                            cameraUi = { CameraOverlay(controller = it) }
+                            modifier = Modifier
+                                .padding(padding)
+                                .transformable(state = transformableState),
+                            cameraUi = { controller ->
+                                CameraOverlay(controller = controller)
+
+                                LaunchedEffect(scale) {
+                                    controller.zoom = (controller.zoom * scale)
+                                        .clamp(minValue = controller.minZoom, maxValue = controller.maxZoom)
+                                }
+                            },
                         )
                     }
                 }
