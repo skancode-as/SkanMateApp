@@ -6,25 +6,31 @@ import android.content.Context
 import android.icu.text.SimpleDateFormat
 import android.os.Build
 import android.provider.MediaStore
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCapture.FLASH_MODE_OFF
 import androidx.camera.core.ImageCapture.FLASH_MODE_ON
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import androidx.camera.core.UseCaseGroup
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import dk.skancode.skanmate.util.clamp
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import java.util.Locale
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -41,17 +47,26 @@ fun AndroidCameraView(
 
     val cameraExecutor = remember { Executors.newCachedThreadPool() }
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    val previewView = remember { PreviewView(context) }
+    val previewView = remember {
+        val p = PreviewView(
+            context,
+        )
+
+        p.scaleType = PreviewView.ScaleType.FIT_CENTER
+
+        p
+    }
 
     val controller = remember(context) { AndroidCameraController(context, cameraExecutor) }
 
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize(),
         propagateMinConstraints = true,
     ) {
         AndroidView(
             factory = { previewView },
-            modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+            modifier = Modifier.align(Alignment.Center),
             update = {
                 val cameraProvider = cameraProviderFuture.get()
                 val preview = Preview.Builder()
@@ -65,7 +80,11 @@ fun AndroidCameraView(
                     .setTargetRotation(preview.targetRotation)
                     .build()
 
-                cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, imageCapture, preview)
+                val useCaseGroup = UseCaseGroup.Builder()
+                    .addUseCase(preview)
+                    .addUseCase(imageCapture)
+                    .build()
+                controller.camera = cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, useCaseGroup)
 
                 controller.imageCapture = imageCapture
             },
@@ -76,7 +95,7 @@ fun AndroidCameraView(
         )
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxSize(),
         ) {
             cameraUi(controller)
         }
@@ -89,9 +108,31 @@ class AndroidCameraController(
     val cameraExecutor: Executor,
 ): CameraController {
     lateinit var imageCapture: ImageCapture
+    lateinit var camera: Camera
     private val _flashState = AtomicBoolean(false)
     override val flashState: Boolean
         get() = _flashState.load()
+
+    override val minZoom: Float
+        get() = camera.cameraInfo.zoomState.value?.minZoomRatio ?: 1f
+    override val maxZoom: Float
+        get() = camera.cameraInfo.zoomState.value?.maxZoomRatio ?: 1f
+
+    private val _zoom = MutableStateFlow(1f)
+
+    override var zoom: Float
+        get() = _zoom.value
+        set(value) = updateZoom(value)
+    override val zoomState: State<Float>
+        @Composable get() = _zoom.collectAsState()
+
+    private fun updateZoom(newZoom: Float) {
+        val actualNewZoom = newZoom.clamp(minZoom, maxZoom)
+        _zoom.update { actualNewZoom }
+        println("in: $newZoom, actual: $actualNewZoom, min: $minZoom, max: $maxZoom")
+
+        camera.cameraControl.setZoomRatio(actualNewZoom)
+    }
 
     override fun setFlashState(v: Boolean): Boolean {
         if (!this::imageCapture.isInitialized) return false
