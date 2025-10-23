@@ -8,6 +8,9 @@ import androidx.compose.ui.graphics.colorspace.ColorModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.String
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 @Composable
 fun<T> StateFlow<List<T>>.find(predicate: (T) -> Boolean): T? {
@@ -94,4 +97,20 @@ fun Int.clamp(minValue: Int, maxValue: Int): Int {
         maxValue,
         max(minValue, this)
     )
+}
+
+fun Float.toOneDecimalString(): String {
+    var tmp = this * 10
+
+    tmp = tmp.roundToInt().toFloat() / 10
+
+    return tmp.toString()
+}
+
+fun Double.toOneDecimalString(): String {
+    var tmp = this * 10
+
+    tmp = tmp.roundToLong().toDouble() / 10
+
+    return tmp.toString()
 }

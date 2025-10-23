@@ -30,13 +30,13 @@ import dk.skancode.skanmate.CameraController
 import dk.skancode.skanmate.ImageResourceState
 import dk.skancode.skanmate.TakePictureResponse
 import dk.skancode.skanmate.loadImage
+import dk.skancode.skanmate.util.toOneDecimalString
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.camera
 import skanmate.composeapp.generated.resources.zap
 import skanmate.composeapp.generated.resources.zap_off
 
-// TODO: Zoom on pinch and expand
 // TODO: Switch camera, maybe
 
 @Composable
@@ -136,7 +136,7 @@ fun BoxScope.ImageCapturingOverlay(
             Text(
                 modifier = Modifier
                     .padding(8.dp),
-                text = "${zoom}x",
+                text = "${zoom.toOneDecimalString()}x",
                 style = MaterialTheme.typography.labelMedium,
             )
         }
