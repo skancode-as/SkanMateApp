@@ -17,6 +17,7 @@ import dk.skancode.skanmate.data.store.AuthStore
 import dk.skancode.skanmate.data.store.TableStore
 import dk.skancode.skanmate.nav.AppNavHost
 import dk.skancode.skanmate.ui.component.CameraOverlay
+import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.UiCameraController
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
@@ -114,30 +115,6 @@ fun App() {
                     }
                 }
             }
-        }
-    }
-}
-
-val LocalScanModule: ProvidableCompositionLocal<ScanModule> = compositionLocalOf {
-    object : ScanModule {
-        override fun isHardwareScanner(): Boolean {
-            TODO("Not yet implemented")
-        }
-
-        override fun registerListener(handler: ScanEventHandler) {
-            TODO("Not yet implemented")
-        }
-
-        override fun unregisterListener(handler: ScanEventHandler) {
-            TODO("Not yet implemented")
-        }
-
-        override fun enableScan() {
-            TODO("Not yet implemented")
-        }
-
-        override fun disableScan() {
-            TODO("Not yet implemented")
         }
     }
 }

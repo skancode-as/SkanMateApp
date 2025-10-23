@@ -1,7 +1,5 @@
 package dk.skancode.skanmate.ui.component
 
-import androidx.compose.runtime.ProvidableCompositionLocal
-import androidx.compose.runtime.compositionLocalOf
 import dk.skancode.skanmate.TakePictureResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,8 +41,4 @@ class UiCameraController() {
         println("UiCameraController::onImageCapture")
         listeners.forEach { it.onImageCapture(res = res) }
     }
-}
-
-val LocalUiCameraController: ProvidableCompositionLocal<UiCameraController> = compositionLocalOf {
-    UiCameraController()
 }

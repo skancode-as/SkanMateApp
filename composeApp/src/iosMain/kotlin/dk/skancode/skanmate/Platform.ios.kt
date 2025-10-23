@@ -10,9 +10,9 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import com.russhwolf.settings.NSUserDefaultsSettings
 import com.russhwolf.settings.Settings
+import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.skanmate.util.CameraScanListener
 import dk.skancode.skanmate.util.CameraScanManager
-import dk.skancode.skanmate.util.LocalCameraScanManager
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf

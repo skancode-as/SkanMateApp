@@ -21,13 +21,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dk.skancode.skanmate.ui.component.CameraBarcodeScanner
 import dk.skancode.skanmate.util.CameraScanManagerImpl
-import dk.skancode.skanmate.util.LocalCameraScanManager
+import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dev.icerock.moko.permissions.PermissionState
 import dev.icerock.moko.permissions.compose.BindEffect
 import dev.icerock.moko.permissions.compose.rememberPermissionsControllerFactory
 import dk.skancode.barcodescannermodule.ScannerActivity
 import dk.skancode.barcodescannermodule.compose.ScannerModuleProvider
-import kotlinx.coroutines.Dispatchers
+import dk.skancode.skanmate.ui.viewmodel.CameraScanViewModel
 
 private val cameraScanManager = CameraScanManagerImpl()
 
