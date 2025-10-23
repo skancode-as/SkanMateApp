@@ -151,9 +151,7 @@ class AndroidCameraController(
             cb(
                 TakePictureResponse(
                     ok = false,
-                    filePath = null,
-                    filename = null,
-                    fileData = null,
+                    data = null,
                     error = "Controller was not fully initialized"
                 )
             )
@@ -208,9 +206,11 @@ class AndroidCameraController(
             cb(
                 TakePictureResponse(
                     ok = true,
-                    filePath = imagePath,
-                    filename = imageName,
-                    fileData = bytes,
+                    data = ImageData(
+                        path = imagePath,
+                        name = imageName,
+                        data = bytes,
+                    ),
                     error = null,
                 )
             )
@@ -221,9 +221,7 @@ class AndroidCameraController(
             cb(
                 TakePictureResponse(
                     ok = false,
-                    filePath = null,
-                    filename = null,
-                    fileData = null,
+                    data = null,
                     error = exception.message ?: "Image capture failed with exception: $exception"
                 )
             )

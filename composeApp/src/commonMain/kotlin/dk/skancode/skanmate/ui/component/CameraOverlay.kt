@@ -30,15 +30,13 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.CameraController
-import dk.skancode.skanmate.ImageResourceState
-import dk.skancode.skanmate.TakePictureResponse
-import dk.skancode.skanmate.loadImage
 import dk.skancode.skanmate.util.toOneDecimalString
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.camera
 import skanmate.composeapp.generated.resources.zap
 import skanmate.composeapp.generated.resources.zap_off
+import skanmate.composeapp.generated.resources.undo
 
 // TODO: Switch camera, maybe
 
@@ -47,31 +45,38 @@ fun BoxScope.CameraOverlay(
     controller: CameraController,
     uiCameraController: UiCameraController = LocalUiCameraController.current,
 ) {
-    var imageResult by remember { mutableStateOf<TakePictureResponse?>(null) }
-    val painterResource = loadImage(imageResult?.filePath)
-    val painterIsLoading by painterResource.isLoading
-    val painter by painterResource.state
-
     val maxButtonSize = 64.dp
     val minButtonSize = 48.dp
 
-    if (imageResult != null && !painterIsLoading && painter is ImageResourceState.Image) {
-        ImagePreviewOverlay(
-            painter = (painter as ImageResourceState.Image<Painter>).data,
-            onAcceptImage = { uiCameraController.onImageCapture(imageResult!!) },
-            resetPreviewImageResult = { imageResult = null; painterResource.reset() },
-            maxButtonSize = maxButtonSize,
-            minButtonSize = minButtonSize,
-        )
-    } else {
-        ImageCapturingOverlay(
-            controller = controller,
-            setImageResult = { imageResult = it },
-            painterIsLoading = painterIsLoading,
-            maxButtonSize = maxButtonSize,
-            minButtonSize = minButtonSize,
-        )
-    }
+    var isCapturing by remember { mutableStateOf(false) }
+    var flashState by remember { mutableStateOf(controller.flashState) }
+    val zoom by controller.zoomState
+
+    ImageCapturingOverlay(
+        painterIsLoading = isCapturing,
+        onStopCapture = {
+            uiCameraController.stopCamera()
+        },
+        onCaptureImage = {
+            isCapturing = true
+            controller.takePicture { res ->
+                if (res.ok) {
+                    uiCameraController.showPreview(res.data)
+                    uiCameraController.stopCamera()
+                }
+                isCapturing = false
+            }
+        },
+        flashState = flashState,
+        onToggleFlash = { new ->
+            if (controller.setFlashState(new)) {
+                flashState = new
+            }
+        },
+        zoom = zoom,
+        maxButtonSize = maxButtonSize,
+        minButtonSize = minButtonSize,
+    )
 }
 
 @Composable
@@ -96,6 +101,7 @@ fun BoxScope.ImagePreviewOverlay(
         onClick = {
             resetPreviewImageResult()
         },
+        retry = true,
         minSize = minButtonSize,
         maxSize = maxButtonSize,
     )
@@ -114,10 +120,12 @@ fun BoxScope.ImagePreviewOverlay(
 
 @Composable
 fun BoxScope.ImageCapturingOverlay(
-    controller: CameraController,
     painterIsLoading: Boolean,
-    setImageResult: (TakePictureResponse) -> Unit,
-    uiCameraController: UiCameraController = LocalUiCameraController.current,
+    onStopCapture: () -> Unit,
+    onCaptureImage: () -> Unit,
+    flashState: Boolean,
+    onToggleFlash: (Boolean) -> Unit,
+    zoom: Float,
     maxButtonSize: Dp = 64.dp,
     minButtonSize: Dp = 48.dp,
 ) {
@@ -130,48 +138,32 @@ fun BoxScope.ImageCapturingOverlay(
         StopCaptureButton(
             modifier = Modifier
                 .align(Alignment.CenterStart),
-            onClick = {
-                uiCameraController.stopCamera()
-            },
+            onClick = onStopCapture,
             minSize = minButtonSize,
             maxSize = maxButtonSize,
         )
 
-        val zoom by controller.zoomState
         ZoomBadge(
             modifier = Modifier.align(Alignment.Center),
             zoom = zoom,
         )
 
-        var flashState by remember { mutableStateOf(controller.flashState) }
         ToggleFlashButton(
             modifier = Modifier
                 .align(Alignment.CenterEnd),
             value = flashState,
-            onClick = { new ->
-                if (controller.setFlashState(new)) {
-                    flashState = new
-                }
-            },
+            onClick = onToggleFlash,
             minSize = minButtonSize,
             maxSize = maxButtonSize,
         )
     }
 
-
-    var isCapturing by remember { mutableStateOf(false) }
     CaptureImageButton(
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .padding(bottom = 16.dp),
-        onClick = {
-            isCapturing = true
-            controller.takePicture { res ->
-                setImageResult(res)
-                isCapturing = false
-            }
-        },
-        loading = isCapturing || painterIsLoading,
+        onClick = onCaptureImage,
+        loading = painterIsLoading,
         minSize = minButtonSize,
         maxSize = maxButtonSize,
     )
@@ -206,6 +198,7 @@ fun ZoomBadge(
 fun StopCaptureButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    retry: Boolean = false,
     minSize: Dp = 48.dp,
     maxSize: Dp = 64.dp
 ) {
@@ -216,7 +209,7 @@ fun StopCaptureButton(
     ) {
         Icon(
             modifier = Modifier.minimumInteractiveComponentSize(),
-            imageVector = Icons.Default.Close,
+            imageVector = if (retry) vectorResource(Res.drawable.undo) else Icons.Default.Close,
             contentDescription = null,
         )
     }

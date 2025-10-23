@@ -3,6 +3,8 @@ package dk.skancode.skanmate.ui.screen
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActionScope
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -39,6 +41,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -49,8 +52,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -59,6 +64,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dk.skancode.skanmate.ImageData
 import dk.skancode.skanmate.ImageResourceState
 import dk.skancode.skanmate.data.model.ColumnType
 import dk.skancode.skanmate.ui.component.InputField
@@ -69,6 +75,7 @@ import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.loadImage
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
 import dk.skancode.skanmate.ui.component.FullWidthButton
+import dk.skancode.skanmate.ui.component.ImageCaptureAction
 import dk.skancode.skanmate.ui.component.ImageCaptureListener
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.state.FetchStatus
@@ -212,10 +219,15 @@ fun TableContent(
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(.1f),
+                            disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
+                                .1f
+                            ),
                             disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         ),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            8.dp,
+                            Alignment.CenterHorizontally
+                        ),
                         enabled = !tableUiState.isSubmitting
                     ) {
                         Text("Submit")
@@ -237,7 +249,7 @@ fun TableContent(
 fun LazyGridScope.tableColumns(
     columns: List<ColumnUiState>,
     updateCol: (ColumnUiState) -> Unit,
-    setFocus: (String, Boolean) -> Unit = {_,_ ->},
+    setFocus: (String, Boolean) -> Unit = { _, _ -> },
     onDone: () -> Unit = {},
     enabled: Boolean = true,
 ) {
@@ -271,7 +283,7 @@ fun TableColumn(
     enabled: Boolean = true,
     isLast: Boolean = false,
     onKeyboardAction: (ImeAction) -> Unit = {},
-    setFocus: (String, Boolean) -> Unit = {_,_ ->},
+    setFocus: (String, Boolean) -> Unit = { _, _ -> },
     updateValue: (ColumnValue) -> Unit = {},
 ) {
     val modifier = Modifier.fillMaxWidth()
@@ -290,9 +302,21 @@ fun TableColumn(
     } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
         TableColumnFile(
             label = col.name,
-            value = col.value.localUrl,
-            setValue = { name, path, data ->
-                updateValue(col.value.copy(localUrl = path, fileName = name, bytes = data))
+            value =
+                if (col.value.localUrl == null) null
+                else ImageData(
+                    path = col.value.localUrl,
+                    name = col.value.fileName,
+                    data = col.value.bytes
+                ),
+            setValue = { data ->
+                updateValue(
+                    col.value.copy(
+                        localUrl = data?.path,
+                        fileName = data?.name,
+                        bytes = data?.data
+                    )
+                )
             }
         )
 
@@ -421,17 +445,21 @@ fun TableColumnInput(
 fun TableColumnFile(
     modifier: Modifier = Modifier,
     label: String,
-    value: String?,
-    setValue: (name: String?, path: String?, data: ByteArray?) -> Unit,
+    value: ImageData?,
+    setValue: (data: ImageData?) -> Unit,
 ) {
     val uiCameraController = LocalUiCameraController.current
-    DisposableEffect(uiCameraController, setValue) {
+    DisposableEffect(uiCameraController) {
         val listener = ImageCaptureListener { res ->
-            if (!res.ok) {
-                println(res.error)
-            } else {
-                setValue(res.filename, res.filePath, res.fileData)
-                uiCameraController.stopCamera()
+            when (res) {
+                is ImageCaptureAction.Accept -> {
+                    setValue(res.data)
+                    uiCameraController.stopCamera()
+                }
+
+                ImageCaptureAction.Discard -> {
+                    setValue(null)
+                }
             }
         }
         uiCameraController.registerListener(listener)
@@ -442,6 +470,7 @@ fun TableColumnFile(
         }
     }
 
+    val size = 56.dp
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -450,29 +479,53 @@ fun TableColumnFile(
         AnimatedContent(value) { targetValue ->
             if (targetValue == null) {
                 IconButton(
-                    modifier = Modifier.requiredSizeIn(24.dp, 48.dp),
+                    modifier = Modifier.requiredSize(size = size),
                     onClick = { uiCameraController.startCamera() },
                 ) {
                     Icon(
+                        modifier = Modifier.minimumInteractiveComponentSize(),
                         imageVector = vectorResource(Res.drawable.camera),
                         contentDescription = null,
                     )
                 }
             } else {
-                val imageResource = loadImage(imagePath = targetValue)
+                val imageResource = loadImage(imagePath = targetValue.path)
+                val loading by imageResource.isLoading
+                val painter by imageResource.state
 
-                val isLoadingImage by imageResource.isLoading
-                if (isLoadingImage) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .requiredSize(64.dp),
-                    )
-                } else {
-                    val painter by imageResource.state
-                    when(painter) {
-                        is ImageResourceState.Image<*> ->
-                            Image((painter as ImageResourceState.Image<*>).data, null)
-                        else -> Text("Cannot display image")
+                Box(
+                    modifier = Modifier
+                        .requiredSize(size = size)
+                        .shadow(2.dp, RoundedCornerShape(8.dp))
+                        .background(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .clickable {
+                            uiCameraController.showPreview(targetValue)
+                        },
+                    contentAlignment = Alignment.Center,
+                    propagateMinConstraints = true,
+                ) {
+                    AnimatedContent(loading) { isLoadingImage ->
+                        if (isLoadingImage) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .padding(all = 4.dp)
+                                    .fillMaxSize(),
+                            )
+                        } else {
+                            when (painter) {
+                                is ImageResourceState.Image<*> ->
+                                    Image(
+                                        painter = (painter as ImageResourceState.Image<*>).data,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.FillWidth,
+                                    )
+
+                                else -> Text("Cannot display image")
+                            }
+                        }
                     }
                 }
             }

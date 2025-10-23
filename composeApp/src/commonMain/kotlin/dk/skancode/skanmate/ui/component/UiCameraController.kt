@@ -1,13 +1,20 @@
 package dk.skancode.skanmate.ui.component
 
-import dk.skancode.skanmate.TakePictureResponse
+import dk.skancode.skanmate.ImageData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.update
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 
 fun interface ImageCaptureListener {
-    fun onImageCapture(res: TakePictureResponse)
+    fun handleAction(res: ImageCaptureAction)
+}
+
+sealed class ImageCaptureAction {
+    data class Accept(val data: ImageData): ImageCaptureAction()
+    data object Discard: ImageCaptureAction()
 }
 
 @OptIn(ExperimentalAtomicApi::class)
@@ -17,6 +24,9 @@ class UiCameraController() {
     val isStarted: StateFlow<Boolean>
         get() = _isStarted
 
+    private val _preview = MutableStateFlow<ImageData?>(null)
+    val preview: StateFlow<ImageData?>
+        get() = _preview
 
     fun startCamera() {
         println("Starting camera")
@@ -27,6 +37,26 @@ class UiCameraController() {
         _isStarted.compareAndSet(expect = true, update = false)
     }
 
+    fun showPreview(p: ImageData?) {
+        println("Showing preview")
+        _preview.update { p }
+    }
+
+    fun acceptPreview() {
+        println("Accepting preview")
+        val old = _preview.getAndUpdate { null }
+        if (old != null) {
+            listeners.forEach { it.handleAction(res = ImageCaptureAction.Accept(old)) }
+        }
+    }
+
+    fun discardPreview() {
+        println("Discarding preview")
+        _preview.update { null }
+        listeners.forEach { it.handleAction(ImageCaptureAction.Discard)}
+        startCamera()
+    }
+
     fun registerListener(listener: ImageCaptureListener) {
         println("Registering listener")
         listeners.add(listener)
@@ -35,10 +65,5 @@ class UiCameraController() {
     fun unregisterListener(listener: ImageCaptureListener) {
         println("Unregistering listener")
         listeners.remove(listener)
-    }
-
-    fun onImageCapture(res: TakePictureResponse) {
-        println("UiCameraController::onImageCapture")
-        listeners.forEach { it.onImageCapture(res = res) }
     }
 }

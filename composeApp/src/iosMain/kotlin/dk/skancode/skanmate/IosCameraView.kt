@@ -247,9 +247,7 @@ class IosCameraController(
                 cb(
                     TakePictureResponse(
                         ok = false,
-                        filePath = null,
-                        filename = null,
-                        fileData = null,
+                        data = null,
                         error = error.description ?: "Unknown error occurred"
                     )
                 )
@@ -268,26 +266,24 @@ class IosCameraController(
                 if (photoData.writeToFile(path = filePath, atomically = false)) {
                     TakePictureResponse(
                         ok = true,
-                        filePath = fileName,
-                        filename = fileName,
-                        fileData = photoData.toByteArray(),
+                        data = ImageData(
+                            path = fileName,
+                            name = fileName,
+                            data = photoData.toByteArray(),
+                        ),
                         error = null,
                     )
                 } else {
                     TakePictureResponse(
                         ok = false,
-                        filePath = null,
-                        filename = null,
-                        fileData = null,
+                        data = null,
                         error = "Could not write photo to file"
                     )
                 }
             } else {
                 TakePictureResponse(
                     ok = false,
-                    filePath = null,
-                    filename = null,
-                    fileData = null,
+                    data = null,
                     error = "No photo data was received"
                 )
             }

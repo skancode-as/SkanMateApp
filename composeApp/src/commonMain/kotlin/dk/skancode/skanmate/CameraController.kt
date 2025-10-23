@@ -19,38 +19,36 @@ interface CameraController {
     // TODO: add function to pause/unpause camera preview
 }
 
-data class TakePictureResponse(
-    val ok: Boolean,
-    /** When ok == false expect this to be null */
-    val filePath: String?,
-    /** When ok == false expect this to be null */
-    val filename: String?,
-    /** When ok == false expect this to be null */
-    val fileData: ByteArray?,
-    /** When ok == true expect this to be null */
-    val error: String?,
+data class ImageData(
+    val path: String?,
+    val name: String?,
+    val data: ByteArray?,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as TakePictureResponse
+        other as ImageData
 
-        if (ok != other.ok) return false
-        if (filePath != other.filePath) return false
-        if (filename != other.filename) return false
-        if (!fileData.contentEquals(other.fileData)) return false
-        if (error != other.error) return false
+        if (path != other.path) return false
+        if (name != other.name) return false
+        if (!data.contentEquals(other.data)) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = ok.hashCode()
-        result = 31 * result + (filePath?.hashCode() ?: 0)
-        result = 31 * result + (filename?.hashCode() ?: 0)
-        result = 31 * result + (fileData?.contentHashCode() ?: 0)
-        result = 31 * result + (error?.hashCode() ?: 0)
+        var result = path?.hashCode() ?: 0
+        result = 31 * result + (name?.hashCode() ?: 0)
+        result = 31 * result + (data?.contentHashCode() ?: 0)
         return result
     }
 }
+
+data class TakePictureResponse(
+    val ok: Boolean,
+    /** When ok == false expect this to be null */
+    val data: ImageData?,
+    /** When ok == true expect this to be null */
+    val error: String?,
+)
