@@ -16,7 +16,6 @@ interface CameraController {
     // Attempts to set the flash state of the camera. Returns true if configuration success
     fun setFlashState(v: Boolean): Boolean
     fun takePicture(cb: (TakePictureResponse) -> Unit)
-    // TODO: add function to pause/unpause camera preview
 }
 
 data class ImageData(

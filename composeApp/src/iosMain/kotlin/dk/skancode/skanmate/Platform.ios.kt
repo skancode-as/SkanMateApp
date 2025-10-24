@@ -124,3 +124,26 @@ fun NSData.toByteArray(): ByteArray {
         }
     }
 }
+
+@OptIn(ExperimentalForeignApi::class)
+actual suspend fun deleteFile(path: String) {
+    println("IOS::deleteFile")
+
+    val manager = NSFileManager.defaultManager
+    val dirPath = NSSearchPathForDirectoriesInDomains(
+        NSDocumentDirectory,
+        NSUserDomainMask,
+        true
+    )[0] as String
+    val filePath = "$dirPath/$path"
+
+    if (manager.fileExistsAtPath(filePath)) {
+        if (manager.removeItemAtPath(filePath, error = null)) {
+            println("File $path deleted")
+        } else {
+            println("Could not delete file: \"$path\"")
+        }
+    } else {
+        println("No file at\n$filePath")
+    }
+}

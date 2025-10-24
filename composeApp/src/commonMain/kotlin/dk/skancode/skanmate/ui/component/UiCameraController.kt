@@ -12,9 +12,14 @@ fun interface ImageCaptureListener {
     fun handleAction(res: ImageCaptureAction)
 }
 
-sealed class ImageCaptureAction {
-    data class Accept(val data: ImageData): ImageCaptureAction()
-    data object Discard: ImageCaptureAction()
+/**
+ * When action is Accept [data] is the accepted [ImageData] object
+ *
+ * When action is Discard [data] is the [ImageData] object to discard
+ */
+sealed class ImageCaptureAction(open val data: ImageData) {
+    data class Accept(override val data: ImageData): ImageCaptureAction(data)
+    data class Discard(override val data: ImageData): ImageCaptureAction(data)
 }
 
 @OptIn(ExperimentalAtomicApi::class)
@@ -52,8 +57,10 @@ class UiCameraController() {
 
     fun discardPreview() {
         println("Discarding preview")
-        _preview.update { null }
-        listeners.forEach { it.handleAction(ImageCaptureAction.Discard)}
+        val old = _preview.getAndUpdate { null }
+        if (old != null) {
+            listeners.forEach { it.handleAction(ImageCaptureAction.Discard(old)) }
+        }
         startCamera()
     }
 

@@ -99,3 +99,5 @@ fun rememberImageResource(): ImageResource<Painter> {
 
 @Composable
 expect fun loadImage(imagePath: String?): ImageResource<Painter>
+
+expect suspend fun deleteFile(path: String)

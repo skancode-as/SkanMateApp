@@ -74,3 +74,7 @@ fun Bitmap.rotate(degrees: Number): Bitmap {
 
     return rotatedBitmap
 }
+
+actual suspend fun deleteFile(path: String) {
+    SkanMateApplication.deleteLocalFile(path)
+}

@@ -264,6 +264,7 @@ class IosCameraController(
                 val filePath = "$dirPath/$fileName"
 
                 if (photoData.writeToFile(path = filePath, atomically = false)) {
+                    println("Image saved at:\n$filePath")
                     TakePictureResponse(
                         ok = true,
                         data = ImageData(

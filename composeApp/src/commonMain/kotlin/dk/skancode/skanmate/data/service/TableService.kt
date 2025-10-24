@@ -70,10 +70,7 @@ class TableServiceImpl(
         data: ByteArray,
     ): String? {
         val token = _token
-        if (token == null) {
-            // TODO: better error handling
-            return null
-        }
+        if (token == null) return null
 
         val urlRes = tableStore.getPresignedURL(
             tableId,
@@ -81,10 +78,7 @@ class TableServiceImpl(
             token
         )
 
-        if (!urlRes.ok || urlRes.data == null) {
-            // TODO: better error handling
-            return null
-        }
+        if (!urlRes.ok || urlRes.data == null) return null
 
         val uploadRes = tableStore.uploadImage(
             presignedUrl = urlRes.data.presignedUrl,
@@ -98,7 +92,6 @@ class TableServiceImpl(
             }
             else -> {
                 println(uploadRes.msg)
-
                 null
             }
         }

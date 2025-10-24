@@ -155,6 +155,10 @@ fun TableScreen(
                                 viewModel.resetColumnData()
                             }
                         }
+                    },
+                    deleteLocalFile = { path ->
+                        println("TableScreen::deleteLocalFile($path)")
+                        viewModel.deleteLocalImage(path)
                     }
                 ) { columns ->
                     viewModel.updateColumns(columns)
@@ -170,6 +174,7 @@ fun TableContent(
     tableUiState: TableUiState,
     setFocusedColumn: (String, Boolean) -> Unit = { _, _ -> },
     submitData: () -> Unit = {},
+    deleteLocalFile: (path: String) -> Unit,
     updateColumns: (List<ColumnUiState>) -> Unit,
 ) {
     Box(
@@ -209,6 +214,7 @@ fun TableContent(
                             onDone = {
                                 submitData()
                             },
+                            deleteFile = deleteLocalFile,
                             enabled = !tableUiState.isSubmitting
                         )
                     }
@@ -251,6 +257,7 @@ fun LazyGridScope.tableColumns(
     updateCol: (ColumnUiState) -> Unit,
     setFocus: (String, Boolean) -> Unit = { _, _ -> },
     onDone: () -> Unit = {},
+    deleteFile: (String) -> Unit,
     enabled: Boolean = true,
 ) {
     itemsIndexed(
@@ -266,6 +273,7 @@ fun LazyGridScope.tableColumns(
             enabled = enabled,
             setFocus = setFocus,
             isLast = idx == columns.size,
+            deleteFile = deleteFile,
             onKeyboardAction = { action ->
                 when (action) {
                     ImeAction.Done -> onDone()
@@ -284,6 +292,7 @@ fun TableColumn(
     isLast: Boolean = false,
     onKeyboardAction: (ImeAction) -> Unit = {},
     setFocus: (String, Boolean) -> Unit = { _, _ -> },
+    deleteFile: (String) -> Unit,
     updateValue: (ColumnValue) -> Unit = {},
 ) {
     val modifier = Modifier.fillMaxWidth()
@@ -309,6 +318,10 @@ fun TableColumn(
                     name = col.value.fileName,
                     data = col.value.bytes
                 ),
+            deleteFile = { path ->
+                println("TableColumn::deleteFile($path)")
+                if (path != null) deleteFile(path)
+            },
             setValue = { data ->
                 updateValue(
                     col.value.copy(
@@ -447,17 +460,20 @@ fun TableColumnFile(
     label: String,
     value: ImageData?,
     setValue: (data: ImageData?) -> Unit,
+    deleteFile: (String?) -> Unit,
 ) {
     val uiCameraController = LocalUiCameraController.current
     DisposableEffect(uiCameraController) {
         val listener = ImageCaptureListener { res ->
+            println("TableColumnFile::ImageCaptureListener(${res::class.simpleName})")
             when (res) {
                 is ImageCaptureAction.Accept -> {
                     setValue(res.data)
                     uiCameraController.stopCamera()
                 }
 
-                ImageCaptureAction.Discard -> {
+                is ImageCaptureAction.Discard -> {
+                    deleteFile(res.data.path)
                     setValue(null)
                 }
             }
