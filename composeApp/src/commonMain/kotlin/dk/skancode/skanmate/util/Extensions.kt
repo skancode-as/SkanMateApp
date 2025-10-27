@@ -6,6 +6,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorModel
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.String
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 @Composable
 fun<T> StateFlow<List<T>>.find(predicate: (T) -> Boolean): T? {
@@ -71,3 +76,46 @@ infix fun Double.notEqual(b: Double): Boolean {
 }
 
 private const val epsilon = 0.001
+
+
+fun Float.clamp(minValue: Float, maxValue: Float): Float {
+    return min(
+        maxValue,
+        max(minValue, this)
+    )
+}
+
+fun Double.clamp(minValue: Double, maxValue: Double): Double {
+    return min(
+        maxValue,
+        max(minValue, this)
+    )
+}
+
+fun Int.clamp(minValue: Int, maxValue: Int): Int {
+    return min(
+        maxValue,
+        max(minValue, this)
+    )
+}
+
+fun Float.toOneDecimalString(): String {
+    var tmp = this * 10
+
+    tmp = tmp.roundToInt().toFloat() / 10
+
+    return tmp.toString()
+}
+
+fun Double.toOneDecimalString(): String {
+    var tmp = this * 10
+
+    tmp = tmp.roundToLong().toDouble() / 10
+
+    return tmp.toString()
+}
+
+inline fun unreachable(): Nothing = throw UnreachableException()
+inline fun unreachable(reason: String): Nothing = throw UnreachableException(message = "An unreachable statement has been reached: $reason")
+
+class UnreachableException(override val message: String? = "An unreachable statement has been reached"): Exception()

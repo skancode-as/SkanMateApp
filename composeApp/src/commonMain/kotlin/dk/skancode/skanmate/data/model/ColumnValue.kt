@@ -27,7 +27,7 @@ private class ColumnValueSerialDescriptor(): SerialDescriptor {
     private fun error(): Nothing = throw IllegalStateException("ColumnValueDescriptor does not have elements")
 }
 
-private class ColumnValueSerializer(): KSerializer<ColumnValue> {
+private object ColumnValueSerializer : KSerializer<ColumnValue> {
     @OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
     override val descriptor: SerialDescriptor = ColumnValueSerialDescriptor()
 
@@ -41,6 +41,7 @@ private class ColumnValueSerializer(): KSerializer<ColumnValue> {
             ColumnValue.Null -> encoder.encodeNull()
             is ColumnValue.Numeric -> if(value.num != null) encoder.encodeDouble(value.num.toDouble()) else encoder.encodeNull()
             is ColumnValue.Text -> encoder.encodeString(value.text)
+            is ColumnValue.File -> if(value.objectUrl != null) encoder.encodeString(value.objectUrl) else encoder.encodeNull()
         }
     }
 
@@ -60,6 +61,31 @@ sealed class ColumnValue {
     data class Numeric(val num: Number? = null) : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
     }
+    data class File(val fileName: String? = null, val localUrl: String? = null, val objectUrl: String? = null, val bytes: ByteArray? = null) : ColumnValue() {
+        override fun clone(): ColumnValue = this.copy()
+
+        override fun equals(other: Any?): kotlin.Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+
+            other as File
+
+            if (fileName != other.fileName) return false
+            if (localUrl != other.localUrl) return false
+            if (objectUrl != other.objectUrl) return false
+            if (!bytes.contentEquals(other.bytes)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = fileName?.hashCode() ?: 0
+            result = 31 * result + (localUrl?.hashCode() ?: 0)
+            result = 31 * result + (objectUrl?.hashCode() ?: 0)
+            result = 31 * result + (bytes?.contentHashCode() ?: 0)
+            return result
+        }
+    }
 
     data object Null : ColumnValue() {
         override fun clone(): ColumnValue = this
@@ -76,6 +102,7 @@ sealed class ColumnValue {
             ColumnType.User -> Null
             ColumnType.Unknown -> Null
             ColumnType.Id -> Null
+            ColumnType.File -> File()
         }
     }
 }

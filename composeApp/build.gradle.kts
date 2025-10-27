@@ -1,3 +1,4 @@
+import org.gradle.kotlin.dsl.dependencies
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -31,6 +32,11 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.barcodescannermodule)
             implementation(libs.ktor.client.okhttp)
+
+            implementation(libs.androidx.camera.core)
+            implementation(libs.androidx.camera.camera2)
+            implementation(libs.androidx.camera.lifecycle)
+            implementation(libs.androidx.camera.view)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -41,8 +47,8 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation("io.github.ismai117:KScan:0.2.0")
-            implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.0")
+            implementation(libs.kscan)
+            implementation(libs.navigation.compose)
             implementation(libs.moko.permissions)
             implementation(libs.moko.permissions.compose)
             implementation(libs.ktor.client.core)

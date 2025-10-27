@@ -1,15 +1,13 @@
 package dk.skancode.skanmate.util
 
-import androidx.compose.runtime.ProvidableCompositionLocal
-import androidx.compose.runtime.compositionLocalOf
 import org.ncgroup.kscan.Barcode
 
 fun interface CameraScanListener {
-    fun handle(barcode: String, barcodeFormat: String): Unit
+    fun handle(barcode: String, barcodeFormat: String)
 }
 
 fun interface CameraPowerListener {
-    fun handle(enable: Boolean): Unit
+    fun handle(enable: Boolean)
 }
 
 interface CameraScanManager {
@@ -19,8 +17,6 @@ interface CameraScanManager {
     fun startScanning()
     fun stopScanning()
 }
-
-val LocalCameraScanManager: ProvidableCompositionLocal<CameraScanManager> = compositionLocalOf { CameraScanManagerImpl() }
 
 class CameraScanManagerImpl: CameraScanManager {
     private val listeners: MutableSet<CameraScanListener> = HashSet()

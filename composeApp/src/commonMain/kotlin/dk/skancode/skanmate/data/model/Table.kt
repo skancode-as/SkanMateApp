@@ -83,3 +83,12 @@ data class TableColumnDTO(
         type = type,
     )
 }
+
+@Serializable
+data class TableImageFilenameDTO(val filename: String)
+
+@Serializable
+data class TableImagePresignedURL(val data: PresignedUrlDTO)
+
+@Serializable
+data class PresignedUrlDTO(val presignedUrl: String, val objectUrl: String)

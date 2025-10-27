@@ -1,4 +1,4 @@
-package dk.skancode.skanmate
+package dk.skancode.skanmate.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import dk.skancode.skanmate.util.CameraPowerListener

@@ -1,112 +1,23 @@
 package dk.skancode.skanmate
 
-import android.os.Build
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import androidx.camera.core.impl.utils.Exif
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalContext
 import com.russhwolf.settings.Settings
-import com.russhwolf.settings.SharedPreferencesSettings
-import dk.skancode.skanmate.util.CameraScanListener
-import dk.skancode.skanmate.util.CameraScanManager
-import dk.skancode.skanmate.util.LocalCameraScanManager
-import dk.skancode.barcodescannermodule.Enabler
-import dk.skancode.barcodescannermodule.IScannerModule
+import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.barcodescannermodule.compose.LocalScannerModule
-import dk.skancode.barcodescannermodule.event.TypedEvent
-import dk.skancode.barcodescannermodule.event.TypedEventHandler
-import dk.skancode.barcodescannermodule.gs1.Gs1Config
-
-fun TypedEvent.toScanEvent(): ScanEvent? {
-    return when (this) {
-        is TypedEvent.Gs1Event -> ScanEvent.Barcode(
-            ok = ok,
-            barcode = barcode,
-            barcodeType = barcodeType.name,
-        )
-        is TypedEvent.BarcodeEvent -> ScanEvent.Barcode(
-            barcode = barcode1,
-            barcodeType = barcodeType.name,
-            ok = ok
-        )
-        is TypedEvent.NfcEvent -> null
-    }
-}
-
-class AndroidScanModuleImpl(val scanModule: IScannerModule, val cameraManager: CameraScanManager): ScanModule {
-    private val listeners: MutableMap<ScanEventHandler, TypedEventHandler> = HashMap()
-    private val cameraListeners: MutableMap<ScanEventHandler, CameraScanListener> = HashMap()
-
-    override fun isHardwareScanner(): Boolean {
-        return scanModule.scannerAvailable()
-    }
-
-    override fun registerListener(handler: ScanEventHandler) {
-        if (scanModule.scannerAvailable()) {
-            val typedEventHandler = TypedEventHandler { e ->
-                val scanEvent = e.toScanEvent()
-
-                if (scanEvent != null) {
-                    handler.handle(scanEvent)
-                }
-            }
-
-            listeners[handler] = typedEventHandler
-            scanModule.registerTypedEventHandler(typedEventHandler)
-        } else {
-            val cameraScanListener = CameraScanListener { barcode, format ->
-                handler.handle(
-                    ScanEvent.Barcode(
-                        barcode = barcode,
-                        barcodeType = format,
-                        ok = true,
-                    )
-                )
-            }
-
-            cameraListeners[handler] = cameraScanListener
-            cameraManager.registerListener(cameraScanListener)
-        }
-    }
-
-    override fun unregisterListener(handler: ScanEventHandler) {
-        if (scanModule.scannerAvailable()) {
-            val typedEventHandler = listeners.remove(handler) ?: return
-
-            scanModule.unregisterTypedEventHandler(typedEventHandler)
-        } else {
-            val cameraScanListener = cameraListeners.remove(handler) ?: return
-
-            cameraManager.unregisterListener(cameraScanListener)
-        }
-    }
-
-    override fun enableScan() {
-        if (scanModule.scannerAvailable()) {
-            scanModule.setScannerState(Enabler.ON)
-        } else {
-            cameraManager.startScanning()
-        }
-    }
-
-    override fun disableScan() {
-        if (scanModule.scannerAvailable()) {
-            scanModule.setScannerState(Enabler.OFF)
-        } else {
-            cameraManager.stopScanning()
-        }
-    }
-
-//    override fun enableGs1() {
-//        if (scanModule.scannerAvailable()) {
-//            scanModule.setGs1Config(Gs1Config(enabled = Enabler.ON))
-//        }
-//    }
-//
-//    override fun disableGs1() {
-//        if (scanModule.scannerAvailable()) {
-//            scanModule.setGs1Config(Gs1Config(enabled = Enabler.OFF))
-//        }
-//    }
-}
+import androidx.core.net.toUri
 
 @Composable
 actual fun rememberScanModule(): ScanModule {
@@ -119,3 +30,67 @@ actual fun rememberScanModule(): ScanModule {
 }
 
 actual val platformSettingsFactory: Settings.Factory = SkanMateApplication.settingsFactory
+
+@Composable
+actual fun CameraView(
+    modifier: Modifier,
+    cameraUi: @Composable BoxScope.(CameraController) -> Unit,
+) {
+    AndroidCameraView(modifier = modifier, cameraUi = cameraUi)
+}
+
+@SuppressLint("RestrictedApi")
+@Composable
+actual fun loadImage(imagePath: String?): ImageResource<Painter> {
+    val resource = rememberImageResource()
+
+    val context = LocalContext.current
+    LaunchedEffect(context, imagePath, resource) {
+        if (imagePath == null) return@LaunchedEffect
+        resource.load()
+
+        var inputStream = context.contentResolver.openInputStream(imagePath.toUri())
+
+        if (inputStream == null) {
+            println("Could not open input stream at imagePath: $imagePath")
+            resource.error("Could not open input stream at imagePath: $imagePath")
+            return@LaunchedEffect
+        }
+
+        val rotation = inputStream.use { inputStream ->
+            val exif = Exif.createFromInputStream(inputStream)
+            exif.rotation
+        }
+        inputStream = context.contentResolver.openInputStream(imagePath.toUri())
+
+        if (inputStream == null) {
+            println("Could not open input stream at imagePath: $imagePath")
+            resource.error("Could not open input stream at imagePath: $imagePath")
+            return@LaunchedEffect
+        }
+        inputStream.use { inputStream ->
+            val bitmap: Bitmap? =
+                BitmapFactory.decodeStream(inputStream)?.rotate(rotation)
+
+            if (bitmap != null) {
+                resource.update(
+                    painter = BitmapPainter(bitmap.asImageBitmap())
+                )
+            }
+        }
+    }
+
+    return resource
+}
+
+fun Bitmap.rotate(degrees: Number): Bitmap {
+    val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+    val rotatedBitmap = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
+    this.recycle()
+
+    return rotatedBitmap
+}
+
+actual suspend fun deleteFile(path: String) {
+    SkanMateApplication.deleteLocalFile(path)
+}

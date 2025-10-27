@@ -73,7 +73,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.util.fastFirst
 import androidx.compose.ui.util.fastFirstOrNull
-import dk.skancode.skanmate.LocalScanModule
 import dk.skancode.skanmate.ScanModule
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.keyboardVisibleAsState

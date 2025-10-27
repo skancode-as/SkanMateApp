@@ -3,6 +3,8 @@ package dk.skancode.skanmate.util
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
+import kotlinx.datetime.format.FormatStringsInDatetimeFormats
+import kotlinx.datetime.format.byUnicodePattern
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -16,4 +18,11 @@ fun currentDateTimeUTC(): LocalDateTime {
 
 fun LocalDateTime.formatISO(): String {
     return this.format(format = LocalDateTime.Formats.ISO)
+}
+
+@OptIn(FormatStringsInDatetimeFormats::class)
+fun LocalDateTime.format(pattern: String): String {
+    return this.format(format = LocalDateTime.Format {
+        byUnicodePattern(pattern = pattern)
+    })
 }

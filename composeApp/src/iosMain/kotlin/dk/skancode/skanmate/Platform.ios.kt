@@ -1,12 +1,26 @@
 package dk.skancode.skanmate
 
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import com.russhwolf.settings.NSUserDefaultsSettings
 import com.russhwolf.settings.Settings
+import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.skanmate.util.CameraScanListener
 import dk.skancode.skanmate.util.CameraScanManager
-import dk.skancode.skanmate.util.LocalCameraScanManager
+import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import org.jetbrains.skia.Image
+import org.jetbrains.skia.makeFromEncoded
+import platform.Foundation.*
+import platform.posix.memcpy
 
 class IosScanModule(val cameraScanManager: CameraScanManager): ScanModule {
     private val cameraListeners: MutableMap<ScanEventHandler, CameraScanListener> = HashMap()
@@ -56,3 +70,80 @@ actual fun rememberScanModule(): ScanModule {
 }
 
 actual val platformSettingsFactory: Settings.Factory = NSUserDefaultsSettings.Factory()
+
+@Composable
+actual fun CameraView(
+    modifier: Modifier,
+    cameraUi: @Composable BoxScope.(CameraController) -> Unit,
+) {
+    IosCameraView(
+        modifier = modifier,
+        cameraUi = cameraUi,
+    )
+}
+
+@OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
+@Composable
+actual fun loadImage(imagePath: String?): ImageResource<Painter> {
+    val imageResource = rememberImageResource()
+
+    val fileManager = remember { NSFileManager.defaultManager }
+    val documentDir = remember {
+        NSSearchPathForDirectoriesInDomains(
+            NSDocumentDirectory,
+            NSUserDomainMask,
+            true
+        )[0] as? String
+    }
+
+    LaunchedEffect(fileManager, documentDir, imagePath) {
+        if (documentDir != null && fileManager.fileExistsAtPath("$documentDir/$imagePath")) {
+            imageResource.load()
+            val data: NSData = NSData.create(contentsOfFile = "$documentDir/$imagePath")!!
+
+            val imageBitmap = try {
+                Image.makeFromEncoded(data).toComposeImageBitmap()
+            } catch (e: Exception) {
+                println(e)
+                imageResource.error(e.message ?: "Could not make Image bitmap from NSData")
+                return@LaunchedEffect
+            }
+
+            imageResource.update(BitmapPainter(imageBitmap))
+        }
+    }
+
+    return imageResource
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun NSData.toByteArray(): ByteArray {
+    return ByteArray(length.toInt()).apply {
+        usePinned {
+            memcpy(it.addressOf(0), bytes, length)
+        }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+actual suspend fun deleteFile(path: String) {
+    println("IOS::deleteFile")
+
+    val manager = NSFileManager.defaultManager
+    val dirPath = NSSearchPathForDirectoriesInDomains(
+        NSDocumentDirectory,
+        NSUserDomainMask,
+        true
+    )[0] as String
+    val filePath = "$dirPath/$path"
+
+    if (manager.fileExistsAtPath(filePath)) {
+        if (manager.removeItemAtPath(filePath, error = null)) {
+            println("File $path deleted")
+        } else {
+            println("Could not delete file: \"$path\"")
+        }
+    } else {
+        println("No file at\n$filePath")
+    }
+}

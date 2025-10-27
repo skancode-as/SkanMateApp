@@ -1,10 +1,19 @@
 package dk.skancode.skanmate
 
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.Painter
 import com.russhwolf.settings.Settings
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 typealias BarcodeType = String
-typealias Gs1Object = MutableMap<String, String>
+//typealias Gs1Object = MutableMap<String, String>
 
 sealed class ScanEvent {
     data class Barcode(val barcode: String?, val barcodeType: BarcodeType, val ok: Boolean): ScanEvent()
@@ -12,7 +21,7 @@ sealed class ScanEvent {
 }
 
 fun interface ScanEventHandler {
-    fun handle(event: ScanEvent): Unit
+    fun handle(event: ScanEvent)
 }
 
 interface ScanModule {
@@ -29,3 +38,66 @@ interface ScanModule {
 expect fun rememberScanModule(): ScanModule
 
 expect val platformSettingsFactory: Settings.Factory
+
+@Composable
+expect fun CameraView(
+    modifier: Modifier = Modifier,
+    cameraUi: @Composable BoxScope.(CameraController) -> Unit,
+)
+
+interface ImageResource<T: Painter> {
+    @get:Composable
+    val isLoading: State<Boolean>
+    @get:Composable
+    val state: State<ImageResourceState<T>>
+
+    fun load()
+    fun update(painter: T)
+    fun error(error: String)
+    fun reset()
+
+}
+sealed class ImageResourceState<T: Painter>() {
+    data object Unspecified: ImageResourceState<Painter>()
+    data object Loading: ImageResourceState<Painter>()
+    data class Image<T: Painter>(val data: T): ImageResourceState<T>()
+    data class Error(val error: String): ImageResourceState<Painter>()
+}
+
+@Composable
+fun rememberImageResource(): ImageResource<Painter> {
+    return remember {
+        object : ImageResource<Painter> {
+            private val stateFlow: MutableStateFlow<ImageResourceState<Painter>> = MutableStateFlow(ImageResourceState.Unspecified)
+
+            @get:Composable
+            override val state: State<ImageResourceState<Painter>>
+                get() = stateFlow.collectAsState()
+
+            @get:Composable
+            override val isLoading: State<Boolean>
+                get() = rememberUpdatedState(stateFlow.collectAsState().value == ImageResourceState.Loading)
+
+            override fun load() {
+                stateFlow.update { ImageResourceState.Loading }
+            }
+
+            override fun update(painter: Painter) {
+                stateFlow.update { ImageResourceState.Image(painter) }
+            }
+
+            override fun error(error: String) {
+                stateFlow.update { ImageResourceState.Error(error) }
+            }
+
+            override fun reset() {
+                stateFlow.update { ImageResourceState.Unspecified }
+            }
+        }
+    }
+}
+
+@Composable
+expect fun loadImage(imagePath: String?): ImageResource<Painter>
+
+expect suspend fun deleteFile(path: String)

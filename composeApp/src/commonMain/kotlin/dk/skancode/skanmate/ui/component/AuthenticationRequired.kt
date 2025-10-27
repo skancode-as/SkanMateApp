@@ -11,19 +11,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.ProvidableCompositionLocal
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import dk.skancode.skanmate.data.model.TenantModel
-import dk.skancode.skanmate.data.model.UserModel
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 
-val LocalAuthUser: ProvidableCompositionLocal<UserModel> = compositionLocalOf { UserModel.empty() }
-val LocalAuthTenant: ProvidableCompositionLocal<TenantModel> = compositionLocalOf { TenantModel.empty() }
 
 @Composable
 fun AuthenticationRequired(

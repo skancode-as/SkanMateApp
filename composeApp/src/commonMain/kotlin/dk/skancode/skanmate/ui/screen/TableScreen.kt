@@ -2,6 +2,9 @@ package dk.skancode.skanmate.ui.screen
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -18,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActionScope
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -28,7 +33,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import dk.skancode.skanmate.ui.component.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -36,7 +41,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,22 +52,32 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dk.skancode.skanmate.ImageData
+import dk.skancode.skanmate.ImageResourceState
 import dk.skancode.skanmate.data.model.ColumnType
-import dk.skancode.skanmate.ui.component.Button
 import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.RegisterScanEventHandler
 import dk.skancode.skanmate.ui.component.ScanableInputField
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.data.model.ColumnValue
+import dk.skancode.skanmate.loadImage
+import dk.skancode.skanmate.ui.component.CustomButtonElevation
+import dk.skancode.skanmate.ui.component.FullWidthButton
+import dk.skancode.skanmate.ui.component.ImageCaptureAction
+import dk.skancode.skanmate.ui.component.ImageCaptureListener
+import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
@@ -68,6 +85,7 @@ import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.camera
 import skanmate.composeapp.generated.resources.triangle_alert
 import kotlin.math.roundToInt
 
@@ -89,7 +107,11 @@ fun TableScreen(
                     Text(table?.name ?: "Oh no!")
                 },
                 navigationIcon = {
-                    IconButton(onClick = navigateBack) {
+                    IconButton(
+                        onClick = navigateBack,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = LocalContentColor.current),
+                        elevation = CustomButtonElevation(all = Dp.Unspecified)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null
@@ -133,6 +155,10 @@ fun TableScreen(
                                 viewModel.resetColumnData()
                             }
                         }
+                    },
+                    deleteLocalFile = { path ->
+                        println("TableScreen::deleteLocalFile($path)")
+                        viewModel.deleteLocalImage(path)
                     }
                 ) { columns ->
                     viewModel.updateColumns(columns)
@@ -148,6 +174,7 @@ fun TableContent(
     tableUiState: TableUiState,
     setFocusedColumn: (String, Boolean) -> Unit = { _, _ -> },
     submitData: () -> Unit = {},
+    deleteLocalFile: (path: String) -> Unit,
     updateColumns: (List<ColumnUiState>) -> Unit,
 ) {
     Box(
@@ -187,20 +214,26 @@ fun TableContent(
                             onDone = {
                                 submitData()
                             },
+                            deleteFile = deleteLocalFile,
                             enabled = !tableUiState.isSubmitting
                         )
                     }
 
-                    Button(
+                    FullWidthButton(
                         modifier = Modifier.padding(16.dp),
                         onClick = submitData,
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(.1f),
+                            disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
+                                .1f
+                            ),
                             disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         ),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            8.dp,
+                            Alignment.CenterHorizontally
+                        ),
                         enabled = !tableUiState.isSubmitting
                     ) {
                         Text("Submit")
@@ -222,8 +255,9 @@ fun TableContent(
 fun LazyGridScope.tableColumns(
     columns: List<ColumnUiState>,
     updateCol: (ColumnUiState) -> Unit,
-    setFocus: (String, Boolean) -> Unit = {_,_ ->},
+    setFocus: (String, Boolean) -> Unit = { _, _ -> },
     onDone: () -> Unit = {},
+    deleteFile: (String) -> Unit,
     enabled: Boolean = true,
 ) {
     itemsIndexed(
@@ -239,6 +273,7 @@ fun LazyGridScope.tableColumns(
             enabled = enabled,
             setFocus = setFocus,
             isLast = idx == columns.size,
+            deleteFile = deleteFile,
             onKeyboardAction = { action ->
                 when (action) {
                     ImeAction.Done -> onDone()
@@ -256,7 +291,8 @@ fun TableColumn(
     enabled: Boolean = true,
     isLast: Boolean = false,
     onKeyboardAction: (ImeAction) -> Unit = {},
-    setFocus: (String, Boolean) -> Unit = {_,_ ->},
+    setFocus: (String, Boolean) -> Unit = { _, _ -> },
+    deleteFile: (String) -> Unit,
     updateValue: (ColumnValue) -> Unit = {},
 ) {
     val modifier = Modifier.fillMaxWidth()
@@ -272,6 +308,31 @@ fun TableColumn(
             },
             enabled = enabled,
         )
+    } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
+        TableColumnFile(
+            label = col.name,
+            value =
+                if (col.value.localUrl == null) null
+                else ImageData(
+                    path = col.value.localUrl,
+                    name = col.value.fileName,
+                    data = col.value.bytes
+                ),
+            deleteFile = { path ->
+                println("TableColumn::deleteFile($path)")
+                if (path != null) deleteFile(path)
+            },
+            setValue = { data ->
+                updateValue(
+                    col.value.copy(
+                        localUrl = data?.path,
+                        fileName = data?.name,
+                        bytes = data?.data
+                    )
+                )
+            }
+        )
+
     } else {
         val imeAction = if (isLast) ImeAction.Done else ImeAction.Next
 
@@ -319,6 +380,7 @@ fun TableColumnInput(
         when (type) {
             ColumnType.Unknown,
             ColumnType.Boolean,
+            ColumnType.File,
             ColumnType.Id,
             ColumnType.Timestamp,
             ColumnType.User -> KeyboardOptions.Default.copy(imeAction = imeAction)
@@ -389,6 +451,101 @@ fun TableColumnInput(
             placeholder = placeholder,
             onFocusChange = onFocusChange,
         )
+    }
+}
+
+@Composable
+fun TableColumnFile(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: ImageData?,
+    setValue: (data: ImageData?) -> Unit,
+    deleteFile: (String?) -> Unit,
+) {
+    val uiCameraController = LocalUiCameraController.current
+    DisposableEffect(uiCameraController) {
+        val listener = ImageCaptureListener { res ->
+            println("TableColumnFile::ImageCaptureListener(${res::class.simpleName})")
+            when (res) {
+                is ImageCaptureAction.Accept -> {
+                    setValue(res.data)
+                    uiCameraController.stopCamera()
+                }
+
+                is ImageCaptureAction.Discard -> {
+                    deleteFile(res.data.path)
+                    setValue(null)
+                }
+            }
+        }
+        uiCameraController.registerListener(listener)
+
+        onDispose {
+            uiCameraController.unregisterListener(listener)
+            uiCameraController.stopCamera()
+        }
+    }
+
+    val size = 56.dp
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(label)
+        AnimatedContent(value) { targetValue ->
+            if (targetValue == null) {
+                IconButton(
+                    modifier = Modifier.requiredSize(size = size),
+                    onClick = { uiCameraController.startCamera() },
+                ) {
+                    Icon(
+                        modifier = Modifier.minimumInteractiveComponentSize(),
+                        imageVector = vectorResource(Res.drawable.camera),
+                        contentDescription = null,
+                    )
+                }
+            } else {
+                val imageResource = loadImage(imagePath = targetValue.path)
+                val loading by imageResource.isLoading
+                val painter by imageResource.state
+
+                Box(
+                    modifier = Modifier
+                        .requiredSize(size = size)
+                        .shadow(2.dp, RoundedCornerShape(8.dp))
+                        .background(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .clickable {
+                            uiCameraController.showPreview(targetValue)
+                        },
+                    contentAlignment = Alignment.Center,
+                    propagateMinConstraints = true,
+                ) {
+                    AnimatedContent(loading) { isLoadingImage ->
+                        if (isLoadingImage) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .padding(all = 4.dp)
+                                    .fillMaxSize(),
+                            )
+                        } else {
+                            when (painter) {
+                                is ImageResourceState.Image<*> ->
+                                    Image(
+                                        painter = (painter as ImageResourceState.Image<*>).data,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.FillWidth,
+                                    )
+
+                                else -> Text("Cannot display image")
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

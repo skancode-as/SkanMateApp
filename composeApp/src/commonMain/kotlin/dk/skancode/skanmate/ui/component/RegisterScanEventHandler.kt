@@ -2,7 +2,6 @@ package dk.skancode.skanmate.ui.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import dk.skancode.skanmate.LocalScanModule
 import dk.skancode.skanmate.ScanEventHandler
 import dk.skancode.skanmate.ScanModule
 
