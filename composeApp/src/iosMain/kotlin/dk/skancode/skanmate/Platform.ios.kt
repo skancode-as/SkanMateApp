@@ -109,7 +109,7 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
                 return@LaunchedEffect
             }
 
-            imageResource.update (BitmapPainter(imageBitmap))
+            imageResource.update(BitmapPainter(imageBitmap))
         }
     }
 

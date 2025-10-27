@@ -1,5 +1,6 @@
 package dk.skancode.skanmate
 
+import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
@@ -219,29 +220,26 @@ class AndroidCameraController(
         val imageName: String,
         val contentResolver: ContentResolver,
     ): ImageCapture.OnImageSavedCallback {
+        @SuppressLint("RestrictedApi")
         override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+            val uri = outputFileResults.savedUri
             val imagePath = outputFileResults.savedUri?.toString()
             println("Image saved on location: $imagePath")
 
-            val bytes: ByteArray? = if (outputFileResults.savedUri != null) {
-                val inputStream = contentResolver.openInputStream(outputFileResults.savedUri!!)
-                if (inputStream == null) {
-                    println("Could not open input stream at imagePath: $imagePath")
-                    null
-                } else {
-                    inputStream.readBytes()
-                }
+            val bytes: ByteArray? = if (uri != null) {
+                contentResolver.openInputStream(uri)?.readBytes()
             } else null
 
             cb(
                 TakePictureResponse(
-                    ok = true,
+                    ok = bytes != null,
                     data = ImageData(
                         path = imagePath,
                         name = imageName,
                         data = bytes,
                     ),
-                    error = null,
+                    error = if (bytes != null) null
+                    else "Could not read data from image location $imagePath",
                 )
             )
         }

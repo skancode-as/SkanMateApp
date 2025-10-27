@@ -1,8 +1,10 @@
 package dk.skancode.skanmate
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import androidx.camera.core.impl.utils.Exif
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +39,7 @@ actual fun CameraView(
     AndroidCameraView(modifier = modifier, cameraUi = cameraUi)
 }
 
+@SuppressLint("RestrictedApi")
 @Composable
 actual fun loadImage(imagePath: String?): ImageResource<Painter> {
     val resource = rememberImageResource()
@@ -46,7 +49,7 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
         if (imagePath == null) return@LaunchedEffect
         resource.load()
 
-        val inputStream = context.contentResolver.openInputStream(imagePath.toUri())
+        var inputStream = context.contentResolver.openInputStream(imagePath.toUri())
 
         if (inputStream == null) {
             println("Could not open input stream at imagePath: $imagePath")
@@ -54,13 +57,26 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
             return@LaunchedEffect
         }
 
-        val bitmap: Bitmap? =
-            BitmapFactory.decodeStream(inputStream)?.rotate(90)
+        val rotation = inputStream.use { inputStream ->
+            val exif = Exif.createFromInputStream(inputStream)
+            exif.rotation
+        }
+        inputStream = context.contentResolver.openInputStream(imagePath.toUri())
 
-        if (bitmap != null) {
-            resource.update(
-                painter = BitmapPainter(bitmap.asImageBitmap())
-            )
+        if (inputStream == null) {
+            println("Could not open input stream at imagePath: $imagePath")
+            resource.error("Could not open input stream at imagePath: $imagePath")
+            return@LaunchedEffect
+        }
+        inputStream.use { inputStream ->
+            val bitmap: Bitmap? =
+                BitmapFactory.decodeStream(inputStream)?.rotate(rotation)
+
+            if (bitmap != null) {
+                resource.update(
+                    painter = BitmapPainter(bitmap.asImageBitmap())
+                )
+            }
         }
     }
 
@@ -68,7 +84,7 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
 }
 
 fun Bitmap.rotate(degrees: Number): Bitmap {
-    val matrix = Matrix().apply { preRotate(degrees.toFloat()) }
+    val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
     val rotatedBitmap = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
     this.recycle()
 
