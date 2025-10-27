@@ -3,7 +3,6 @@ package dk.skancode.skanmate.ui.component
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.ArcAnimationSpec
 import androidx.compose.animation.core.ExperimentalAnimationSpecApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -29,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.CameraController
@@ -82,45 +80,6 @@ fun BoxScope.CameraOverlay(
         zoom = zoom,
         maxButtonSize = maxButtonSize,
         minButtonSize = minButtonSize,
-    )
-}
-
-@Composable
-fun BoxScope.ImagePreviewOverlay(
-    painter: Painter,
-    resetPreviewImageResult: () -> Unit,
-    onAcceptImage: () -> Unit,
-    maxButtonSize: Dp = 64.dp,
-    minButtonSize: Dp = 48.dp,
-) {
-    Image(
-        painter = painter,
-        contentDescription = null,
-        modifier = Modifier
-            .align(Alignment.Center)
-    )
-
-    StopCaptureButton(
-        modifier = Modifier
-            .align(Alignment.TopStart)
-            .padding(top = 16.dp, start = 16.dp),
-        onClick = {
-            resetPreviewImageResult()
-        },
-        retry = true,
-        minSize = minButtonSize,
-        maxSize = maxButtonSize,
-    )
-
-    AcceptImageButton(
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = 16.dp),
-        onClick = {
-            onAcceptImage()
-        },
-        minSize = minButtonSize,
-        maxSize = maxButtonSize,
     )
 }
 
