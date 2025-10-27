@@ -54,6 +54,8 @@ fun BoxScope.CameraOverlay(
     var isCapturing by remember { mutableStateOf(false) }
     var flashState by remember { mutableStateOf(controller.flashState) }
     val zoom by controller.zoomState
+    val canSwitchCamera by controller.canSwitchCamera
+    println("CameraOverlay::canSwitchCamera = $canSwitchCamera")
 
     ImageCapturingOverlay(
         painterIsLoading = isCapturing,
@@ -76,7 +78,12 @@ fun BoxScope.CameraOverlay(
                 flashState = new
             }
         },
-        onSwitchCamera = {},
+        onSwitchCamera = {
+            if (canSwitchCamera) {
+                controller.switchCamera()
+            }
+        },
+        canSwitchCamera = canSwitchCamera,
         zoom = zoom,
         maxButtonSize = maxButtonSize,
         minButtonSize = minButtonSize,
@@ -93,6 +100,7 @@ fun BoxScope.ImageCapturingOverlay(
     onToggleFlash: (Boolean) -> Unit,
     zoom: Float,
     onSwitchCamera: () -> Unit,
+    canSwitchCamera: Boolean,
     maxButtonSize: Dp = 64.dp,
     minButtonSize: Dp = 48.dp,
 ) {
@@ -153,7 +161,8 @@ fun BoxScope.ImageCapturingOverlay(
                 animator.start()
                 onSwitchCamera()
             },
-            sizeValues = SizeValues(min = minButtonSize, max = maxButtonSize)
+            sizeValues = SizeValues(min = minButtonSize, max = maxButtonSize),
+            enabled = canSwitchCamera
         ) {
             Icon(
                 modifier = Modifier

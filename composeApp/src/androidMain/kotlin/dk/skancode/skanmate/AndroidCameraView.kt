@@ -21,14 +21,20 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.common.util.concurrent.ListenableFuture
+import dk.skancode.skanmate.util.unreachable
 import dk.skancode.skanmate.util.clamp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -60,7 +66,9 @@ fun AndroidCameraView(
         p
     }
 
-    val controller = remember(context) { AndroidCameraController(context, cameraExecutor) }
+    val controller = remember(context) {
+        AndroidCameraController(context, cameraProviderFuture, previewView, lifecycleOwner, cameraExecutor)
+    }
 
     Box(
         modifier = modifier
@@ -71,29 +79,10 @@ fun AndroidCameraView(
             factory = { previewView },
             modifier = Modifier.align(Alignment.Center),
             update = {
-                val cameraProvider = cameraProviderFuture.get()
-                val preview = Preview.Builder()
-                    .build()
-                preview.surfaceProvider = previewView.surfaceProvider
-                val cameraSelector =
-                    CameraSelector.Builder()
-                        .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                        .build()
-                val imageCapture = ImageCapture.Builder()
-                    .setTargetRotation(preview.targetRotation)
-                    .build()
-
-                val useCaseGroup = UseCaseGroup.Builder()
-                    .addUseCase(preview)
-                    .addUseCase(imageCapture)
-                    .build()
-                controller.camera = cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, useCaseGroup)
-
-                controller.imageCapture = imageCapture
+                controller.updateView()
             },
             onRelease = {
-                val cameraProvider = cameraProviderFuture.get()
-                cameraProvider.unbindAll()
+                controller.onRelease()
             }
         )
         Box(
@@ -108,10 +97,16 @@ fun AndroidCameraView(
 @OptIn(ExperimentalAtomicApi::class)
 class AndroidCameraController(
     val context: Context,
+    val cameraProviderFuture: ListenableFuture<ProcessCameraProvider>,
+    previewView: PreviewView,
+    val lifecycleOwner: LifecycleOwner,
     val cameraExecutor: Executor,
 ): CameraController {
-    lateinit var imageCapture: ImageCapture
+    private val preview: Preview = Preview.Builder().build()
+    private val imageCapture: ImageCapture
     lateinit var camera: Camera
+    private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
     private val _flashState = AtomicBoolean(false)
     override val flashState: Boolean
         get() = _flashState.load()
@@ -129,17 +124,53 @@ class AndroidCameraController(
     override val zoomState: State<Float>
         @Composable get() = _zoom.collectAsState()
 
+    private val _canSwitchCamera: MutableState<Boolean> = mutableStateOf(false)
+
+    override val canSwitchCamera: State<Boolean>
+        get() = _canSwitchCamera
+
+    init {
+        preview.surfaceProvider = previewView.surfaceProvider
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+            val cameraSelectorSet = cameraProvider.availableCameraInfos
+                .map { info ->  info.lensFacing }
+                .filter { it == CameraSelector.LENS_FACING_BACK || it == CameraSelector.LENS_FACING_FRONT }
+                .toMutableSet()
+            _canSwitchCamera.value = cameraSelectorSet.size > 1
+        }, ContextCompat.getMainExecutor(context))
+
+        imageCapture = ImageCapture.Builder()
+            .setTargetRotation(preview.targetRotation)
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .build()
+    }
+
+    fun updateView() {
+        val cameraProvider = cameraProviderFuture.get()
+        cameraProvider.unbindAll()
+
+        val useCaseGroup = UseCaseGroup.Builder()
+            .addUseCase(preview)
+            .addUseCase(imageCapture)
+            .build()
+
+        camera = cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, useCaseGroup)
+    }
+
+    fun onRelease() {
+        val cameraProvider = cameraProviderFuture.get()
+        cameraProvider.unbindAll()
+    }
+
     private fun updateZoom(newZoom: Float) {
         val actualNewZoom = newZoom.clamp(minZoom, maxZoom)
         _zoom.update { actualNewZoom }
-        println("in: $newZoom, actual: $actualNewZoom, min: $minZoom, max: $maxZoom")
 
         camera.cameraControl.setZoomRatio(actualNewZoom)
     }
 
     override fun setFlashState(v: Boolean): Boolean {
-        if (!this::imageCapture.isInitialized) return false
-
         imageCapture.flashMode = if (v) FLASH_MODE_ON else FLASH_MODE_OFF
         _flashState.store(v)
 
@@ -147,17 +178,6 @@ class AndroidCameraController(
     }
 
     override fun takePicture(cb: (TakePictureResponse) -> Unit) {
-        if (!this::imageCapture.isInitialized) {
-            cb(
-                TakePictureResponse(
-                    ok = false,
-                    data = null,
-                    error = "Controller was not fully initialized"
-                )
-            )
-            return
-        }
-
         val name = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.getDefault())
             .format(System.currentTimeMillis()) + ".jpg"
         val contentValues = ContentValues().apply {
@@ -182,6 +202,18 @@ class AndroidCameraController(
                 contentResolver = context.contentResolver,
             ),
         )
+    }
+
+    override fun switchCamera(): Boolean {
+        cameraSelector = when (cameraSelector) {
+            CameraSelector.DEFAULT_BACK_CAMERA -> CameraSelector.DEFAULT_FRONT_CAMERA
+            CameraSelector.DEFAULT_FRONT_CAMERA -> CameraSelector.DEFAULT_BACK_CAMERA
+            else -> unreachable("[AndroidCameraController] : CameraSelector has been set to a camera other than front or back")
+        }
+
+        updateView()
+
+        return true
     }
 
     private data class CaptureListener(

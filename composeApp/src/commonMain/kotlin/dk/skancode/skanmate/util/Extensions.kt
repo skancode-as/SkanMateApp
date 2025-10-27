@@ -114,3 +114,8 @@ fun Double.toOneDecimalString(): String {
 
     return tmp.toString()
 }
+
+inline fun unreachable(): Nothing = throw UnreachableException()
+inline fun unreachable(reason: String): Nothing = throw UnreachableException(message = "An unreachable statement has been reached: $reason")
+
+class UnreachableException(override val message: String? = "An unreachable statement has been reached"): Exception()

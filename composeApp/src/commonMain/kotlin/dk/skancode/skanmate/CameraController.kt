@@ -7,15 +7,19 @@ import androidx.compose.runtime.State
 interface CameraController {
     val minZoom: Float
     val maxZoom: Float
-    var zoom: Float
 
+    var zoom: Float
     @get:Composable
     val zoomState: State<Float>
+
     val flashState: Boolean
+
+    val canSwitchCamera: State<Boolean>
 
     // Attempts to set the flash state of the camera. Returns true if configuration success
     fun setFlashState(v: Boolean): Boolean
     fun takePicture(cb: (TakePictureResponse) -> Unit)
+    fun switchCamera(): Boolean
 }
 
 data class ImageData(
