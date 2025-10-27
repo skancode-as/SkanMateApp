@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -19,6 +20,7 @@ import androidx.compose.ui.viewinterop.UIKitView
 import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.currentDateTimeUTC
 import dk.skancode.skanmate.util.format
+import dk.skancode.skanmate.util.unreachable
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +33,7 @@ import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceInput
 import platform.AVFoundation.AVCaptureDeviceInput.Companion.deviceInputWithDevice
 import platform.AVFoundation.AVCaptureDevicePositionBack
+import platform.AVFoundation.AVCaptureDevicePositionFront
 import platform.AVFoundation.AVCaptureFlashModeOff
 import platform.AVFoundation.AVCaptureFlashModeOn
 import platform.AVFoundation.AVCapturePhoto
@@ -173,6 +176,9 @@ class IosCameraController(
 
     override val flashState: Boolean
         get() = _flashState.load()
+    private val _canSwitchCamera = mutableStateOf(true)
+    override val canSwitchCamera: State<Boolean>
+        get() = _canSwitchCamera
 
     override val minZoom: Float = 1f
     override val maxZoom: Float
@@ -228,6 +234,42 @@ class IosCameraController(
             else AVCaptureFlashModeOff
         )
         output.capturePhotoWithSettings(settings, OutputCapturer(cb))
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    override fun switchCamera() {
+        externalScope.launch {
+            session.beginConfiguration()
+            val currentInput = session.inputs.firstOrNull() as AVCaptureDeviceInput?
+            if (currentInput != null) {
+                session.removeInput(currentInput)
+                val newDevicePosition = when (currentInput.device.position) {
+                    AVCaptureDevicePositionBack -> AVCaptureDevicePositionFront
+                    AVCaptureDevicePositionFront -> AVCaptureDevicePositionBack
+                    else -> unreachable("[IosCameraController] : Current input devices position is neither Front nor Back")
+                }
+
+                @Suppress("UNCHECKED_CAST")
+                val devices =
+                    AVCaptureDevice.devicesWithMediaType(AVMediaTypeVideo) as List<AVCaptureDevice>
+                val newDevice = devices.firstOrNull { it.position == newDevicePosition }
+                if (newDevice != null) {
+                    val newInput = AVCaptureDeviceInput(newDevice, null)
+                    session.addInput(newInput)
+                } else {
+                    val devicePositionString = when(newDevicePosition) {
+                        AVCaptureDevicePositionBack -> "Back"
+                        AVCaptureDevicePositionFront -> "Front"
+                        else -> unreachable()
+                    }
+                    println("Could not find video device with position: $devicePositionString")
+                }
+            } else {
+                println("Session does not have a input connected")
+            }
+
+            session.commitConfiguration()
+        }
     }
 
     override fun setFlashState(v: Boolean): Boolean {

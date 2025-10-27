@@ -41,8 +41,6 @@ import skanmate.composeapp.generated.resources.zap_off
 import skanmate.composeapp.generated.resources.undo
 import skanmate.composeapp.generated.resources.switch_camera
 
-// TODO: Switch camera, maybe
-
 @Composable
 fun BoxScope.CameraOverlay(
     controller: CameraController,
@@ -55,7 +53,6 @@ fun BoxScope.CameraOverlay(
     var flashState by remember { mutableStateOf(controller.flashState) }
     val zoom by controller.zoomState
     val canSwitchCamera by controller.canSwitchCamera
-    println("CameraOverlay::canSwitchCamera = $canSwitchCamera")
 
     ImageCapturingOverlay(
         painterIsLoading = isCapturing,

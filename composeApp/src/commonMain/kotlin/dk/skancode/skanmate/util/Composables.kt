@@ -47,12 +47,10 @@ fun animator(
     val rotationAnimatable = Animatable(initialValue)
     LaunchedEffect(animator.isStarted.value) {
         if (animator.isStarted.value && !rotationAnimatable.isRunning) {
-            val res = rotationAnimatable.animateTo(targetValue, animationSpec) {
+            rotationAnimatable.animateTo(targetValue, animationSpec) {
                 animator.internalValue.value = value
             }
             animator.isStarted.value = false
-
-            println(res)
         }
     }
 
