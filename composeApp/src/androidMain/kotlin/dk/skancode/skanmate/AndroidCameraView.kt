@@ -204,7 +204,7 @@ class AndroidCameraController(
         )
     }
 
-    override fun switchCamera(): Boolean {
+    override fun switchCamera() {
         cameraSelector = when (cameraSelector) {
             CameraSelector.DEFAULT_BACK_CAMERA -> CameraSelector.DEFAULT_FRONT_CAMERA
             CameraSelector.DEFAULT_FRONT_CAMERA -> CameraSelector.DEFAULT_BACK_CAMERA
@@ -212,8 +212,6 @@ class AndroidCameraController(
         }
 
         updateView()
-
-        return true
     }
 
     private data class CaptureListener(
