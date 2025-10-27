@@ -1,7 +1,8 @@
 package dk.skancode.skanmate.ui.component
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.ArcAnimationSpec
+import androidx.compose.animation.core.ExperimentalAnimationSpecApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -19,9 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,6 +33,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.CameraController
+import dk.skancode.skanmate.util.animator
 import dk.skancode.skanmate.util.toOneDecimalString
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
@@ -124,6 +124,7 @@ fun BoxScope.ImagePreviewOverlay(
     )
 }
 
+@OptIn(ExperimentalAnimationSpecApi::class)
 @Composable
 fun BoxScope.ImageCapturingOverlay(
     painterIsLoading: Boolean,
@@ -180,27 +181,17 @@ fun BoxScope.ImageCapturingOverlay(
             maxSize = maxButtonSize,
         )
 
-        var startRotation by remember { mutableStateOf(false) }
-        var rotation by remember { mutableFloatStateOf(0f) }
-        val rotationAnimatable = Animatable(0f)
-        rotationAnimatable.updateBounds(0f, 360f)
-        LaunchedEffect(startRotation) {
-            println("StartRotation: $startRotation, animatable: (isRunning: ${rotationAnimatable.isRunning}, value: ${rotationAnimatable.value}, target: ${rotationAnimatable.targetValue})")
-            if (startRotation && !rotationAnimatable.isRunning) {
-                val res = rotationAnimatable.animateTo(360f) {
-                    println("animatable: (isRunning: ${isRunning}, value: ${value}, target: ${targetValue})")
-                    rotation = value
-                }
-                startRotation = false
-
-                println(res)
-            }
-        }
+        val animator = animator(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = ArcAnimationSpec(durationMillis = 400)
+        )
+        val rotation by animator.value
         IconButton(
             modifier = Modifier
                 .align(Alignment.CenterEnd),
             onClick = {
-                startRotation = true
+                animator.start()
                 onSwitchCamera()
             },
             sizeValues = SizeValues(min = minButtonSize, max = maxButtonSize)
@@ -213,7 +204,6 @@ fun BoxScope.ImageCapturingOverlay(
                 contentDescription = null,
             )
         }
-
     }
 }
 
