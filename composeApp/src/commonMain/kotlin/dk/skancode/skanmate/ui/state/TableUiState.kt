@@ -2,6 +2,7 @@ package dk.skancode.skanmate.ui.state
 
 import dk.skancode.skanmate.data.model.ColumnModel
 import dk.skancode.skanmate.data.model.ColumnType
+import dk.skancode.skanmate.data.model.ColumnValidation
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.data.model.TableModel
 
@@ -35,7 +36,28 @@ fun TableModel?.toUiState(isFetching: Boolean): MutableTableUiState =
         isSubmitting = false,
         model = this,
         columns = this?.columns?.map {
-            it.toUiState()
+            val col = it.toUiState()
+            if (col.validations.any { v -> v is ColumnValidation.ConstantValue }) {
+                val v = (col.validations.first { v -> v is ColumnValidation.ConstantValue } as ColumnValidation.ConstantValue).value
+                col.copy(
+                    value = when(col.value) {
+                        is ColumnValue.Text -> col.value.copy(v)
+                        is ColumnValue.Numeric -> col.value.copy(v.toFloatOrNull())
+                        else -> col.value
+                    }
+                )
+            } else if (col.validations.any { v -> v is ColumnValidation.DefaultValue }) {
+                val v = (col.validations.first { v -> v is ColumnValidation.DefaultValue } as ColumnValidation.DefaultValue).value
+                col.copy(
+                    value = when(col.value) {
+                        is ColumnValue.Text -> col.value.copy(v)
+                        is ColumnValue.Numeric -> col.value.copy(v.toFloatOrNull())
+                        else -> col.value
+                    }
+                )
+            } else {
+                col
+            }
         } ?: emptyList(),
         focusedColumnId = null,
         status = if (this == null) FetchStatus.NotFound else FetchStatus.Success
@@ -48,6 +70,7 @@ fun ColumnModel.toUiState(): ColumnUiState = ColumnUiState(
     value = ColumnValue.fromType(type),
     type = type,
     width = width,
+    validations = validations,
 )
 
 data class ColumnUiState(
@@ -57,4 +80,5 @@ data class ColumnUiState(
     val value: ColumnValue,
     val type: ColumnType,
     val width: Float,
+    val validations: List<ColumnValidation>
 )

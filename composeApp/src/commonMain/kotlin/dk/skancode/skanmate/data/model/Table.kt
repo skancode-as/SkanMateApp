@@ -43,6 +43,7 @@ data class ColumnModel(
     val name: String,
     val width: Float,
     val type: ColumnType,
+    val validations: List<ColumnValidation>,
 )
 
 @Serializable
@@ -74,6 +75,7 @@ data class TableColumnDTO(
     val displayName: String,
     val width: Float,
     val type: ColumnType,
+    val validations: List<ColumnValidation>
 ) {
     fun toModel(): ColumnModel = ColumnModel(
         id = id,
@@ -81,6 +83,7 @@ data class TableColumnDTO(
         name = displayName,
         width = width,
         type = type,
+        validations = validations,
     )
 }
 
