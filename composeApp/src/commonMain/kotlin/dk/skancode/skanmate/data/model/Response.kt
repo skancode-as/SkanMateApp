@@ -14,7 +14,7 @@ data class ErrorResponse(val requestId: String, val code: String, val error: Str
 
 @Serializable
 data class TableRowErrors(
-    @SerialName("fieldErrors")
+    @SerialName("0")
     val columnErrors: Map<String, List<String>>
 ) {
     companion object {

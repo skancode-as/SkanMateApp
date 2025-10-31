@@ -44,7 +44,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 // TODO: Haptic feedback
 
 private const val BASE_URL =
-    "https://skanmate-git-feat-insert-data-endpoint-skan-code-team.vercel.app/api/v1"
+    "https://skanmate-git-fix-table-validation-skan-code-team.vercel.app/api/v1"
 private val httpClient = HttpClient {
     install(ContentNegotiation) {
         json(jsonSerializer)

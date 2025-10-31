@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">SkanMate</string>
+    <string name="column_type_text">Text</string>
+    <string name="column_type_numeric">Number</string>
+    <string name="column_type_file">File</string>
+    <string name="column_type_boolean">Yes/No</string>
+    <string name="column_type_null">Unknown</string>
+    <string name="validation_error_invalid_type">Value of type %1$s is not allowed for validation %2$s</string>
+    <string name="validation_error_min_length">Value must be at least %1$d characters</string>
+    <string name="validation_error_max_length">Value cannot be longer than %1$d characters</string>
+    <string name="validation_error_min_value">Value must be greater than or equal to %1$d</string>
+    <string name="validation_error_max_value">Value must be less than or equal to %1$d</string>
+    <string name="validation_error_regex">Value did not match the required pattern: %1$s</string>
+    <string name="validation_error_constant_value">Value must be equal to %1$d</string>
+    <string name="validation_error_email">Value must be a valid email</string>
+    <string name="validation_error_required">Field is required and cannot be empty</string>
+    <string name="validation_error_server">%1$s</string>
+</resources>

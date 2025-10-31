@@ -6,13 +6,17 @@ import dk.skancode.skanmate.ScanEvent
 import dk.skancode.skanmate.ScanEventHandler
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.data.model.TableSummaryModel
+import dk.skancode.skanmate.data.model.ValidationResult
 import dk.skancode.skanmate.data.model.rowDataOf
+import dk.skancode.skanmate.data.model.validateWithErrors
 import dk.skancode.skanmate.data.service.TableService
 import dk.skancode.skanmate.deleteFile
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.ui.state.MutableTableUiState
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.state.toUiState
+import dk.skancode.skanmate.ui.state.validate
+import dk.skancode.skanmate.util.InternalStringResource
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
@@ -20,6 +24,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.validation_error_server
 
 class TableViewModel(
     val tableService: TableService,
@@ -78,19 +84,47 @@ class TableViewModel(
         deleteFile(path)
     }
 
+    fun validateColumn(column: ColumnUiState, value: ColumnValue): Boolean {
+        val validationResults = column.validations.validateWithErrors(value)
+
+        _uiState.update {
+            val errors = it.validationErrors.toMutableMap()
+            errors[column.name] = validationResults.mapNotNull { v -> v as? ValidationResult.Error }
+            it.copy(
+                validationErrors = errors
+            )
+        }
+
+        return validationResults.all { it == ValidationResult.Ok }
+    }
     fun submitData(cb: (Boolean) -> Unit) {
         _uiState.update {
             it.copy(isSubmitting = true)
         }
+
+        val state = _uiState.value
+        val columnValidations = state.columns.map { col -> col.validate() }
+        if (columnValidations.any {v -> !v.ok}) {
+            _uiState.update {
+                it.copy(
+                    isSubmitting = false,
+                    validationErrors = mapOf(
+                        *columnValidations.map { v -> v.displayName to v.errors }.toTypedArray()
+                    )
+                )
+            }
+            return
+        }
+
         viewModelScope.launch {
             var res = false
+            var validationErrors: Map<String, List<InternalStringResource>> = emptyMap()
             try {
-                val state = _uiState.value
                 if (state.model != null) {
                     val deferred = mutableListOf<Deferred<Unit>>()
                     val columns: List<ColumnUiState> = state.columns.map { col ->
                         when {
-                            col.value is ColumnValue.File && col.value.fileName != null && col.value.bytes != null -> {
+                            col.value is ColumnValue.File && col.value.fileName != null && col.value.bytes != null && !col.value.isUploaded -> {
                                 val bytes = col.value.bytes
 
                                 val objectUrl = tableService.uploadImage(
@@ -102,21 +136,25 @@ class TableViewModel(
                                     println("Could not upload image")
                                 } else {
                                     println("Image uploaded to $objectUrl")
+                                    // TODO: Do not start deleting images before data has been sent to server successfully
                                     if (col.value.localUrl != null) {
+                                        // TODO: Only keep the string around, dont create the deferred yet
                                         deferred.add(deleteLocalImage(col.value.localUrl))
                                     }
                                 }
 
                                 col.copy(
-                                    value = col.value.copy(objectUrl = objectUrl)
+                                    value = col.value.copy(objectUrl = objectUrl, isUploaded = true)
                                 )
                             }
 
-                            col.value is ColumnValue.File -> {
+                            col.value is ColumnValue.File && !col.value.isUploaded -> {
                                 col.copy(
                                     value = col.value.copy(objectUrl = "")
                                 )
                             }
+
+                            // TODO: add case for value isUploaded, and add value.localUrl to delete list
 
                             else -> col
                         }
@@ -127,16 +165,23 @@ class TableViewModel(
                         tableId = state.model.id,
                         row = rowDataOf(columns),
                     )
-                    errors?.columnErrors?.map { (k, v) ->
-                        columns.find { col -> col.dbName == k }?.also { col ->
+                    val err = errors?.columnErrors?.mapNotNull { (k, v) ->
+                        columns.find { col -> col.dbName == k }?.let { col ->
                             println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}}")
+                            col.name to v.map { serverError -> InternalStringResource(Res.string.validation_error_server, listOf(serverError)) }
                         }
+                    }?.toTypedArray()
+                    if (err != null && err.isNotEmpty()) {
+                        validationErrors = mapOf(*err)
                     }
                     res = ok
                 }
             } finally {
                 _uiState.update {
-                    it.copy(isSubmitting = false)
+                    it.copy(
+                        isSubmitting = false,
+                        validationErrors = validationErrors,
+                    )
                 }
                 cb(res)
             }
