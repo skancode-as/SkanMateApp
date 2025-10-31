@@ -352,7 +352,8 @@ fun TableColumn(
                         col.value.copy(
                             localUrl = data?.path,
                             fileName = data?.name,
-                            bytes = data?.data
+                            bytes = data?.data,
+                            isUploaded = col.value.isUploaded && data != null
                         )
                     )
                 }

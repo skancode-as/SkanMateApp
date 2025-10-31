@@ -17,6 +17,7 @@ import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.state.toUiState
 import dk.skancode.skanmate.ui.state.validate
 import dk.skancode.skanmate.util.InternalStringResource
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
@@ -79,7 +80,7 @@ class TableViewModel(
         }
     }
 
-    fun deleteLocalImage(path: String): Deferred<Unit> = viewModelScope.async {
+    fun deleteLocalImage(path: String, start: CoroutineStart = CoroutineStart.DEFAULT): Deferred<Unit> = viewModelScope.async(start = start) {
         println("TableViewModel::deleteLocalImage")
         deleteFile(path)
     }
@@ -136,10 +137,8 @@ class TableViewModel(
                                     println("Could not upload image")
                                 } else {
                                     println("Image uploaded to $objectUrl")
-                                    // TODO: Do not start deleting images before data has been sent to server successfully
                                     if (col.value.localUrl != null) {
-                                        // TODO: Only keep the string around, dont create the deferred yet
-                                        deferred.add(deleteLocalImage(col.value.localUrl))
+                                        deferred.add(deleteLocalImage(col.value.localUrl, CoroutineStart.LAZY))
                                     }
                                 }
 
@@ -154,12 +153,16 @@ class TableViewModel(
                                 )
                             }
 
-                            // TODO: add case for value isUploaded, and add value.localUrl to delete list
+                            col.value is ColumnValue.File && col.value.isUploaded -> {
+                                if (col.value.localUrl != null) {
+                                    deferred.add(deleteLocalImage(col.value.localUrl, CoroutineStart.LAZY))
+                                }
+                                col
+                            }
 
                             else -> col
                         }
                     }
-                    deferred.forEach { it.await() }
 
                     val (ok, errors) = tableService.submitRow(
                         tableId = state.model.id,
@@ -173,6 +176,11 @@ class TableViewModel(
                     }?.toTypedArray()
                     if (err != null && err.isNotEmpty()) {
                         validationErrors = mapOf(*err)
+                    }
+                    if (ok) {
+                        deferred.forEach { it.await() }
+                    } else {
+                        deferred.forEach { it.cancel() }
                     }
                     res = ok
                 }
