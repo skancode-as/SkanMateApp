@@ -42,6 +42,7 @@ private object ColumnValueSerializer : KSerializer<ColumnValue> {
             is ColumnValue.Numeric -> if(value.num != null) encoder.encodeDouble(value.num.toDouble()) else encoder.encodeNull()
             is ColumnValue.Text -> encoder.encodeString(value.text)
             is ColumnValue.File -> if(value.objectUrl != null) encoder.encodeString(value.objectUrl) else encoder.encodeNull()
+            is ColumnValue.OptionList -> if (value.selected != null) encoder.encodeString(value.selected) else encoder.encodeNull()
         }
     }
 
@@ -93,6 +94,10 @@ sealed class ColumnValue {
         }
     }
 
+    data class OptionList(val options: List<String>, val selected: String? = null): ColumnValue() {
+        override fun clone(): ColumnValue = this.copy()
+    }
+
     data object Null : ColumnValue() {
         override fun clone(): ColumnValue = this
     }
@@ -100,7 +105,7 @@ sealed class ColumnValue {
     abstract fun clone(): ColumnValue
 
     companion object {
-        fun fromType(t: ColumnType): ColumnValue = when (t) {
+        fun fromType(t: ColumnType, options: List<String>): ColumnValue = when (t) {
             ColumnType.Boolean -> Boolean()
             ColumnType.Numeric -> Numeric()
             ColumnType.Text -> Text()
@@ -109,6 +114,7 @@ sealed class ColumnValue {
             ColumnType.Unknown -> Null
             ColumnType.Id -> Null
             ColumnType.File -> File()
+            ColumnType.List -> OptionList(options = options)
         }
     }
 }
