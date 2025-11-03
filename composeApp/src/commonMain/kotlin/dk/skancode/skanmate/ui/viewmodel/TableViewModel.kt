@@ -6,16 +6,16 @@ import dk.skancode.skanmate.ScanEvent
 import dk.skancode.skanmate.ScanEventHandler
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.data.model.TableSummaryModel
-import dk.skancode.skanmate.data.model.ValidationResult
+import dk.skancode.skanmate.data.model.ConstraintCheckResult
 import dk.skancode.skanmate.data.model.rowDataOf
-import dk.skancode.skanmate.data.model.validateWithErrors
+import dk.skancode.skanmate.data.model.check
 import dk.skancode.skanmate.data.service.TableService
 import dk.skancode.skanmate.deleteFile
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.ui.state.MutableTableUiState
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.state.toUiState
-import dk.skancode.skanmate.ui.state.validate
+import dk.skancode.skanmate.ui.state.check
 import dk.skancode.skanmate.util.InternalStringResource
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import skanmate.composeapp.generated.resources.Res
-import skanmate.composeapp.generated.resources.validation_error_server
+import skanmate.composeapp.generated.resources.constraint_error_server
 
 class TableViewModel(
     val tableService: TableService,
@@ -86,17 +86,17 @@ class TableViewModel(
     }
 
     fun validateColumn(column: ColumnUiState, value: ColumnValue): Boolean {
-        val validationResults = column.validations.validateWithErrors(value)
+        val constraintResults = column.constraints.check(value)
 
         _uiState.update {
-            val errors = it.validationErrors.toMutableMap()
-            errors[column.name] = validationResults.mapNotNull { v -> v as? ValidationResult.Error }
+            val errors = it.constraintErrors.toMutableMap()
+            errors[column.name] = constraintResults.mapNotNull { v -> v as? ConstraintCheckResult.Error }
             it.copy(
-                validationErrors = errors
+                constraintErrors = errors
             )
         }
 
-        return validationResults.all { it == ValidationResult.Ok }
+        return constraintResults.all { it == ConstraintCheckResult.Ok }
     }
     fun submitData(cb: (Boolean) -> Unit) {
         _uiState.update {
@@ -104,13 +104,13 @@ class TableViewModel(
         }
 
         val state = _uiState.value
-        val columnValidations = state.columns.map { col -> col.validate() }
-        if (columnValidations.any {v -> !v.ok}) {
+        val checkResults = state.columns.map { col -> col.check() }
+        if (checkResults.any { v -> !v.ok}) {
             _uiState.update {
                 it.copy(
                     isSubmitting = false,
-                    validationErrors = mapOf(
-                        *columnValidations.map { v -> v.displayName to v.errors }.toTypedArray()
+                    constraintErrors = mapOf(
+                        *checkResults.map { v -> v.displayName to v.errors }.toTypedArray()
                     )
                 )
             }
@@ -119,7 +119,7 @@ class TableViewModel(
 
         viewModelScope.launch {
             var res = false
-            var validationErrors: Map<String, List<InternalStringResource>> = emptyMap()
+            var constraintErrors: Map<String, List<InternalStringResource>> = emptyMap()
             try {
                 if (state.model != null) {
                     val deferred = mutableListOf<Deferred<Unit>>()
@@ -171,11 +171,11 @@ class TableViewModel(
                     val err = errors?.columnErrors?.mapNotNull { (k, v) ->
                         columns.find { col -> col.dbName == k }?.let { col ->
                             println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}}")
-                            col.name to v.map { serverError -> InternalStringResource(Res.string.validation_error_server, listOf(serverError)) }
+                            col.name to v.map { serverError -> InternalStringResource(Res.string.constraint_error_server, listOf(serverError)) }
                         }
                     }?.toTypedArray()
                     if (err != null && err.isNotEmpty()) {
-                        validationErrors = mapOf(*err)
+                        constraintErrors = mapOf(*err)
                     }
                     if (ok) {
                         deferred.forEach { it.await() }
@@ -188,7 +188,7 @@ class TableViewModel(
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        validationErrors = validationErrors,
+                        constraintErrors = constraintErrors,
                     )
                 }
                 cb(res)
@@ -234,6 +234,7 @@ class TableViewModel(
                             is ColumnValue.Boolean,
                             is ColumnValue.Numeric,
                             is ColumnValue.File,
+                            is ColumnValue.OptionList,
                             ColumnValue.Null -> focusedColumn.value.clone()
                         }
                     )

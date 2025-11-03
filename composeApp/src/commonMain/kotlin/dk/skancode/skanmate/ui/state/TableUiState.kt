@@ -2,13 +2,15 @@ package dk.skancode.skanmate.ui.state
 
 import dk.skancode.skanmate.data.model.ColumnModel
 import dk.skancode.skanmate.data.model.ColumnType
-import dk.skancode.skanmate.data.model.ColumnValidation
+import dk.skancode.skanmate.data.model.ColumnConstraint
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.data.model.TableModel
-import dk.skancode.skanmate.data.model.ValidationResult
-import dk.skancode.skanmate.data.model.validateWithErrors
+import dk.skancode.skanmate.data.model.ConstraintCheckResult
+import dk.skancode.skanmate.data.model.check
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.reduceDefault
+import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.constraint_error_invalid_option
 
 sealed class FetchStatus {
     data object Undetermined : FetchStatus()
@@ -23,7 +25,7 @@ interface TableUiState {
     val columns: List<ColumnUiState>
     val focusedColumnId: String?
     val status: FetchStatus
-    val validationErrors: Map<String, List<InternalStringResource>>
+    val constraintErrors: Map<String, List<InternalStringResource>>
 }
 
 data class MutableTableUiState(
@@ -33,7 +35,7 @@ data class MutableTableUiState(
     override val columns: List<ColumnUiState> = emptyList(),
     override val focusedColumnId: String? = null,
     override val status: FetchStatus = FetchStatus.Undetermined,
-    override val validationErrors: Map<String, List<InternalStringResource>> = emptyMap()
+    override val constraintErrors: Map<String, List<InternalStringResource>> = emptyMap()
 ) : TableUiState
 
 fun TableModel?.toUiState(isFetching: Boolean): MutableTableUiState =
@@ -52,13 +54,13 @@ fun ColumnModel.toUiState(): ColumnUiState = ColumnUiState(
     id = id,
     name = name,
     dbName = dbName,
-    value = ColumnValue.fromType(type),
+    value = ColumnValue.fromType(type, listOptions),
     type = type,
     width = width,
-    validations = validations,
+    constraints = constraints,
 ).let { col ->
-    if (col.validations.any { v -> v is ColumnValidation.ConstantValue }) {
-        val v = (col.validations.first { v -> v is ColumnValidation.ConstantValue } as ColumnValidation.ConstantValue).value
+    if (col.constraints.any { v -> v is ColumnConstraint.ConstantValue }) {
+        val v = (col.constraints.first { v -> v is ColumnConstraint.ConstantValue } as ColumnConstraint.ConstantValue).value
         col.copy(
             value = when(col.value) {
                 is ColumnValue.Text -> col.value.copy(v)
@@ -66,8 +68,8 @@ fun ColumnModel.toUiState(): ColumnUiState = ColumnUiState(
                 else -> col.value
             }
         )
-    } else if (col.validations.any { v -> v is ColumnValidation.DefaultValue }) {
-        val v = (col.validations.first { v -> v is ColumnValidation.DefaultValue } as ColumnValidation.DefaultValue).value
+    } else if (col.constraints.any { v -> v is ColumnConstraint.DefaultValue }) {
+        val v = (col.constraints.first { v -> v is ColumnConstraint.DefaultValue } as ColumnConstraint.DefaultValue).value
         col.copy(
             value = when(col.value) {
                 is ColumnValue.Text -> col.value.copy(v)
@@ -87,25 +89,42 @@ data class ColumnUiState(
     val value: ColumnValue,
     val type: ColumnType,
     val width: Float,
-    val validations: List<ColumnValidation>
+    val constraints: List<ColumnConstraint>
 )
 
-data class ColumnValidationResult(val displayName: String, val ok: Boolean, val errors: List<InternalStringResource>)
-fun ColumnUiState.validate(): ColumnValidationResult {
-    val results = validations.validateWithErrors(value)
+fun columnCheckError(displayName: String, vararg errors: InternalStringResource): ColumnCheckResult {
+    return ColumnCheckResult(
+        displayName = displayName,
+        ok = false,
+        errors = listOf(*errors),
+    )
+}
+
+data class ColumnCheckResult(val displayName: String, val ok: Boolean, val errors: List<InternalStringResource>)
+fun ColumnUiState.check(): ColumnCheckResult {
+    if (value is ColumnValue.OptionList && !value.selected.isNullOrBlank() && !value.options.contains(value.selected)) {
+        return columnCheckError(
+            displayName = name,
+            InternalStringResource(
+                resource = Res.string.constraint_error_invalid_option,
+            )
+        )
+    }
+
+    val results = constraints.check(value)
 
     return results.reduceDefault(
-        default = ColumnValidationResult(
+        default = ColumnCheckResult(
             displayName = name,
             ok = true,
             errors = emptyList(),
         )
     ) { acc, cur ->
         acc.copy(
-            ok = acc.ok && cur == ValidationResult.Ok,
+            ok = acc.ok && cur == ConstraintCheckResult.Ok,
             errors = listOfNotNull(
                 *acc.errors.toTypedArray(),
-                cur as? ValidationResult.Error
+                cur as? ConstraintCheckResult.Error
             )
         )
     }

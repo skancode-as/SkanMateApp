@@ -26,7 +26,7 @@ import dk.skancode.skanmate.util.composeString
 @Composable
 fun ColumnWithErrorLayout(
     modifier: Modifier = Modifier,
-    validationErrors: List<InternalStringResource>,
+    errors: List<InternalStringResource>,
     content: @Composable () -> Unit,
 ) {
     Layout(
@@ -41,8 +41,8 @@ fun ColumnWithErrorLayout(
                 content()
             }
 
-            if (validationErrors.isNotEmpty()) {
-                val validationErrorMessages = validationErrors.map { it.composeString() }
+            if (errors.isNotEmpty()) {
+                val errorMessages = errors.map { it.composeString() }
                 Box(
                     modifier = Modifier
                         .layoutId(ColumnWithErrorMeasurePolicy.ERROR_ID)
@@ -52,7 +52,7 @@ fun ColumnWithErrorLayout(
                 ) {
                     Text(
                         modifier = Modifier.padding(horizontal = 12.dp),
-                        text = validationErrorMessages
+                        text = errorMessages
                             .joinToString("\n"),
                         color = MaterialTheme.colorScheme.error,
                     )
