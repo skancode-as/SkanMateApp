@@ -376,6 +376,7 @@ fun TableColumn(
             )
         } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
             TableColumnFile(
+                modifier = Modifier.fillMaxWidth(),
                 label = col.name,
                 value =
                     if (col.value.localUrl == null) null
@@ -397,7 +398,8 @@ fun TableColumn(
                             isUploaded = col.value.isUploaded && data != null
                         )
                     )
-                }
+                },
+                enabled = enabled,
             )
         } else if (col.type == ColumnType.List && col.value is ColumnValue.OptionList) {
             TableColumnList(
@@ -410,6 +412,7 @@ fun TableColumn(
                 option = col.value.selected,
                 options = col.value.options,
                 label = col.name,
+                enabled = enabled,
             )
         } else {
             TableColumnInput(
@@ -569,6 +572,7 @@ fun TableColumnFile(
     value: ImageData?,
     setValue: (data: ImageData?) -> Unit,
     deleteFile: (String?) -> Unit,
+    enabled: Boolean = true,
 ) {
     val imageResource = LocalImageResource.current
     val loading = imageResource?.isLoading?.value ?: true
@@ -596,7 +600,7 @@ fun TableColumnFile(
     val size = 56.dp
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(label)
         AnimatedContent(value) { targetValue ->
@@ -607,6 +611,7 @@ fun TableColumnFile(
                         focusManager.clearFocus()
                         uiCameraController.startCamera(listener)
                     },
+                    enabled = enabled,
                 ) {
                     Icon(
                         modifier = Modifier.minimumInteractiveComponentSize(),
@@ -670,6 +675,7 @@ fun TableColumnList(
     selectOption: (String) -> Unit,
     option: String?,
     options: List<String>,
+    enabled: Boolean = true,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -682,9 +688,16 @@ fun TableColumnList(
             value = selected,
             onValueChange = { selected = it },
             label = { Text(label) },
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            placeholder = {
+                Text("Select $label...")
+            },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
             singleLine = true,
             readOnly = true,
+            enabled = enabled,
+            onFocusChange = {
+                expanded = it
+            }
         )
         ExposedDropdownMenu(
             expanded = expanded,
