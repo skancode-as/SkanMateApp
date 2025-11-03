@@ -134,6 +134,7 @@ fun App() {
                                 ImagePreview(
                                     modifier = Modifier.padding(padding),
                                     preview = (previewState as ImageResourceState.Image<Painter>).data,
+                                    resetPreviewImageResult = { preview.reset() }
                                 )
                             }
 

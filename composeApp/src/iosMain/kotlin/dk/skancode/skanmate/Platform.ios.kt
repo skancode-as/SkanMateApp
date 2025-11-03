@@ -17,6 +17,9 @@ import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.makeFromEncoded
 import platform.Foundation.*
@@ -97,19 +100,20 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
     }
 
     LaunchedEffect(fileManager, documentDir, imagePath) {
-        if (documentDir != null && fileManager.fileExistsAtPath("$documentDir/$imagePath")) {
-            imageResource.load()
-            val data: NSData = NSData.create(contentsOfFile = "$documentDir/$imagePath")!!
+        launch(Dispatchers.IO) {
+            if (documentDir != null && fileManager.fileExistsAtPath("$documentDir/$imagePath")) {
+                val data: NSData = NSData.create(contentsOfFile = "$documentDir/$imagePath")!!
 
-            val imageBitmap = try {
-                Image.makeFromEncoded(data).toComposeImageBitmap()
-            } catch (e: Exception) {
-                println(e)
-                imageResource.error(e.message ?: "Could not make Image bitmap from NSData")
-                return@LaunchedEffect
+                val imageBitmap = try {
+                    Image.makeFromEncoded(data).toComposeImageBitmap()
+                } catch (e: Exception) {
+                    println(e)
+                    imageResource.error(e.message ?: "Could not make Image bitmap from NSData")
+                    return@launch
+                }
+
+                imageResource.update(BitmapPainter(imageBitmap))
             }
-
-            imageResource.update(BitmapPainter(imageBitmap))
         }
     }
 

@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,9 +46,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +60,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
@@ -67,6 +72,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.ImageData
+import dk.skancode.skanmate.ImageResource
 import dk.skancode.skanmate.ImageResourceState
 import dk.skancode.skanmate.data.model.ColumnType
 import dk.skancode.skanmate.data.model.ColumnValidation
@@ -93,6 +99,9 @@ import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.camera
 import skanmate.composeapp.generated.resources.triangle_alert
 import kotlin.math.roundToInt
+
+private val LocalImageResourceMap: ProvidableCompositionLocal<Map<String, ImageResource<Painter>>> = compositionLocalOf { emptyMap() }
+private val LocalImageResource: ProvidableCompositionLocal<ImageResource<Painter>?> = compositionLocalOf { null }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -186,75 +195,101 @@ fun TableContent(
     validateColumn: (ColumnUiState, ColumnValue) -> Boolean,
     updateColumns: (List<ColumnUiState>) -> Unit,
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-        propagateMinConstraints = true,
-    ) {
-        AnimatedContent(
-            targetState = tableUiState.isFetching,
-        ) { isFetching ->
-            val columns = tableUiState.columns
-            if (isFetching) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp).align(Alignment.Center)
-                )
+    val imageResourceMap = mapOf(
+        *tableUiState.columns.mapNotNull { col ->
+            if (col.type is ColumnType.File && col.value is ColumnValue.File) {
+                col.name to loadImage(col.value.localUrl)
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                ) {
-                    LazyVerticalGrid(
-                        modifier = Modifier.weight(1f, fill = true),
-                        columns = GridCells.Fixed(12),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                null
+            }
+        }.toTypedArray()
+    )
+    val focusManager = LocalFocusManager.current
+
+    CompositionLocalProvider(LocalImageResourceMap provides imageResourceMap) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .pointerInput(focusManager) {
+                    detectTapGestures { focusManager.clearFocus() }
+                },
+            contentAlignment = Alignment.Center,
+            propagateMinConstraints = true,
+        ) {
+            AnimatedContent(
+                targetState = tableUiState.isFetching,
+            ) { isFetching ->
+                val columns = tableUiState.columns
+                if (isFetching) {
+                    Box(
+                        modifier = modifier
+                            .requiredSize(48.dp)
+                            .align(Alignment.Center) ,
+                        contentAlignment = Alignment.Center,
+                        propagateMinConstraints = true,
                     ) {
-                        tableColumns(
-                            columns = columns.filter { col -> !col.type.autogenerated && col.validations.none { v -> v is ColumnValidation.ConstantValue } },
-                            validationErrors = tableUiState.validationErrors,
-                            updateCol = { col ->
-                                updateColumns(
-                                    columns
-                                        .map { c -> if (c.id == col.id) col else c }
-                                )
-                            },
-                            setFocus = setFocusedColumn,
-                            onDone = {
-                                submitData()
-                            },
-                            deleteFile = deleteLocalFile,
-                            validateColumn = validateColumn,
-                            enabled = !tableUiState.isSubmitting
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(4.dp)
                         )
                     }
-
-                    FullWidthButton(
-                        modifier = Modifier.padding(16.dp),
-                        onClick = submitData,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
-                                .15f
-                            ),
-                            disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(
-                            8.dp,
-                            Alignment.CenterHorizontally
-                        ),
-                        enabled = !tableUiState.isSubmitting && tableUiState.validationErrors.values.all { list -> list.isEmpty() }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize(),
                     ) {
-                        Text("Submit")
-                        AnimatedVisibility(tableUiState.isSubmitting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = LocalContentColor.current,
-                                trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
-                                strokeWidth = 2.dp,
+                        LazyVerticalGrid(
+                            modifier = Modifier.weight(1f, fill = true),
+                            columns = GridCells.Fixed(12),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            tableColumns(
+                                columns = columns.filter { col -> !col.type.autogenerated && col.validations.none { v -> v is ColumnValidation.ConstantValue } },
+                                validationErrors = tableUiState.validationErrors,
+                                updateCol = { col ->
+                                    updateColumns(
+                                        columns
+                                            .map { c -> if (c.id == col.id) col else c }
+                                    )
+                                },
+                                setFocus = setFocusedColumn,
+                                onDone = {
+                                    submitData()
+                                },
+                                deleteFile = deleteLocalFile,
+                                validateColumn = validateColumn,
+                                enabled = !tableUiState.isSubmitting
                             )
+                        }
+
+                        FullWidthButton(
+                            modifier = Modifier.padding(16.dp),
+                            onClick = submitData,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
+                                    .15f
+                                ),
+                                disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                8.dp,
+                                Alignment.CenterHorizontally
+                            ),
+                            enabled = !tableUiState.isSubmitting && tableUiState.validationErrors.values.all { list -> list.isEmpty() }
+                        ) {
+                            Text("Submit")
+                            AnimatedVisibility(tableUiState.isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = LocalContentColor.current,
+                                    trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
+                                    strokeWidth = 2.dp,
+                                )
+                            }
                         }
                     }
                 }
@@ -281,23 +316,25 @@ fun LazyGridScope.tableColumns(
         },
         contentType = { _, col -> col.type }
     ) { idx, col ->
-        TableColumn(
-            col = col,
-            errors = validationErrors[col.name] ?: emptyList(),
-            enabled = enabled,
-            setFocus = setFocus,
-            isLast = idx == columns.size - 1,
-            deleteFile = deleteFile,
-            onKeyboardAction = { action ->
-                when (action) {
-                    ImeAction.Done -> onDone()
+        CompositionLocalProvider(LocalImageResource provides LocalImageResourceMap.current[col.name]) {
+            TableColumn(
+                col = col,
+                errors = validationErrors[col.name] ?: emptyList(),
+                enabled = enabled,
+                setFocus = setFocus,
+                isLast = idx == columns.size - 1,
+                deleteFile = deleteFile,
+                onKeyboardAction = { action ->
+                    when (action) {
+                        ImeAction.Done -> onDone()
+                    }
+                },
+                validateValue = { value ->
+                    validateColumn(col, value)
                 }
-            },
-            validateValue = { value ->
-                validateColumn(col, value)
+            ) { newColValue ->
+                updateCol(col.copy(value = newColValue))
             }
-        ) { newColValue ->
-            updateCol(col.copy(value = newColValue))
         }
     }
 }
@@ -517,10 +554,15 @@ fun TableColumnFile(
     setValue: (data: ImageData?) -> Unit,
     deleteFile: (String?) -> Unit,
 ) {
+    val imageResource = LocalImageResource.current
+    val loading = imageResource?.isLoading?.value ?: true
+    val painter = imageResource?.state?.value
+
     val uiCameraController = LocalUiCameraController.current
-    DisposableEffect(uiCameraController) {
-        val listener = ImageCaptureListener { res ->
-            println("TableColumnFile::ImageCaptureListener(${res::class.simpleName})")
+    val focusManager = LocalFocusManager.current
+
+    val listener = remember(setValue) {
+        ImageCaptureListener { res ->
             when (res) {
                 is ImageCaptureAction.Accept -> {
                     setValue(res.data)
@@ -532,12 +574,6 @@ fun TableColumnFile(
                     setValue(null)
                 }
             }
-        }
-        uiCameraController.registerListener(listener)
-
-        onDispose {
-            uiCameraController.unregisterListener(listener)
-            uiCameraController.stopCamera()
         }
     }
 
@@ -551,7 +587,10 @@ fun TableColumnFile(
             if (targetValue == null) {
                 IconButton(
                     modifier = Modifier.requiredSize(size = size),
-                    onClick = { uiCameraController.startCamera() },
+                    onClick = {
+                        focusManager.clearFocus()
+                        uiCameraController.startCamera(listener)
+                    },
                 ) {
                     Icon(
                         modifier = Modifier.minimumInteractiveComponentSize(),
@@ -560,10 +599,6 @@ fun TableColumnFile(
                     )
                 }
             } else {
-                val imageResource = loadImage(imagePath = targetValue.path)
-                val loading by imageResource.isLoading
-                val painter by imageResource.state
-
                 Box(
                     modifier = Modifier
                         .requiredSize(size = size)
@@ -573,7 +608,7 @@ fun TableColumnFile(
                             RoundedCornerShape(8.dp)
                         )
                         .clickable {
-                            uiCameraController.showPreview(targetValue)
+                            uiCameraController.showPreview(targetValue, listener)
                         },
                     contentAlignment = Alignment.Center,
                     propagateMinConstraints = true,
@@ -593,8 +628,15 @@ fun TableColumnFile(
                                         contentDescription = null,
                                         contentScale = ContentScale.FillWidth,
                                     )
+                                is ImageResourceState.Error ->
+                                    Text("Cannot display image")
 
-                                else -> Text("Cannot display image")
+                                else ->
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .padding(all = 4.dp)
+                                            .fillMaxSize(),
+                                    )
                             }
                         }
                     }
@@ -612,6 +654,7 @@ fun TableColumnCheckbox(
     setChecked: (Boolean) -> Unit,
     enabled: Boolean = true,
 ) {
+    val focusManager = LocalFocusManager.current
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -619,7 +662,10 @@ fun TableColumnCheckbox(
         Text(label)
         Checkbox(
             checked = checked,
-            onCheckedChange = setChecked,
+            onCheckedChange = {
+                focusManager.clearFocus()
+                setChecked(it)
+            },
             enabled = enabled,
         )
     }

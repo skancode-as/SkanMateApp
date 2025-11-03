@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 fun ImagePreview(
     modifier: Modifier = Modifier,
     preview: Painter,
+    resetPreviewImageResult: () -> Unit,
     uiCameraController: UiCameraController = LocalUiCameraController.current,
 ) {
     val minButtonSize = 48.dp
@@ -33,7 +34,7 @@ fun ImagePreview(
         ImagePreviewOverlay(
             painter = preview,
             onAcceptImage = { uiCameraController.acceptPreview() },
-            resetPreviewImageResult = { uiCameraController.discardPreview() },
+            resetPreviewImageResult = { uiCameraController.discardPreview(); resetPreviewImageResult() },
             maxButtonSize = maxButtonSize,
             minButtonSize = minButtonSize,
         )
