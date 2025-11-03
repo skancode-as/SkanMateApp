@@ -57,21 +57,25 @@ fun Color.add(red: Float = 0f, green: Float = 0f, blue: Float = 0f): Color {
     )
 }
 
+infix fun Number.equal(b: Number?): Boolean {
+    return b != null && this.toDouble() in (b.toDouble() - epsilon .. b.toDouble() + epsilon)
+}
+
 /** Checks equality between floating point numbers, with a built in epsilon. For inequality see [Float.notEqual]. */
-infix fun Float.equal(b: Float): Boolean {
-    return this in (b - epsilon .. b + epsilon)
+infix fun Float.equal(b: Float?): Boolean {
+    return b != null && this in (b - epsilon .. b + epsilon)
 }
 /** Checks inequality between floating point numbers, with a built in epsilon. For equality see [Float.notEqual]. */
-infix fun Float.notEqual(b: Float): Boolean {
+infix fun Float.notEqual(b: Float?): Boolean {
     return !this.equal(b)
 }
 
 /** Checks equality between floating point numbers, with a built in epsilon. For inequality see [Double.notEqual]. */
-infix fun Double.equal(b: Double): Boolean {
-    return this in (b - epsilon .. b + epsilon)
+infix fun Double.equal(b: Double?): Boolean {
+    return b != null && this in (b - epsilon .. b + epsilon)
 }
 /** Checks inequality between floating point numbers, with a built in epsilon. For equality see [Double.notEqual]. */
-infix fun Double.notEqual(b: Double): Boolean {
+infix fun Double.notEqual(b: Double?): Boolean {
     return !this.equal(b)
 }
 
@@ -113,6 +117,17 @@ fun Double.toOneDecimalString(): String {
     tmp = tmp.roundToLong().toDouble() / 10
 
     return tmp.toString()
+}
+
+inline fun<reified S, T> Iterable<T>.reduceDefault(default: S, action: (S, T) -> S): S {
+    val iterator = this.iterator()
+    var res = default
+
+    while (iterator.hasNext()) {
+        res = action(res, iterator.next())
+    }
+
+    return res
 }
 
 inline fun unreachable(): Nothing = throw UnreachableException()

@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -39,13 +41,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +60,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
@@ -65,14 +72,17 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.ImageData
+import dk.skancode.skanmate.ImageResource
 import dk.skancode.skanmate.ImageResourceState
 import dk.skancode.skanmate.data.model.ColumnType
+import dk.skancode.skanmate.data.model.ColumnValidation
 import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.RegisterScanEventHandler
 import dk.skancode.skanmate.ui.component.ScanableInputField
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.loadImage
+import dk.skancode.skanmate.ui.component.ColumnWithErrorLayout
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
 import dk.skancode.skanmate.ui.component.FullWidthButton
 import dk.skancode.skanmate.ui.component.ImageCaptureAction
@@ -81,6 +91,7 @@ import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
+import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import org.jetbrains.compose.resources.vectorResource
@@ -88,6 +99,9 @@ import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.camera
 import skanmate.composeapp.generated.resources.triangle_alert
 import kotlin.math.roundToInt
+
+private val LocalImageResourceMap: ProvidableCompositionLocal<Map<String, ImageResource<Painter>>> = compositionLocalOf { emptyMap() }
+private val LocalImageResource: ProvidableCompositionLocal<ImageResource<Painter>?> = compositionLocalOf { null }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,6 +170,9 @@ fun TableScreen(
                             }
                         }
                     },
+                    validateColumn = { col, value ->
+                        viewModel.validateColumn(col, value)
+                    },
                     deleteLocalFile = { path ->
                         println("TableScreen::deleteLocalFile($path)")
                         viewModel.deleteLocalImage(path)
@@ -175,75 +192,104 @@ fun TableContent(
     setFocusedColumn: (String, Boolean) -> Unit = { _, _ -> },
     submitData: () -> Unit = {},
     deleteLocalFile: (path: String) -> Unit,
+    validateColumn: (ColumnUiState, ColumnValue) -> Boolean,
     updateColumns: (List<ColumnUiState>) -> Unit,
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-        propagateMinConstraints = true,
-    ) {
-        AnimatedContent(
-            targetState = tableUiState.isFetching,
-        ) { isFetching ->
-            val columns = tableUiState.columns
-            if (isFetching) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp).align(Alignment.Center)
-                )
+    val imageResourceMap = mapOf(
+        *tableUiState.columns.mapNotNull { col ->
+            if (col.type is ColumnType.File && col.value is ColumnValue.File) {
+                col.name to loadImage(col.value.localUrl)
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                ) {
-                    LazyVerticalGrid(
-                        modifier = Modifier.weight(1f, fill = true),
-                        columns = GridCells.Fixed(12),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                null
+            }
+        }.toTypedArray()
+    )
+    val focusManager = LocalFocusManager.current
+
+    CompositionLocalProvider(LocalImageResourceMap provides imageResourceMap) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .pointerInput(focusManager) {
+                    detectTapGestures { focusManager.clearFocus() }
+                },
+            contentAlignment = Alignment.Center,
+            propagateMinConstraints = true,
+        ) {
+            AnimatedContent(
+                targetState = tableUiState.isFetching,
+            ) { isFetching ->
+                val columns = tableUiState.columns
+                if (isFetching) {
+                    Box(
+                        modifier = modifier
+                            .requiredSize(48.dp)
+                            .align(Alignment.Center) ,
+                        contentAlignment = Alignment.Center,
+                        propagateMinConstraints = true,
                     ) {
-                        tableColumns(
-                            columns = columns.filter { col -> !col.type.autogenerated },
-                            updateCol = { col ->
-                                updateColumns(
-                                    columns
-                                        .map { c -> if (c.id == col.id) col else c }
-                                )
-                            },
-                            setFocus = setFocusedColumn,
-                            onDone = {
-                                submitData()
-                            },
-                            deleteFile = deleteLocalFile,
-                            enabled = !tableUiState.isSubmitting
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(4.dp)
                         )
                     }
-
-                    FullWidthButton(
-                        modifier = Modifier.padding(16.dp),
-                        onClick = submitData,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
-                                .1f
-                            ),
-                            disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(
-                            8.dp,
-                            Alignment.CenterHorizontally
-                        ),
-                        enabled = !tableUiState.isSubmitting
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize(),
                     ) {
-                        Text("Submit")
-                        AnimatedVisibility(tableUiState.isSubmitting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = LocalContentColor.current,
-                                trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
-                                strokeWidth = 2.dp,
+                        LazyVerticalGrid(
+                            modifier = Modifier.weight(1f, fill = true),
+                            columns = GridCells.Fixed(12),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            tableColumns(
+                                columns = columns.filter { col -> !col.type.autogenerated && col.validations.none { v -> v is ColumnValidation.ConstantValue } },
+                                validationErrors = tableUiState.validationErrors,
+                                updateCol = { col ->
+                                    updateColumns(
+                                        columns
+                                            .map { c -> if (c.id == col.id) col else c }
+                                    )
+                                },
+                                setFocus = setFocusedColumn,
+                                onDone = {
+                                    submitData()
+                                },
+                                deleteFile = deleteLocalFile,
+                                validateColumn = validateColumn,
+                                enabled = !tableUiState.isSubmitting
                             )
+                        }
+
+                        FullWidthButton(
+                            modifier = Modifier.padding(16.dp),
+                            onClick = submitData,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
+                                    .15f
+                                ),
+                                disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                8.dp,
+                                Alignment.CenterHorizontally
+                            ),
+                            enabled = !tableUiState.isSubmitting && tableUiState.validationErrors.values.all { list -> list.isEmpty() }
+                        ) {
+                            Text("Submit")
+                            AnimatedVisibility(tableUiState.isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = LocalContentColor.current,
+                                    trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
+                                    strokeWidth = 2.dp,
+                                )
+                            }
                         }
                     }
                 }
@@ -254,6 +300,8 @@ fun TableContent(
 
 fun LazyGridScope.tableColumns(
     columns: List<ColumnUiState>,
+    validateColumn: (ColumnUiState, ColumnValue) -> Boolean,
+    validationErrors: Map<String, List<InternalStringResource>>,
     updateCol: (ColumnUiState) -> Unit,
     setFocus: (String, Boolean) -> Unit = { _, _ -> },
     onDone: () -> Unit = {},
@@ -268,19 +316,25 @@ fun LazyGridScope.tableColumns(
         },
         contentType = { _, col -> col.type }
     ) { idx, col ->
-        TableColumn(
-            col = col,
-            enabled = enabled,
-            setFocus = setFocus,
-            isLast = idx == columns.size,
-            deleteFile = deleteFile,
-            onKeyboardAction = { action ->
-                when (action) {
-                    ImeAction.Done -> onDone()
+        CompositionLocalProvider(LocalImageResource provides LocalImageResourceMap.current[col.name]) {
+            TableColumn(
+                col = col,
+                errors = validationErrors[col.name] ?: emptyList(),
+                enabled = enabled,
+                setFocus = setFocus,
+                isLast = idx == columns.size - 1,
+                deleteFile = deleteFile,
+                onKeyboardAction = { action ->
+                    when (action) {
+                        ImeAction.Done -> onDone()
+                    }
+                },
+                validateValue = { value ->
+                    validateColumn(col, value)
                 }
+            ) { newColValue ->
+                updateCol(col.copy(value = newColValue))
             }
-        ) { newColValue ->
-            updateCol(col.copy(value = newColValue))
         }
     }
 }
@@ -288,79 +342,104 @@ fun LazyGridScope.tableColumns(
 @Composable
 fun TableColumn(
     col: ColumnUiState,
+    errors: List<InternalStringResource>,
     enabled: Boolean = true,
     isLast: Boolean = false,
     onKeyboardAction: (ImeAction) -> Unit = {},
     setFocus: (String, Boolean) -> Unit = { _, _ -> },
     deleteFile: (String) -> Unit,
+    validateValue: (ColumnValue) -> Boolean,
     updateValue: (ColumnValue) -> Unit = {},
 ) {
-    val modifier = Modifier.fillMaxWidth()
-    val focusRequester = remember { FocusRequester() }
-
-    if (col.type == ColumnType.Boolean && col.value is ColumnValue.Boolean) {
-        TableColumnCheckbox(
-            modifier = modifier.focusRequester(focusRequester),
-            label = col.name,
-            checked = col.value.checked,
-            setChecked = { checked ->
-                updateValue(col.value.copy(checked = checked))
-            },
-            enabled = enabled,
-        )
-    } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
-        TableColumnFile(
-            label = col.name,
-            value =
-                if (col.value.localUrl == null) null
-                else ImageData(
-                    path = col.value.localUrl,
-                    name = col.value.fileName,
-                    data = col.value.bytes
-                ),
-            deleteFile = { path ->
-                println("TableColumn::deleteFile($path)")
-                if (path != null) deleteFile(path)
-            },
-            setValue = { data ->
-                updateValue(
-                    col.value.copy(
-                        localUrl = data?.path,
-                        fileName = data?.name,
-                        bytes = data?.data
-                    )
-                )
-            }
-        )
-
-    } else {
+    ColumnWithErrorLayout(
+        modifier = Modifier.wrapContentHeight(),
+        validationErrors = errors,
+    ) {
+        val enabled = enabled
+        val modifier = Modifier.fillMaxWidth()
+        val focusRequester = remember { FocusRequester() }
         val imeAction = if (isLast) ImeAction.Done else ImeAction.Next
 
-        TableColumnInput(
-            modifier = modifier.focusRequester(focusRequester),
-            label = col.name,
-            value = when (col.value) {
-                is ColumnValue.Text -> col.value.text
-                is ColumnValue.Numeric -> col.value.num?.toString() ?: ""
-                else -> ""
-            },
-            setValue = {
-                val newValue = when (col.value) {
-                    is ColumnValue.Text -> col.value.copy(text = it)
-                    is ColumnValue.Numeric -> col.value.copy(
-                        num = it.toIntOrNull() ?: it.toDoubleOrNull()
+        if (col.type == ColumnType.Boolean && col.value is ColumnValue.Boolean) {
+            TableColumnCheckbox(
+                modifier = modifier.focusRequester(focusRequester),
+                label = col.name,
+                checked = col.value.checked,
+                setChecked = { checked ->
+                    updateValue(col.value.copy(checked = checked))
+                },
+                enabled = enabled,
+            )
+        } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
+            TableColumnFile(
+                label = col.name,
+                value =
+                    if (col.value.localUrl == null) null
+                    else ImageData(
+                        path = col.value.localUrl,
+                        name = col.value.fileName,
+                        data = col.value.bytes
+                    ),
+                deleteFile = { path ->
+                    println("TableColumn::deleteFile($path)")
+                    if (path != null) deleteFile(path)
+                },
+                setValue = { data ->
+                    updateValue(
+                        col.value.copy(
+                            localUrl = data?.path,
+                            fileName = data?.name,
+                            bytes = data?.data,
+                            isUploaded = col.value.isUploaded && data != null
+                        )
                     )
-
-                    else -> col.value
                 }
-                updateValue(newValue)
-            },
-            type = col.type,
-            enabled = enabled,
-            setFocus = { setFocus(col.id, it) },
-            imeAction = imeAction,
-            onKeyboardAction = { onKeyboardAction(imeAction) }
-        )
+            )
+
+        } else {
+            TableColumnInput(
+                modifier = modifier.focusRequester(focusRequester),
+                label = col.name,
+                value = when (col.value) {
+                    is ColumnValue.Text -> col.value.text
+                    is ColumnValue.Numeric -> col.value.num?.toString() ?: ""
+                    else -> ""
+                },
+                setValue = {
+                    val newValue = when (col.value) {
+                        is ColumnValue.Text -> col.value.copy(text = it)
+                        is ColumnValue.Numeric -> col.value.copy(
+                            num = it.toIntOrNull() ?: it.toDoubleOrNull()
+                        )
+
+                        else -> col.value
+                    }
+                    updateValue(newValue)
+                },
+                validateValue = {
+                    if (it.isNotEmpty()) {
+                        when (col.value) {
+                            is ColumnValue.Text -> validateValue(col.value.copy(text = it))
+                            is ColumnValue.Numeric -> validateValue(
+                                col.value.copy(
+                                    num = it.toIntOrNull() ?: it.toDoubleOrNull()
+                                )
+                            )
+
+                            else -> false
+                        }
+                    } else {
+                        true
+                    }
+                },
+                type = col.type,
+                enabled = enabled,
+                setFocus = { setFocus(col.id, it) },
+                imeAction = imeAction,
+                onKeyboardAction = { onKeyboardAction(imeAction) },
+                isError = errors.isNotEmpty()
+            )
+        }
     }
 }
 
@@ -370,6 +449,8 @@ fun TableColumnInput(
     label: String,
     value: String,
     setValue: (String) -> Unit,
+    validateValue: (String) -> Boolean,
+    isError: Boolean,
     type: ColumnType,
     enabled: Boolean = type.autogenerated,
     imeAction: ImeAction = ImeAction.Next,
@@ -406,6 +487,7 @@ fun TableColumnInput(
     val onValueChange: (TextFieldValue) -> Unit = {
         text = it
         selection = it.selection
+        validateValue(it.text)
     }
     val labelComposable: (@Composable () -> Unit) = {
         Text(label)
@@ -418,13 +500,19 @@ fun TableColumnInput(
     }
     val onFocusChange: (Boolean) -> Unit = {
         setFocus(it)
-        if (!it) setValue(text.text)
+        if (!it) {
+            setValue(text.text)
+        }
     }
     val keyboardActions = KeyboardActions {
         setValue(text.text)
         onKeyboardAction()
         defaultKeyboardAction(imeAction = imeAction)
     }
+    val colors = TextFieldDefaults.colors(
+        errorContainerColor = MaterialTheme.colorScheme.errorContainer,
+        errorTextColor = MaterialTheme.colorScheme.onErrorContainer
+    )
 
     if (type is ColumnType.Text) {
         ScanableInputField(
@@ -438,6 +526,8 @@ fun TableColumnInput(
             keyboardActions = keyboardActions,
             placeholder = placeholder,
             onFocusChange = onFocusChange,
+            isError = isError,
+            colors = colors,
         )
     } else {
         InputField(
@@ -450,6 +540,8 @@ fun TableColumnInput(
             keyboardActions = keyboardActions,
             placeholder = placeholder,
             onFocusChange = onFocusChange,
+            isError = isError,
+            colors = colors,
         )
     }
 }
@@ -462,10 +554,15 @@ fun TableColumnFile(
     setValue: (data: ImageData?) -> Unit,
     deleteFile: (String?) -> Unit,
 ) {
+    val imageResource = LocalImageResource.current
+    val loading = imageResource?.isLoading?.value ?: true
+    val painter = imageResource?.state?.value
+
     val uiCameraController = LocalUiCameraController.current
-    DisposableEffect(uiCameraController) {
-        val listener = ImageCaptureListener { res ->
-            println("TableColumnFile::ImageCaptureListener(${res::class.simpleName})")
+    val focusManager = LocalFocusManager.current
+
+    val listener = remember(setValue) {
+        ImageCaptureListener { res ->
             when (res) {
                 is ImageCaptureAction.Accept -> {
                     setValue(res.data)
@@ -477,12 +574,6 @@ fun TableColumnFile(
                     setValue(null)
                 }
             }
-        }
-        uiCameraController.registerListener(listener)
-
-        onDispose {
-            uiCameraController.unregisterListener(listener)
-            uiCameraController.stopCamera()
         }
     }
 
@@ -496,7 +587,10 @@ fun TableColumnFile(
             if (targetValue == null) {
                 IconButton(
                     modifier = Modifier.requiredSize(size = size),
-                    onClick = { uiCameraController.startCamera() },
+                    onClick = {
+                        focusManager.clearFocus()
+                        uiCameraController.startCamera(listener)
+                    },
                 ) {
                     Icon(
                         modifier = Modifier.minimumInteractiveComponentSize(),
@@ -505,10 +599,6 @@ fun TableColumnFile(
                     )
                 }
             } else {
-                val imageResource = loadImage(imagePath = targetValue.path)
-                val loading by imageResource.isLoading
-                val painter by imageResource.state
-
                 Box(
                     modifier = Modifier
                         .requiredSize(size = size)
@@ -518,7 +608,7 @@ fun TableColumnFile(
                             RoundedCornerShape(8.dp)
                         )
                         .clickable {
-                            uiCameraController.showPreview(targetValue)
+                            uiCameraController.showPreview(targetValue, listener)
                         },
                     contentAlignment = Alignment.Center,
                     propagateMinConstraints = true,
@@ -538,8 +628,15 @@ fun TableColumnFile(
                                         contentDescription = null,
                                         contentScale = ContentScale.FillWidth,
                                     )
+                                is ImageResourceState.Error ->
+                                    Text("Cannot display image")
 
-                                else -> Text("Cannot display image")
+                                else ->
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .padding(all = 4.dp)
+                                            .fillMaxSize(),
+                                    )
                             }
                         }
                     }
@@ -557,6 +654,7 @@ fun TableColumnCheckbox(
     setChecked: (Boolean) -> Unit,
     enabled: Boolean = true,
 ) {
+    val focusManager = LocalFocusManager.current
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -564,7 +662,10 @@ fun TableColumnCheckbox(
         Text(label)
         Checkbox(
             checked = checked,
-            onCheckedChange = setChecked,
+            onCheckedChange = {
+                focusManager.clearFocus()
+                setChecked(it)
+            },
             enabled = enabled,
         )
     }

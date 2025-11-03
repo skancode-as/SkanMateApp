@@ -65,8 +65,8 @@ sealed class ImageResourceState<T: Painter>() {
 }
 
 @Composable
-fun rememberImageResource(): ImageResource<Painter> {
-    return remember {
+fun rememberImageResource(path: String? = null): ImageResource<Painter> {
+    return remember(path) {
         object : ImageResource<Painter> {
             private val stateFlow: MutableStateFlow<ImageResourceState<Painter>> = MutableStateFlow(ImageResourceState.Unspecified)
 

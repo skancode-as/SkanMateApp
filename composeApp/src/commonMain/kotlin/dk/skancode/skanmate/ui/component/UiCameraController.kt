@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
+import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 
@@ -24,7 +25,7 @@ sealed class ImageCaptureAction(open val data: ImageData) {
 
 @OptIn(ExperimentalAtomicApi::class)
 class UiCameraController() {
-    private val listeners = mutableSetOf<ImageCaptureListener>()
+    private var activeListener: AtomicReference<ImageCaptureListener?> = AtomicReference(null)
     private val _isStarted = MutableStateFlow(false)
     val isStarted: StateFlow<Boolean>
         get() = _isStarted
@@ -33,44 +34,40 @@ class UiCameraController() {
     val preview: StateFlow<ImageData?>
         get() = _preview
 
-    fun startCamera() {
+    fun startCamera(listener: ImageCaptureListener) {
         println("Starting camera")
         _isStarted.compareAndSet(expect = false,  update = true)
+        activeListener.store(listener)
     }
     fun stopCamera() {
         println("Stopping camera")
         _isStarted.compareAndSet(expect = true, update = false)
     }
 
-    fun showPreview(p: ImageData?) {
+    fun showPreview(p: ImageData?, listener: ImageCaptureListener? = null) {
         println("Showing preview")
         _preview.update { p }
+        if (listener != null) {
+            activeListener.store(listener)
+        }
     }
 
     fun acceptPreview() {
         println("Accepting preview")
         val old = _preview.getAndUpdate { null }
         if (old != null) {
-            listeners.forEach { it.handleAction(res = ImageCaptureAction.Accept(old)) }
+            activeListener.load()?.handleAction(res = ImageCaptureAction.Accept(data = old))
         }
+        activeListener.store(null)
     }
 
     fun discardPreview() {
         println("Discarding preview")
         val old = _preview.getAndUpdate { null }
+        val listener = activeListener.load()
         if (old != null) {
-            listeners.forEach { it.handleAction(ImageCaptureAction.Discard(old)) }
+            listener?.handleAction(res = ImageCaptureAction.Discard(data = old))
         }
-        startCamera()
-    }
-
-    fun registerListener(listener: ImageCaptureListener) {
-        println("Registering listener")
-        listeners.add(listener)
-    }
-
-    fun unregisterListener(listener: ImageCaptureListener) {
-        println("Unregistering listener")
-        listeners.remove(listener)
+        startCamera(listener ?: throw IllegalStateException("discardPreview was called with no active listener"))
     }
 }

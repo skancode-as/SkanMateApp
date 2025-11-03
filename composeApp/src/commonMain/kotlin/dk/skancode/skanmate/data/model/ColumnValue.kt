@@ -61,7 +61,13 @@ sealed class ColumnValue {
     data class Numeric(val num: Number? = null) : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
     }
-    data class File(val fileName: String? = null, val localUrl: String? = null, val objectUrl: String? = null, val bytes: ByteArray? = null) : ColumnValue() {
+    data class File(
+        val fileName: String? = null,
+        val localUrl: String? = null,
+        val objectUrl: String? = null,
+        val bytes: ByteArray? = null,
+        val isUploaded: kotlin.Boolean = false,
+    ) : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
 
         override fun equals(other: Any?): kotlin.Boolean {

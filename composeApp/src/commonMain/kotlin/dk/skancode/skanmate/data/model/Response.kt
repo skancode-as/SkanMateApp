@@ -10,11 +10,11 @@ import kotlinx.serialization.json.decodeFromJsonElement
 data class SuccessResponse<T>(val data: T)
 
 @Serializable
-data class ErrorResponse(val requestId: String, val code: String, val error: String, val details: JsonElement?)
+data class ErrorResponse(val requestId: String, val code: String, val error: String, val details: JsonElement? = null)
 
 @Serializable
 data class TableRowErrors(
-    @SerialName("fieldErrors")
+    @SerialName("0")
     val columnErrors: Map<String, List<String>>
 ) {
     companion object {

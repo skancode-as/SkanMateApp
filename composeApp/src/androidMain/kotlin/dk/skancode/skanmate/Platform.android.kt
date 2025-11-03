@@ -18,6 +18,8 @@ import com.russhwolf.settings.Settings
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.barcodescannermodule.compose.LocalScannerModule
 import androidx.core.net.toUri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberScanModule(): ScanModule {
@@ -42,40 +44,40 @@ actual fun CameraView(
 @SuppressLint("RestrictedApi")
 @Composable
 actual fun loadImage(imagePath: String?): ImageResource<Painter> {
-    val resource = rememberImageResource()
+    val resource = rememberImageResource(imagePath)
 
     val context = LocalContext.current
-    LaunchedEffect(context, imagePath, resource) {
+    LaunchedEffect(context, resource) {
         if (imagePath == null) return@LaunchedEffect
-        resource.load()
+        launch(Dispatchers.IO) {
+            var inputStream = context.contentResolver.openInputStream(imagePath.toUri())
 
-        var inputStream = context.contentResolver.openInputStream(imagePath.toUri())
+            if (inputStream == null) {
+                println("Could not open input stream at imagePath: $imagePath")
+                resource.error("Could not open input stream at imagePath: $imagePath")
+                return@launch
+            }
 
-        if (inputStream == null) {
-            println("Could not open input stream at imagePath: $imagePath")
-            resource.error("Could not open input stream at imagePath: $imagePath")
-            return@LaunchedEffect
-        }
+            val rotation = inputStream.use { inputStream ->
+                val exif = Exif.createFromInputStream(inputStream)
+                exif.rotation
+            }
+            inputStream = context.contentResolver.openInputStream(imagePath.toUri())
 
-        val rotation = inputStream.use { inputStream ->
-            val exif = Exif.createFromInputStream(inputStream)
-            exif.rotation
-        }
-        inputStream = context.contentResolver.openInputStream(imagePath.toUri())
+            if (inputStream == null) {
+                println("Could not open input stream at imagePath: $imagePath")
+                resource.error("Could not open input stream at imagePath: $imagePath")
+                return@launch
+            }
+            inputStream.use { inputStream ->
+                val bitmap: Bitmap? =
+                    BitmapFactory.decodeStream(inputStream)?.rotate(rotation)
 
-        if (inputStream == null) {
-            println("Could not open input stream at imagePath: $imagePath")
-            resource.error("Could not open input stream at imagePath: $imagePath")
-            return@LaunchedEffect
-        }
-        inputStream.use { inputStream ->
-            val bitmap: Bitmap? =
-                BitmapFactory.decodeStream(inputStream)?.rotate(rotation)
-
-            if (bitmap != null) {
-                resource.update(
-                    painter = BitmapPainter(bitmap.asImageBitmap())
-                )
+                if (bitmap != null) {
+                    resource.update(
+                        painter = BitmapPainter(bitmap.asImageBitmap())
+                    )
+                }
             }
         }
     }
