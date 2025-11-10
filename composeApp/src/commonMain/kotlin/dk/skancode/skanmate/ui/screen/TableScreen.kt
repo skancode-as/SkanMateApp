@@ -98,9 +98,15 @@ import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.camera
+import skanmate.composeapp.generated.resources.cannot_display_image
+import skanmate.composeapp.generated.resources.input_placeholder
+import skanmate.composeapp.generated.resources.select_placeholder
+import skanmate.composeapp.generated.resources.submit
+import skanmate.composeapp.generated.resources.table_not_found
 import skanmate.composeapp.generated.resources.triangle_alert
 import kotlin.math.roundToInt
 
@@ -285,7 +291,7 @@ fun TableContent(
                             ),
                             enabled = !tableUiState.isSubmitting && tableUiState.constraintErrors.values.all { list -> list.isEmpty() }
                         ) {
-                            Text("Submit")
+                            Text(stringResource(Res.string.submit))
                             AnimatedVisibility(tableUiState.isSubmitting) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
@@ -513,7 +519,7 @@ fun TableColumnInput(
     }
     val placeholder: (@Composable () -> Unit) = {
         Text(
-            text = "Input $label...",
+            text = stringResource(Res.string.input_placeholder, label), //"Input $label...",
             maxLines = 1,
         )
     }
@@ -650,7 +656,7 @@ fun TableColumnFile(
                                         contentScale = ContentScale.FillWidth,
                                     )
                                 is ImageResourceState.Error ->
-                                    Text("Cannot display image")
+                                    Text(stringResource(Res.string.cannot_display_image))
 
                                 else ->
                                     CircularProgressIndicator(
@@ -689,7 +695,7 @@ fun TableColumnList(
             onValueChange = { selected = it },
             label = { Text(label) },
             placeholder = {
-                Text("Select $label...")
+                Text(stringResource(Res.string.select_placeholder, label)) //"Select $label..."
             },
             modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
             singleLine = true,
@@ -770,7 +776,7 @@ fun TableNotFound(
             Spacer(modifier = Modifier.size(8.dp))
 
             Text(
-                text = "That table could no longer be found. Please go back and try again.",
+                text = stringResource(Res.string.table_not_found),
                 style = MaterialTheme.typography.headlineMedium,
             )
         }

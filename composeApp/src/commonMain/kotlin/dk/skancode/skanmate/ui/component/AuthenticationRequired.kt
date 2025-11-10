@@ -16,6 +16,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
+import org.jetbrains.compose.resources.stringResource
+import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.signed_out
 
 
 @Composable
@@ -62,7 +65,7 @@ private fun SignedOut() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
-            Text("You have been signed out.")
+            Text(stringResource(Res.string.signed_out))
         }
     }
 }

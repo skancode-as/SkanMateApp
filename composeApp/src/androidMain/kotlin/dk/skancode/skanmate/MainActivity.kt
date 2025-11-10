@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dk.skancode.skanmate.ui.component.CameraBarcodeScanner
@@ -73,13 +74,13 @@ class MainActivity : ScannerActivity() {
                                 when (viewModel.state) {
                                     PermissionState.DeniedAlways -> {
                                         Column(modifier = Modifier.align(Alignment.Center)) {
-                                            Text(text = "Permission always denied")
+                                            Text(text = stringResource(R.string.camera_permissions_always_denied))
                                             Button(
                                                 onClick = {
                                                     controller.openAppSettings()
                                                 },
                                             ) {
-                                                Text(text = "Open settings")
+                                                Text(text = stringResource(R.string.open_settings))
                                             }
                                         }
                                     }
@@ -91,7 +92,7 @@ class MainActivity : ScannerActivity() {
                                                 viewModel.provideOrRequestPermission()
                                             },
                                         ) {
-                                            Text(text = "Request permission")
+                                            Text(text = stringResource(R.string.camera_permissions_request_permission))
                                         }
                                     }
                                 }
@@ -102,11 +103,4 @@ class MainActivity : ScannerActivity() {
             }
         }
     }
-}
-
-
-@Preview
-@Composable
-fun AppAndroidPreview() {
-    App()
 }

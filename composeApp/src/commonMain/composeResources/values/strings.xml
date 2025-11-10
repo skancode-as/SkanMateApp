@@ -1,11 +1,27 @@
 <resources>
     <string name="app_name">SkanMate</string>
+    <string name="submit">Submit</string>
+    <string name="input_placeholder">Input %1$s...</string>
+    <string name="select_placeholder">Select %1$s...</string>
+    <string name="table_not_found">That table could no longer be found. Please go back and try again.</string>
+    <string name="table_no_description">No description provided</string>
+    <string name="cannot_display_image">Cannot display image</string>
+    <string name="main_screen_title">Tables</string>
+    <string name="signed_out">You have been signed out</string>
+
+    <string name="auth_screen_email_label">Email</string>
+    <string name="auth_screen_email_placeholder">Enter Your Email...</string>
+    <string name="auth_screen_pin_label">Pin</string>
+    <string name="auth_screen_pin_placeholder">Enter Pin Here</string>
+    <string name="auth_screen_sign_in">Sign in</string>
+
     <string name="column_type_text">Text</string>
     <string name="column_type_numeric">Number</string>
     <string name="column_type_file">File</string>
     <string name="column_type_list">List</string>
     <string name="column_type_boolean">Yes/No</string>
     <string name="column_type_null">Unknown</string>
+
     <string name="constraint_error_invalid_type">Value of type %1$s is not allowed for validation %2$s</string>
     <string name="constraint_error_invalid_option">Value is not one of the provided options</string>
     <string name="constraint_error_min_length">Value must be at least %1$d characters</string>
