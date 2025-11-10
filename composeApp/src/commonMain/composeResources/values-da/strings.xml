@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">SkanMate</string>
+    <string name="submit">Indsend</string>
+    <string name="input_placeholder">Indtast %1$s...</string>
+    <string name="select_placeholder">Vælg %1$s...</string>
+    <string name="table_not_found">Den tabel kunne ikke længere findes. Venligst gå tilbage og prøv igen.</string>
+    <string name="table_no_description">Ingen beskrivelse angivet</string>
+    <string name="cannot_display_image">Kan ikke vise billede</string>
+    <string name="main_screen_title">Tabeller</string>
+    <string name="signed_out">Du er blevet logget ud</string>
+
+    <string name="auth_screen_email_label">Email</string>
+    <string name="auth_screen_email_placeholder">Indtast din email...</string>
+    <string name="auth_screen_pin_label">Pinkode</string>
+    <string name="auth_screen_pin_placeholder">Indtast pinkode her</string>
+    <string name="auth_screen_sign_in">Log ind</string>
+
+    <string name="column_type_text">Tekst</string>
+    <string name="column_type_numeric">Tal</string>
+    <string name="column_type_file">Fil</string>
+    <string name="column_type_list">Liste</string>
+    <string name="column_type_boolean">Ja/Nej</string>
+    <string name="column_type_null">Ukendt</string>
+
+    <string name="constraint_error_invalid_type">Værdi af typen %1$s er ikke tilladt for validering %2$s</string>
+    <string name="constraint_error_invalid_option">Værdien er ikke en af de angivne muligheder</string>
+    <string name="constraint_error_min_length">Værdien skal være mindst %1$d tegn</string>
+    <string name="constraint_error_max_length">Værdien kan ikke være længere end %1$d tegn</string>
+    <string name="constraint_error_min_value">Værdien skal være større end eller lig med %1$d</string>
+    <string name="constraint_error_max_value">Værdien skal være mindre end eller lig med %1$d</string>
+    <string name="constraint_error_regex">Værdien matchede ikke det krævede mønster: %1$s</string>
+    <string name="constraint_error_constant_value">Værdien skal være lig med %1$d</string>
+    <string name="constraint_error_email">Værdien skal være en gyldig email</string>
+    <string name="constraint_error_required">Feltet er påkrævet og kan ikke være tomt</string>
+    <string name="constraint_error_server">%1$s</string>
+</resources>
