@@ -34,18 +34,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.data.model.TableSummaryModel
-import dk.skancode.skanmate.data.model.TenantModel
-import dk.skancode.skanmate.data.model.UserModel
 import dk.skancode.skanmate.nav.NavRoute
-import dk.skancode.skanmate.ui.component.LocalAuthTenant
-import dk.skancode.skanmate.ui.component.LocalAuthUser
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
+import org.jetbrains.compose.resources.stringResource
+import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.main_screen_title
+import skanmate.composeapp.generated.resources.table_no_description
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    user: UserModel = LocalAuthUser.current,
-    tenant: TenantModel = LocalAuthTenant.current,
     tableViewModel: TableViewModel,
     navigateTable: (NavRoute.App.TableScreen) -> Unit,
     signOut: () -> Unit,
@@ -58,7 +56,7 @@ fun MainScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Welcome ${user.name} from ${tenant.name}")
+                    Text(stringResource(Res.string.main_screen_title))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -132,7 +130,7 @@ fun TableCard(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = if(table.description.isNullOrBlank()) "No description provided" else table.description,
+                text = if(table.description.isNullOrBlank()) stringResource(Res.string.table_no_description) else table.description,
                 style = MaterialTheme.typography.bodySmall.merge(color = LocalContentColor.current.copy(alpha = .8f)),
             )
         }

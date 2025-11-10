@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">SkanMate</string>
+    <string name="camera_permissions_always_denied">Tilladelser til kameraet er blevet nægtet permanent. Åbn indstillinger for at opdatere tilladelser.</string>
+    <string name="camera_permissions_request_permission">Anmod om tilladelse</string>
+    <string name="open_settings">Åbn indstillinger</string>
+</resources>

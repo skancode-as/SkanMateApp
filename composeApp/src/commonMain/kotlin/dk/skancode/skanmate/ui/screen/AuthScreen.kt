@@ -43,8 +43,15 @@ import dk.skancode.skanmate.ui.component.FullWidthButton
 import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.util.darken
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.app_name
+import skanmate.composeapp.generated.resources.auth_screen_email_label
+import skanmate.composeapp.generated.resources.auth_screen_email_placeholder
+import skanmate.composeapp.generated.resources.auth_screen_pin_label
+import skanmate.composeapp.generated.resources.auth_screen_pin_placeholder
+import skanmate.composeapp.generated.resources.auth_screen_sign_in
 import skanmate.composeapp.generated.resources.scan_barcode
 
 @Composable
@@ -102,7 +109,7 @@ fun AuthScreen(
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
-                        Text("SkanMate", fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(Res.string.app_name), fontWeight = FontWeight.SemiBold)
                     }
                     ElevatedCard(
                         modifier = Modifier
@@ -119,22 +126,23 @@ fun AuthScreen(
                                 value = email,
                                 onValueChange = { email = it },
                                 label = {
-                                    Text("Email")
+                                    Text(stringResource(Res.string.auth_screen_email_label))
                                 },
                                 enabled = !isLoading,
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.Email,
                                     imeAction = ImeAction.Next,
                                 ),
-                                placeholder = { Text("Your email...") }
+                                placeholder = { Text(stringResource(Res.string.auth_screen_email_placeholder)) }
                             )
                             InputField(
                                 modifier = Modifier.fillMaxWidth(),
                                 value = pin,
                                 onValueChange = { pin = it },
                                 label = {
-                                    Text("Pin")
+                                    Text(stringResource(Res.string.auth_screen_pin_label))
                                 },
+                                placeholder = { Text(stringResource(Res.string.auth_screen_pin_placeholder)) },
                                 enabled = !isLoading,
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.NumberPassword,
@@ -159,7 +167,7 @@ fun AuthScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                             ) {
                                 Text(
-                                    text = "Sign in",
+                                    text = stringResource(Res.string.auth_screen_sign_in),
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.SemiBold
                                 )

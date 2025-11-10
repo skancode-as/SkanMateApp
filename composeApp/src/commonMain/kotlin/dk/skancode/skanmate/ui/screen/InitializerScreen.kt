@@ -18,6 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.nav.NavRoute
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
+import org.jetbrains.compose.resources.stringResource
+import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.app_name
 
 @Composable
 fun InitializerScreen(
@@ -59,6 +62,6 @@ fun SkanMateAppLoadingIndicator() {
 
         Spacer(modifier = Modifier.size(8.dp))
 
-        Text("SkanMate")
+        Text(stringResource(Res.string.app_name))
     }
 }

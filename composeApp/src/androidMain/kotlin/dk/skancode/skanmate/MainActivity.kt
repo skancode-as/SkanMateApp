@@ -10,14 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dk.skancode.skanmate.ui.component.CameraBarcodeScanner
 import dk.skancode.skanmate.util.CameraScanManagerImpl
@@ -73,13 +72,13 @@ class MainActivity : ScannerActivity() {
                                 when (viewModel.state) {
                                     PermissionState.DeniedAlways -> {
                                         Column(modifier = Modifier.align(Alignment.Center)) {
-                                            Text(text = "Permission always denied")
+                                            Text(text = stringResource(R.string.camera_permissions_always_denied))
                                             Button(
                                                 onClick = {
                                                     controller.openAppSettings()
                                                 },
                                             ) {
-                                                Text(text = "Open settings")
+                                                Text(text = stringResource(R.string.open_settings))
                                             }
                                         }
                                     }
@@ -91,7 +90,7 @@ class MainActivity : ScannerActivity() {
                                                 viewModel.provideOrRequestPermission()
                                             },
                                         ) {
-                                            Text(text = "Request permission")
+                                            Text(text = stringResource(R.string.camera_permissions_request_permission))
                                         }
                                     }
                                 }
@@ -102,11 +101,4 @@ class MainActivity : ScannerActivity() {
             }
         }
     }
-}
-
-
-@Preview
-@Composable
-fun AppAndroidPreview() {
-    App()
 }
