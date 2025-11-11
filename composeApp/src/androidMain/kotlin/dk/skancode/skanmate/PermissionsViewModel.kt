@@ -1,5 +1,7 @@
 package dk.skancode.skanmate
 
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -14,27 +16,35 @@ import dev.icerock.moko.permissions.RequestCanceledException
 import dev.icerock.moko.permissions.camera.CAMERA
 import kotlinx.coroutines.launch
 
+val LocalPermissionsViewModel: ProvidableCompositionLocal<PermissionsViewModel?> = compositionLocalOf { null }
+
 class PermissionsViewModel(
     private val controller: PermissionsController,
 ) : ViewModel() {
-    var state by mutableStateOf(PermissionState.NotDetermined)
-        private set
+    private var _cameraState by mutableStateOf(PermissionState.NotDetermined)
+
+    val cameraState: PermissionState
+        get() = _cameraState
 
     init {
         viewModelScope.launch {
-            state = controller.getPermissionState(Permission.CAMERA)
+            _cameraState = controller.getPermissionState(Permission.CAMERA)
         }
+    }
+
+    fun openAppSettings() {
+        controller.openAppSettings()
     }
 
     fun provideOrRequestPermission() {
         viewModelScope.launch {
             try {
                 controller.providePermission(Permission.CAMERA)
-                state = PermissionState.Granted
+                _cameraState = PermissionState.Granted
             } catch (e: DeniedAlwaysException) {
-                state = PermissionState.DeniedAlways
+                _cameraState = PermissionState.DeniedAlways
             } catch (e: DeniedException) {
-                state = PermissionState.Denied
+                _cameraState = PermissionState.Denied
             } catch (e: RequestCanceledException) {
                 e.printStackTrace()
             }

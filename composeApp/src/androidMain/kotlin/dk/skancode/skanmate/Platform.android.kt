@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import androidx.camera.core.impl.utils.Exif
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -18,6 +19,7 @@ import com.russhwolf.settings.Settings
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.barcodescannermodule.compose.LocalScannerModule
 import androidx.core.net.toUri
+import dev.icerock.moko.permissions.PermissionState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -39,6 +41,8 @@ actual fun CameraView(
     cameraUi: @Composable BoxScope.(CameraController) -> Unit,
 ) {
     AndroidCameraView(modifier = modifier, cameraUi = cameraUi)
+
+    CameraPermissionAlert()
 }
 
 @SuppressLint("RestrictedApi")
@@ -87,7 +91,7 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
 
 fun Bitmap.rotate(degrees: Number): Bitmap {
     val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
-    val rotatedBitmap = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
+    val rotatedBitmap = Bitmap.createBitmap(this.copy(config!!, isMutable), 0, 0, width, height, matrix, true)
     this.recycle()
 
     return rotatedBitmap
