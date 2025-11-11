@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,10 +22,20 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActionScope
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.foundation.text.input.TextFieldBuffer
+import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,14 +46,21 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -60,12 +78,17 @@ import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.coerceAtLeast
@@ -76,6 +99,8 @@ import androidx.compose.ui.util.fastFirstOrNull
 import dk.skancode.skanmate.ScanModule
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.keyboardVisibleAsState
+import dk.skancode.skanmate.util.unreachable
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.scan_barcode
@@ -84,8 +109,8 @@ import kotlin.math.roundToInt
 
 @Composable
 fun ScanableInputField(
-    value: TextFieldValue,
-    onValueChange: (TextFieldValue) -> Unit,
+    value: String,
+    onValueChange: (String) -> Unit,
     scanIconOnClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -97,7 +122,7 @@ fun ScanableInputField(
     prefix: @Composable (() -> Unit)? = null,
     suffix: @Composable (() -> Unit)? = null,
     isError: Boolean = false,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
+    textTransformation: TextTransformation = TextTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = false,
@@ -142,7 +167,7 @@ fun ScanableInputField(
         prefix = prefix,
         suffix = suffix,
         isError = isError,
-        visualTransformation = visualTransformation,
+        textTransformation = textTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         singleLine = singleLine,
@@ -158,8 +183,8 @@ fun ScanableInputField(
 
 @Composable
 fun InputField(
-    value: TextFieldValue,
-    onValueChange: (TextFieldValue) -> Unit,
+    value: String,
+    onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     readOnly: Boolean = false,
@@ -171,7 +196,7 @@ fun InputField(
     prefix: @Composable (() -> Unit)? = null,
     suffix: @Composable (() -> Unit)? = null,
     isError: Boolean = false,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
+    textTransformation: TextTransformation = TextTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = false,
@@ -184,7 +209,6 @@ fun InputField(
 ) {
     val paddingValues = PaddingValues(16.dp)
     val interactionSource = interactionSource ?: remember { MutableInteractionSource() }
-    // If color is not provided via the text style, use content color as a default
     val focused = interactionSource.collectIsFocusedAsState().value
     val textColor =
         textStyle.color.takeOrElse {
@@ -192,6 +216,7 @@ fun InputField(
         }
     val containerColor = colors.containerColor(enabled, isError, focused)
     val mergedTextStyle = textStyle.merge(TextStyle(color = textColor))
+    val baseInputFieldState = rememberTextFieldState(value)
 
     CompositionLocalProvider(LocalTextSelectionColors provides colors.textSelectionColors) {
         Column(
@@ -202,18 +227,13 @@ fun InputField(
             if (label != null) {
                 label()
             }
-            BasicTextField(
+            BaseInputField(
                 value = value,
+                state = baseInputFieldState,
                 modifier =
                     modifier
                         .onFocusChanged {
-                            val isFocused = it.isFocused
-                            if (isFocused) {
-                                onValueChange(value.copy(
-                                    selection = TextRange(0, value.text.length)
-                                ))
-                            }
-                            onFocusChange(isFocused)
+                            onFocusChange(it.isFocused)
                         }
                         .defaultMinSize(
                             minWidth = TextFieldDefaults.MinWidth,
@@ -226,7 +246,7 @@ fun InputField(
                 readOnly = readOnly,
                 textStyle = mergedTextStyle,
                 cursorBrush = SolidColor(colors.cursorColor(isError)),
-                visualTransformation = visualTransformation,
+                textTransformation = textTransformation,
                 keyboardOptions = keyboardOptions,
                 keyboardActions = keyboardActions,
                 interactionSource = interactionSource,
@@ -246,8 +266,8 @@ fun InputField(
                             measurePolicy = measurePolicy,
                             content = {
                                 val transformedText =
-                                    remember(value, visualTransformation) {
-                                        visualTransformation.filter(AnnotatedString(value.text))
+                                    remember(value, textTransformation) {
+                                        textTransformation.filter(AnnotatedString(value))
                                     }
                                         .text
                                         .text
@@ -437,6 +457,165 @@ fun InputField(
                         )
                     }
             )
+        }
+    }
+}
+
+@Composable
+fun BaseInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    state: TextFieldState = rememberTextFieldState(value),
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    readOnly: Boolean = false,
+    textStyle: TextStyle = TextStyle.Default,
+    imeAction: ImeAction = ImeAction.Unspecified,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    singleLine: Boolean = false,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    minLines: Int = 1,
+    textTransformation: TextTransformation = TextTransformation.None,
+    onTextLayout: (TextLayoutResult) -> Unit = {},
+    interactionSource: MutableInteractionSource? = null,
+    cursorBrush: Brush = SolidColor(Color.Black),
+    decorationBox: @Composable (innerTextField: @Composable () -> Unit) -> Unit =
+        @Composable { innerTextField -> innerTextField() },
+) {
+    val keyboardActionRunner = rememberKeyboardActionRunner(keyboardActions)
+
+    SideEffect {
+        if (value != state.text) {
+            state.edit {
+                replace(0, length, value)
+            }
+        }
+    }
+    val coroutineScope = rememberCoroutineScope()
+    DisposableEffect(onValueChange) {
+        val textJob = coroutineScope.launch {
+            val flow = snapshotFlow {
+                state.text
+            }
+
+            flow.collect { onValueChange(it.toString()) }
+        }
+
+        onDispose {
+            textJob.cancel()
+        }
+    }
+
+    val modifier: Modifier = modifier
+    val inputTransformation: InputTransformation? = null
+    val onKeyboardAction: KeyboardActionHandler? = KeyboardActionHandler { default ->
+        when(imeAction) {
+            ImeAction.Unspecified,
+            ImeAction.Default -> default()
+            else -> keyboardActionRunner.runAction(imeAction)
+        }
+    }
+    val lineLimits: TextFieldLineLimits = when {
+        singleLine -> TextFieldLineLimits.SingleLine
+        else -> TextFieldLineLimits.MultiLine(minLines, maxLines)
+    }
+    val onTextLayout: (Density.(getResult: () -> TextLayoutResult?) -> Unit)? = { getResult ->
+        onTextLayout(getResult() ?: throw IllegalStateException("Could not get TextLayoutResult"))
+    }
+    val outputTransformation: OutputTransformation? = textTransformation
+    val decorator: TextFieldDecorator? = TextFieldDecorator{ inner ->
+        decorationBox(inner)
+    }
+    val scrollState: ScrollState = rememberScrollState()
+
+    BasicTextField(
+        state = state,
+        modifier = modifier,
+        enabled = enabled,
+        readOnly = readOnly,
+        inputTransformation = inputTransformation,
+        textStyle = textStyle,
+        keyboardOptions = keyboardOptions,
+        onKeyboardAction = onKeyboardAction,
+        lineLimits = lineLimits,
+        onTextLayout = onTextLayout,
+        interactionSource = interactionSource,
+        cursorBrush = cursorBrush,
+        outputTransformation = outputTransformation,
+        decorator = decorator,
+        scrollState = scrollState
+        // Last parameter must not be a function unless it's intended to be commonly used as a trailing
+        // lambda.
+    )
+}
+
+@Composable
+private fun rememberKeyboardActionRunner(
+    keyboardActions: KeyboardActions,
+    keyboardController: SoftwareKeyboardController? = LocalSoftwareKeyboardController.current,
+    focusManager: FocusManager = LocalFocusManager.current,
+): KeyboardActionRunner {
+    return remember(keyboardActions, keyboardController, focusManager) { KeyboardActionRunner(keyboardActions, keyboardController, focusManager) }
+}
+
+private class KeyboardActionRunner(
+    private val keyboardActions: KeyboardActions,
+    private val keyboardController: SoftwareKeyboardController?,
+    private val focusManager: FocusManager,
+): KeyboardActionScope {
+
+    fun runAction(imeAction: ImeAction) {
+        val keyboardAction =
+            when (imeAction) {
+                ImeAction.Done -> keyboardActions.onDone
+                ImeAction.Go -> keyboardActions.onGo
+                ImeAction.Next -> keyboardActions.onNext
+                ImeAction.Previous -> keyboardActions.onPrevious
+                ImeAction.Search -> keyboardActions.onSearch
+                ImeAction.Send -> keyboardActions.onSend
+                ImeAction.Default,
+                ImeAction.None -> null
+                else -> unreachable()
+            }
+        if (keyboardAction != null) {
+            keyboardAction()
+        }
+        defaultKeyboardAction(imeAction)
+    }
+
+    override fun defaultKeyboardAction(imeAction: ImeAction) {
+        when (imeAction) {
+            ImeAction.Next -> {
+                focusManager.moveFocus(FocusDirection.Next)
+            }
+            ImeAction.Previous -> {
+                focusManager.moveFocus(FocusDirection.Previous)
+            }
+            ImeAction.Done -> {
+                keyboardController?.hide()
+            }
+        }
+    }
+
+}
+
+sealed class TextTransformation(
+    private val visualTransformation: VisualTransformation,
+): OutputTransformation, VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        return visualTransformation.filter(text)
+    }
+
+    data object None: TextTransformation(VisualTransformation.None) {
+        override fun TextFieldBuffer.transformOutput() { }
+    }
+
+    data class Password(private val mask: Char = '\u2022'): TextTransformation(
+        PasswordVisualTransformation(mask)
+    ) {
+        override fun TextFieldBuffer.transformOutput() {
+            replace(0, length, mask.toString().repeat(length))
         }
     }
 }

@@ -24,6 +24,7 @@ interface TableUiState {
     val model: TableModel?
     val columns: List<ColumnUiState>
     val focusedColumnId: String?
+    val hasFocusedColumn: Boolean
     val status: FetchStatus
     val constraintErrors: Map<String, List<InternalStringResource>>
 }
@@ -33,10 +34,13 @@ data class MutableTableUiState(
     override val isSubmitting: Boolean = false,
     override val model: TableModel? = null,
     override val columns: List<ColumnUiState> = emptyList(),
-    override val focusedColumnId: String? = null,
+    override val focusedColumnId: String? = columns.firstOrNull()?.id,
     override val status: FetchStatus = FetchStatus.Undetermined,
     override val constraintErrors: Map<String, List<InternalStringResource>> = emptyMap()
-) : TableUiState
+) : TableUiState {
+    override val hasFocusedColumn: Boolean
+        get() = focusedColumnId != null && columns.any { col -> col.id == focusedColumnId }
+}
 
 fun TableModel?.toUiState(isFetching: Boolean): MutableTableUiState =
     MutableTableUiState(
@@ -46,7 +50,6 @@ fun TableModel?.toUiState(isFetching: Boolean): MutableTableUiState =
         columns = this?.columns?.map {
             it.toUiState()
         } ?: emptyList(),
-        focusedColumnId = null,
         status = if (this == null) FetchStatus.NotFound else FetchStatus.Success
     )
 

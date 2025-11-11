@@ -65,22 +65,23 @@ class TableViewModel(
         }
     }
 
-    @OptIn(FlowPreview::class)
     fun updateColumns(cols: List<ColumnUiState>) {
         _uiState.update { it.copy(columns = cols) }
     }
 
     fun setFocusedColumn(id: String?) {
         if (id == null) _uiState.update { it.copy(focusedColumnId = null) }
-
-        _uiState.update {
+        else _uiState.update {
             it.copy(
                 focusedColumnId = it.columns.find { col -> col.id == id }?.id,
             )
         }
     }
 
-    fun deleteLocalImage(path: String, start: CoroutineStart = CoroutineStart.DEFAULT): Deferred<Unit> = viewModelScope.async(start = start) {
+    fun deleteLocalImage(
+        path: String,
+        start: CoroutineStart = CoroutineStart.DEFAULT
+    ): Deferred<Unit> = viewModelScope.async(start = start) {
         println("TableViewModel::deleteLocalImage")
         deleteFile(path)
     }
@@ -90,7 +91,8 @@ class TableViewModel(
 
         _uiState.update {
             val errors = it.constraintErrors.toMutableMap()
-            errors[column.name] = constraintResults.mapNotNull { v -> v as? ConstraintCheckResult.Error }
+            errors[column.name] =
+                constraintResults.mapNotNull { v -> v as? ConstraintCheckResult.Error }
             it.copy(
                 constraintErrors = errors
             )
@@ -98,6 +100,7 @@ class TableViewModel(
 
         return constraintResults.all { it == ConstraintCheckResult.Ok }
     }
+
     fun submitData(cb: (Boolean) -> Unit) {
         _uiState.update {
             it.copy(isSubmitting = true)
@@ -105,7 +108,7 @@ class TableViewModel(
 
         val state = _uiState.value
         val checkResults = state.columns.map { col -> col.check() }
-        if (checkResults.any { v -> !v.ok}) {
+        if (checkResults.any { v -> !v.ok }) {
             _uiState.update {
                 it.copy(
                     isSubmitting = false,
@@ -138,7 +141,12 @@ class TableViewModel(
                                 } else {
                                     println("Image uploaded to $objectUrl")
                                     if (col.value.localUrl != null) {
-                                        deferred.add(deleteLocalImage(col.value.localUrl, CoroutineStart.LAZY))
+                                        deferred.add(
+                                            deleteLocalImage(
+                                                col.value.localUrl,
+                                                CoroutineStart.LAZY
+                                            )
+                                        )
                                     }
                                 }
 
@@ -155,7 +163,12 @@ class TableViewModel(
 
                             col.value is ColumnValue.File && col.value.isUploaded -> {
                                 if (col.value.localUrl != null) {
-                                    deferred.add(deleteLocalImage(col.value.localUrl, CoroutineStart.LAZY))
+                                    deferred.add(
+                                        deleteLocalImage(
+                                            col.value.localUrl,
+                                            CoroutineStart.LAZY
+                                        )
+                                    )
                                 }
                                 col
                             }
@@ -171,7 +184,12 @@ class TableViewModel(
                     val err = errors?.columnErrors?.mapNotNull { (k, v) ->
                         columns.find { col -> col.dbName == k }?.let { col ->
                             println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}}")
-                            col.name to v.map { serverError -> InternalStringResource(Res.string.constraint_error_server, listOf(serverError)) }
+                            col.name to v.map { serverError ->
+                                InternalStringResource(
+                                    Res.string.constraint_error_server,
+                                    listOf(serverError)
+                                )
+                            }
                         }
                     }?.toTypedArray()
                     if (err != null && err.isNotEmpty()) {
@@ -217,34 +235,79 @@ class TableViewModel(
         }
     }
 
-    private fun updateFocusedColumnValue(v: String) {
+    private fun updateColumn(id: String, v: String): Int {
+        var idx = -1
+        _uiState.update {
+            it.copy(
+                columns = it.columns.mapIndexed { i, col ->
+                    if (col.id != id) col
+                    else {
+                        idx = i
+                        col.copy(
+                            value = when (col.value) {
+                                is ColumnValue.Text -> ColumnValue.Text(v)
+                                is ColumnValue.Numeric -> ColumnValue.Numeric(
+                                    v.toIntOrNull() ?: v.toDoubleOrNull()
+                                )
+
+                                is ColumnValue.Boolean,
+                                is ColumnValue.File,
+                                is ColumnValue.OptionList,
+                                ColumnValue.Null -> col.value.clone()
+                            }
+                        )
+                    }
+                }.toMutableList()
+            )
+        }
+        return idx
+    }
+
+    private fun updateFocusedColumnValue(v: String): Int {
         val columns = _uiState.value.columns
         val focusedColumnId = _uiState.value.focusedColumnId
         val focusedColumn = columns.find { col -> col.id == focusedColumnId }
 
-        if (focusedColumn == null) return
+        if (focusedColumn == null || focusedColumnId == null) return -1
 
-        _uiState.update {
-            it.copy(
-                columns = it.columns.map { col ->
-                    if (col.id != focusedColumnId) col
-                    else focusedColumn.copy(
-                        value = when (focusedColumn.value) {
-                            is ColumnValue.Text -> ColumnValue.Text(v)
-                            is ColumnValue.Boolean,
-                            is ColumnValue.Numeric,
-                            is ColumnValue.File,
-                            is ColumnValue.OptionList,
-                            ColumnValue.Null -> focusedColumn.value.clone()
-                        }
-                    )
-                }.toMutableList()
-            )
-        }
+        return updateColumn(focusedColumnId, v)
+    }
+
+    private fun updateNextColumn(v: String): Int {
+        val columns = _uiState.value.columns
+        val nextColId = (columns.firstOrNull { col ->
+            when (col.value) {
+                is ColumnValue.Text -> col.value.text.isBlank()
+                is ColumnValue.Numeric -> col.value.num == null
+
+                else -> false
+            }
+        } ?: columns[0]).id
+
+        return updateColumn(nextColId, v)
     }
 
     override fun handle(event: ScanEvent) {
         val barcode = extractBarcode(event) ?: return
-        updateFocusedColumnValue(barcode)
+
+        val idx = if (_uiState.value.hasFocusedColumn) {
+            updateFocusedColumnValue(v = barcode)
+        } else {
+            updateNextColumn(v = barcode)
+        }
+
+        val columns = _uiState.value.columns
+        val newFocusIdx = if (columns.getOrNull(idx)?.check().let { it != null && it.ok }) {
+            (idx + 1) % columns.size
+        } else {
+            idx
+        }
+
+        _uiState.update {
+            it.copy(
+                focusedColumnId = columns.getOrNull(newFocusIdx)?.id
+            )
+        }
+        println("Handle event done: $event")
     }
 }

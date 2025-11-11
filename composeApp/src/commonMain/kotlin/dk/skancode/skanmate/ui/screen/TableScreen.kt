@@ -68,16 +68,15 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.ImageData
 import dk.skancode.skanmate.ImageResource
 import dk.skancode.skanmate.ImageResourceState
+import dk.skancode.skanmate.ScanModule
 import dk.skancode.skanmate.data.model.ColumnType
 import dk.skancode.skanmate.data.model.ColumnConstraint
 import dk.skancode.skanmate.ui.component.InputField
@@ -91,6 +90,7 @@ import dk.skancode.skanmate.ui.component.CustomButtonElevation
 import dk.skancode.skanmate.ui.component.FullWidthButton
 import dk.skancode.skanmate.ui.component.ImageCaptureAction
 import dk.skancode.skanmate.ui.component.ImageCaptureListener
+import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
@@ -98,6 +98,7 @@ import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
+import dk.skancode.skanmate.util.keyboardVisibleAsState
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
@@ -264,6 +265,7 @@ fun TableContent(
                                             .map { c -> if (c.id == col.id) col else c }
                                     )
                                 },
+                                focusedColumnId = tableUiState.focusedColumnId,
                                 setFocus = setFocusedColumn,
                                 onDone = {
                                     submitData()
@@ -313,6 +315,7 @@ fun LazyGridScope.tableColumns(
     validateColumn: (ColumnUiState, ColumnValue) -> Boolean,
     constraintErrors: Map<String, List<InternalStringResource>>,
     updateCol: (ColumnUiState) -> Unit,
+    focusedColumnId: String?,
     setFocus: (String, Boolean) -> Unit = { _, _ -> },
     onDone: () -> Unit = {},
     deleteFile: (String) -> Unit,
@@ -331,6 +334,7 @@ fun LazyGridScope.tableColumns(
                 col = col,
                 errors = constraintErrors[col.name] ?: emptyList(),
                 enabled = enabled,
+                isFocused = col.id == focusedColumnId,
                 setFocus = setFocus,
                 isLast = idx == columns.size - 1,
                 deleteFile = deleteFile,
@@ -356,6 +360,7 @@ fun TableColumn(
     enabled: Boolean = true,
     isLast: Boolean = false,
     onKeyboardAction: (ImeAction) -> Unit = {},
+    isFocused: Boolean,
     setFocus: (String, Boolean) -> Unit = { _, _ -> },
     deleteFile: (String) -> Unit,
     validateValue: (ColumnValue) -> Boolean,
@@ -421,6 +426,12 @@ fun TableColumn(
                 enabled = enabled,
             )
         } else {
+            LaunchedEffect(focusRequester, isFocused) {
+                if (isFocused) {
+                    focusRequester.requestFocus()
+                    //softwareKeyboardController?.hide()
+                }
+            }
             TableColumnInput(
                 modifier = modifier.focusRequester(focusRequester),
                 label = col.name,
@@ -480,8 +491,11 @@ fun TableColumnInput(
     imeAction: ImeAction = ImeAction.Next,
     onKeyboardAction: KeyboardActionScope.() -> Unit = {},
     setFocus: (Boolean) -> Unit = {},
+    scanModule: ScanModule = LocalScanModule.current,
 ) {
-    val keyboardOptions = remember(type) {
+    val keyboardVisible by keyboardVisibleAsState()
+
+    val keyboardOptions = remember(type, keyboardVisible) {
         when (type) {
             ColumnType.Unknown,
             ColumnType.Boolean,
@@ -494,25 +508,23 @@ fun TableColumnInput(
             ColumnType.Numeric -> KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
                 keyboardType = KeyboardType.Number,
-                showKeyboardOnFocus = true,
+                showKeyboardOnFocus = keyboardVisible || !scanModule.isHardwareScanner(),
                 imeAction = imeAction,
             )
 
             ColumnType.Text -> KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 keyboardType = KeyboardType.Ascii,
-                showKeyboardOnFocus = true,
+                showKeyboardOnFocus = keyboardVisible || !scanModule.isHardwareScanner(),
                 imeAction = imeAction,
             )
         }
     }
 
-    var selection by remember { mutableStateOf(TextRange(value.length)) }
-    var text by remember(value) { mutableStateOf(TextFieldValue(value, selection)) }
-    val onValueChange: (TextFieldValue) -> Unit = {
+    var text by remember(value) { mutableStateOf(value) }
+    val onValueChange: (String) -> Unit = {
         text = it
-        selection = it.selection
-        validateValue(it.text)
+        validateValue(it)
     }
     val labelComposable: (@Composable () -> Unit) = {
         Text(label)
@@ -526,11 +538,11 @@ fun TableColumnInput(
     val onFocusChange: (Boolean) -> Unit = {
         setFocus(it)
         if (!it) {
-            setValue(text.text)
+            setValue(text)
         }
     }
     val keyboardActions = KeyboardActions {
-        setValue(text.text)
+        setValue(text)
         onKeyboardAction()
         defaultKeyboardAction(imeAction = imeAction)
     }
@@ -539,7 +551,7 @@ fun TableColumnInput(
         errorTextColor = MaterialTheme.colorScheme.onErrorContainer
     )
 
-    if (type is ColumnType.Text) {
+    if (type is ColumnType.Text || type is ColumnType.Numeric) {
         ScanableInputField(
             modifier = modifier,
             value = text,
@@ -689,7 +701,7 @@ fun TableColumnList(
         onExpandedChange = { expanded = it },
         modifier = modifier,
     ) {
-        var selected = remember(option) { TextFieldValue(text = option ?: "") }
+        var selected = remember(option) { option ?: "" }
         InputField(
             value = selected,
             onValueChange = { selected = it },
@@ -716,7 +728,7 @@ fun TableColumnList(
                         Text(option)
                     },
                     onClick = {
-                        selected = selected.copy(text = option)
+                        selected = option
                         selectOption(option)
                         expanded = false
                     },
