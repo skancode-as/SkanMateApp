@@ -36,11 +36,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.ui.component.FullWidthButton
 import dk.skancode.skanmate.ui.component.InputField
+import dk.skancode.skanmate.ui.component.TextTransformation
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.util.darken
 import org.jetbrains.compose.resources.stringResource
@@ -59,13 +58,13 @@ fun AuthScreen(
     viewModel: AuthViewModel,
     navigate: () -> Unit,
 ) {
-    var email by remember { mutableStateOf(TextFieldValue()) }
-    var pin by remember { mutableStateOf(TextFieldValue()) }
+    var email by remember { mutableStateOf("") }
+    var pin by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
 
     val submit = {
         isLoading = true
-        viewModel.signIn(email.text, pin.text) { ok ->
+        viewModel.signIn(email, pin) { ok ->
             if (ok) {
                 navigate()
             }
@@ -153,7 +152,7 @@ fun AuthScreen(
                                 keyboardActions = KeyboardActions {
                                     submit()
                                 },
-                                visualTransformation = PasswordVisualTransformation()
+                                textTransformation = TextTransformation.Password()
                             )
                             FullWidthButton(
                                 colors = ButtonDefaults.outlinedButtonColors(
