@@ -242,6 +242,7 @@ fun InputField(
                 onValueChange = { v ->
                     onValueChange(v)
                 },
+                imeAction = keyboardOptions.imeAction,
                 enabled = enabled,
                 readOnly = readOnly,
                 textStyle = mergedTextStyle,
@@ -564,8 +565,8 @@ private class KeyboardActionRunner(
     private val keyboardController: SoftwareKeyboardController?,
     private val focusManager: FocusManager,
 ): KeyboardActionScope {
-
     fun runAction(imeAction: ImeAction) {
+        println("KeyboardActionRunner::runAction($imeAction) - keyboardActions: $keyboardActions")
         val keyboardAction =
             when (imeAction) {
                 ImeAction.Done -> keyboardActions.onDone
@@ -578,10 +579,12 @@ private class KeyboardActionRunner(
                 ImeAction.None -> null
                 else -> unreachable()
             }
+        println("KeyboardActionRunner::runAction($imeAction) - keyboardAction: $keyboardAction")
         if (keyboardAction != null) {
             keyboardAction()
+        } else {
+            defaultKeyboardAction(imeAction)
         }
-        defaultKeyboardAction(imeAction)
     }
 
     override fun defaultKeyboardAction(imeAction: ImeAction) {
