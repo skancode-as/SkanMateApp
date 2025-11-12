@@ -18,6 +18,7 @@ import com.russhwolf.settings.Settings
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.barcodescannermodule.compose.LocalScannerModule
 import androidx.core.net.toUri
+import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -38,7 +39,14 @@ actual fun CameraView(
     modifier: Modifier,
     cameraUi: @Composable BoxScope.(CameraController) -> Unit,
 ) {
+    val uiCameraController = LocalUiCameraController.current
     AndroidCameraView(modifier = modifier, cameraUi = cameraUi)
+
+    CameraPermissionAlert(
+        onDismissRequest = {
+            uiCameraController.stopCamera()
+        }
+    )
 }
 
 @SuppressLint("RestrictedApi")
@@ -87,7 +95,7 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
 
 fun Bitmap.rotate(degrees: Number): Bitmap {
     val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
-    val rotatedBitmap = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
+    val rotatedBitmap = Bitmap.createBitmap(this.copy(config!!, isMutable), 0, 0, width, height, matrix, true)
     this.recycle()
 
     return rotatedBitmap

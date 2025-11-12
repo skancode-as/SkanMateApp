@@ -4,19 +4,15 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dk.skancode.skanmate.ui.component.CameraBarcodeScanner
 import dk.skancode.skanmate.util.CameraScanManagerImpl
@@ -41,59 +37,41 @@ class MainActivity : ScannerActivity() {
             val controller = remember(factory) { factory.createPermissionsController() }
             BindEffect(controller)
 
-            val viewModel = viewModel { PermissionsViewModel(controller) }
+            val permissionsViewModel = viewModel { PermissionsViewModel(controller) }
             val cameraScanViewModel = viewModel { CameraScanViewModel(cameraScanManager) }
             val showCameraScanner by cameraScanViewModel.cameraPowerState.collectAsState()
 
-            ScannerModuleProvider {
-                CompositionLocalProvider(LocalCameraScanManager provides cameraScanManager ) {
-                    Scaffold { padding ->
-                        Box {
-                            if (scannerModule.scannerAvailable() || viewModel.state == PermissionState.Granted) {
-                                App()
-                                CameraBarcodeScanner(
-                                    modifier = Modifier.padding(padding),
-                                    showScanner = showCameraScanner,
-                                    onSuccess = {
-                                        cameraScanManager.send(it)
-                                        cameraScanManager.stopScanning()
-                                    },
-                                    onFailed = {
-                                        Log.e(
-                                            "CameraBarcodeScanner",
-                                            "Could not scan barcode",
-                                            it
-                                        )
-                                        cameraScanManager.stopScanning()
-                                    },
-                                    onCancelled = { cameraScanManager.stopScanning() }
-                                )
-                            } else {
-                                when (viewModel.state) {
-                                    PermissionState.DeniedAlways -> {
-                                        Column(modifier = Modifier.align(Alignment.Center)) {
-                                            Text(text = stringResource(R.string.camera_permissions_always_denied))
-                                            Button(
-                                                onClick = {
-                                                    controller.openAppSettings()
-                                                },
-                                            ) {
-                                                Text(text = stringResource(R.string.open_settings))
-                                            }
-                                        }
-                                    }
+            var showCameraAlert by remember { mutableStateOf(permissionsViewModel.cameraState != PermissionState.Granted) }
 
-                                    else -> {
-                                        Button(
-                                            modifier = Modifier.align(Alignment.Center),
-                                            onClick = {
-                                                viewModel.provideOrRequestPermission()
-                                            },
-                                        ) {
-                                            Text(text = stringResource(R.string.camera_permissions_request_permission))
-                                        }
-                                    }
-                                }
+            ScannerModuleProvider {
+                CompositionLocalProvider(
+                    LocalCameraScanManager provides cameraScanManager,
+                    LocalPermissionsViewModel provides permissionsViewModel
+                ) {
+                    Scaffold { padding ->
+                        App()
+                        if (!scannerModule.scannerAvailable()) {
+                            CameraBarcodeScanner(
+                                modifier = Modifier.padding(padding),
+                                showScanner = showCameraScanner,
+                                onSuccess = {
+                                    cameraScanManager.send(it)
+                                    cameraScanManager.stopScanning()
+                                },
+                                onFailed = {
+                                    Log.e(
+                                        "CameraBarcodeScanner",
+                                        "Could not scan barcode",
+                                        it
+                                    )
+                                    cameraScanManager.stopScanning()
+                                },
+                                onCancelled = { cameraScanManager.stopScanning() }
+                            )
+                            if (showCameraAlert && showCameraScanner) {
+                                CameraPermissionAlert(
+                                    onDismissRequest = { showCameraAlert = false; cameraScanManager.stopScanning() },
+                                )
                             }
                         }
                     }

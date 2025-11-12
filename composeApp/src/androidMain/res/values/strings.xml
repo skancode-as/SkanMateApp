@@ -1,6 +1,10 @@
 <resources>
     <string name="app_name">SkanMate</string>
+    <string name="camera_permissions_missing">Camera permissions missing</string>
     <string name="camera_permissions_always_denied">Permissions for the camera has been denied always. Open settings to update permissions.</string>
-    <string name="camera_permissions_request_permission">Request permission</string>
+    <string name="camera_permissions_give_permissions">Give permission</string>
     <string name="open_settings">Open settings</string>
+    <string name="camera_permissions_denied">Camera access has been denied</string>
+    <string name="camera_permissions_not_granted">Camera access not granted yet</string>
+    <string name="camera_permissions_for_what">The app needs access to the camera in order to take pictures.</string>
 </resources>

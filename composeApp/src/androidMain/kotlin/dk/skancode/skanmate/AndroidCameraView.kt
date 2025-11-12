@@ -17,6 +17,7 @@ import androidx.camera.core.Preview
 import androidx.camera.core.UseCaseGroup
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +36,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
+import dev.icerock.moko.permissions.PermissionState
 import dk.skancode.skanmate.util.unreachable
 import dk.skancode.skanmate.util.clamp
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +52,16 @@ fun AndroidCameraView(
     modifier: Modifier,
     cameraUi: @Composable BoxScope.(CameraController) -> Unit,
 ) {
+    val permissionsViewModel = LocalPermissionsViewModel.current
+    if (permissionsViewModel?.cameraState != PermissionState.Granted) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(color = MaterialTheme.colorScheme.background),
+        )
+        return
+    }
+
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val backgroundColor = MaterialTheme.colorScheme.background.value.toInt()
