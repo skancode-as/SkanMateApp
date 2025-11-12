@@ -25,7 +25,10 @@ import dk.skancode.skanmate.ui.component.SizeValues
 import dk.skancode.skanmate.util.unreachable
 
 @Composable
-fun CameraPermissionAlert() {
+fun CameraPermissionAlert(
+    onDismissRequest: () -> Unit,
+    closeable: Boolean = true,
+) {
     val permissionsViewModel = LocalPermissionsViewModel.current ?: error("LocalPermissionsViewModel not provided in CameraView on Android")
     val cameraState = permissionsViewModel.cameraState
 
@@ -116,9 +119,9 @@ fun CameraPermissionAlert() {
             }
 
             ContentDialog(
-                onDismissRequest = {},
+                onDismissRequest = onDismissRequest,
                 properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-                closable = false,
+                closable = closeable,
                 contentPadding = padding,
                 title = {
                     Text(
