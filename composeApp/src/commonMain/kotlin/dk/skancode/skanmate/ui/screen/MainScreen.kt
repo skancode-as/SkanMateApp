@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.nav.NavRoute
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
+import dk.skancode.skanmate.util.snackbar.LocalSnackbarHost
 import org.jetbrains.compose.resources.stringResource
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.main_screen_title
@@ -53,6 +54,7 @@ fun MainScreen(
     }
 
     Scaffold(
+        snackbarHost = LocalSnackbarHost.current,
         topBar = {
             TopAppBar(
                 title = {

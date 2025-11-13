@@ -32,6 +32,9 @@ import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.jsonSerializer
+import dk.skancode.skanmate.util.snackbar.LocalSnackbarHost
+import dk.skancode.skanmate.util.snackbar.SnackbarAdapter
+import dk.skancode.skanmate.util.snackbar.SnackbarHostProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
@@ -70,6 +73,8 @@ private val tableService = TableServiceImpl(
     externalScope = CoroutineScope(Dispatchers.IO)
 )
 
+private val snackbarAdapter: SnackbarAdapter = SnackbarAdapter()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
@@ -94,6 +99,7 @@ fun App() {
         CompositionLocalProvider(
             LocalScanModule provides scanModule,
             LocalUiCameraController provides uiCameraController,
+            LocalSnackbarHost provides { SnackbarHostProvider(adapter = snackbarAdapter) }
         ) {
             Box(
                 modifier = Modifier

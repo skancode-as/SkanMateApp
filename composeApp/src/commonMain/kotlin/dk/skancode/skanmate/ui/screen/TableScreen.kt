@@ -99,6 +99,7 @@ import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import dk.skancode.skanmate.util.keyboardVisibleAsState
+import dk.skancode.skanmate.util.snackbar.LocalSnackbarHost
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
@@ -126,6 +127,7 @@ fun TableScreen(
     val focusManager = LocalFocusManager.current
 
     Scaffold(
+        snackbarHost = LocalSnackbarHost.current,
         topBar = {
             TopAppBar(
                 title = {
