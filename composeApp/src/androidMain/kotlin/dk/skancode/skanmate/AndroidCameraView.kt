@@ -141,6 +141,8 @@ class AndroidCameraController(
 
     override val canSwitchCamera: State<Boolean>
         get() = _canSwitchCamera
+    override val canTakePicture: Boolean
+        get() = this::camera.isInitialized
 
     init {
         preview.surfaceProvider = previewView.surfaceProvider

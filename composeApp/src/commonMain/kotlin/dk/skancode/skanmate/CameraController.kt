@@ -15,6 +15,7 @@ interface CameraController {
     val flashState: Boolean
 
     val canSwitchCamera: State<Boolean>
+    val canTakePicture: Boolean
 
     // Attempts to set the flash state of the camera. Returns true if configuration success
     fun setFlashState(v: Boolean): Boolean
