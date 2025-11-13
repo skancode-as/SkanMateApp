@@ -21,6 +21,7 @@ import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.currentDateTimeUTC
 import dk.skancode.skanmate.util.format
 import dk.skancode.skanmate.util.unreachable
+import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import platform.AVFoundation.AVCaptureDeferredPhotoProxy
 import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceInput
 import platform.AVFoundation.AVCaptureDeviceInput.Companion.deviceInputWithDevice
@@ -39,7 +41,13 @@ import platform.AVFoundation.AVCaptureFlashModeOn
 import platform.AVFoundation.AVCapturePhoto
 import platform.AVFoundation.AVCapturePhotoCaptureDelegateProtocol
 import platform.AVFoundation.AVCapturePhotoOutput
+import platform.AVFoundation.AVCapturePhotoOutputCaptureReadinessNotReadyMomentarily
+import platform.AVFoundation.AVCapturePhotoOutputCaptureReadinessNotReadyWaitingForCapture
+import platform.AVFoundation.AVCapturePhotoOutputCaptureReadinessNotReadyWaitingForProcessing
+import platform.AVFoundation.AVCapturePhotoOutputCaptureReadinessReady
+import platform.AVFoundation.AVCapturePhotoOutputCaptureReadinessSessionNotRunning
 import platform.AVFoundation.AVCapturePhotoSettings
+import platform.AVFoundation.AVCaptureResolvedPhotoSettings
 import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVCaptureSessionPresetPhoto
 import platform.AVFoundation.AVCaptureVideoPreviewLayer
@@ -52,9 +60,11 @@ import platform.AVFoundation.isFlashActive
 import platform.AVFoundation.position
 import platform.AVFoundation.videoZoomFactor
 import platform.CoreGraphics.CGRectZero
+import platform.CoreMedia.CMTime
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSError
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
+import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.writeToFile
 import platform.QuartzCore.CATransaction
@@ -86,8 +96,16 @@ fun IosCameraView(
         AVCaptureSession().also { session ->
             session.sessionPreset = AVCaptureSessionPresetPhoto
             val input: AVCaptureDeviceInput = deviceInputWithDevice(device = device, error = null)!!
-            session.addInput(input)
-            session.addOutput(output)
+            if (session.canAddInput(input)) {
+                session.addInput(input)
+            } else {
+                error("Could not add camera input")
+            }
+            if (session.canAddOutput(output)) {
+                session.addOutput(output)
+            } else {
+                error("Could not add camera input")
+            }
         }
     }
 
@@ -179,6 +197,8 @@ class IosCameraController(
     private val _canSwitchCamera = mutableStateOf(true)
     override val canSwitchCamera: State<Boolean>
         get() = _canSwitchCamera
+    override val canTakePicture: Boolean
+        get() = output.captureReadiness == AVCapturePhotoOutputCaptureReadinessReady
 
     override val minZoom: Float = 1f
     override val maxZoom: Float
@@ -195,8 +215,10 @@ class IosCameraController(
 
     @OptIn(ExperimentalForeignApi::class)
     fun onCreate() {
-        externalScope.launch {
-            session.startRunning()
+        if (!session.running) {
+            externalScope.launch {
+                session.startRunning()
+            }
         }
     }
 
@@ -226,13 +248,24 @@ class IosCameraController(
     }
 
     override fun takePicture(cb: (TakePictureResponse) -> Unit) {
+        println("IosCameraController::takePicture($cb)")
         val settings =
             AVCapturePhotoSettings
                 .photoSettingsWithFormat(format = mapOf(AVVideoCodecKey to AVVideoCodecJPEG))
+
         settings.setFlashMode(
             if (flashState) AVCaptureFlashModeOn
             else AVCaptureFlashModeOff
         )
+        val captureReadiness = when (output.captureReadiness) {
+            AVCapturePhotoOutputCaptureReadinessReady -> "Ready"
+            AVCapturePhotoOutputCaptureReadinessNotReadyMomentarily -> "Not ready momentarily"
+            AVCapturePhotoOutputCaptureReadinessNotReadyWaitingForCapture -> "Not ready - Waiting for capture"
+            AVCapturePhotoOutputCaptureReadinessNotReadyWaitingForProcessing -> "Not ready - Waiting for processing"
+            AVCapturePhotoOutputCaptureReadinessSessionNotRunning -> "Not ready - Session not running"
+            else -> "Unknown capture readiness"
+        }
+        println("IosCameraController::takePicture() - settings = $settings, captureReadiness: $captureReadiness")
         output.capturePhotoWithSettings(settings, OutputCapturer(cb))
     }
 
@@ -257,7 +290,7 @@ class IosCameraController(
                     val newInput = AVCaptureDeviceInput(newDevice, null)
                     session.addInput(newInput)
                 } else {
-                    val devicePositionString = when(newDevicePosition) {
+                    val devicePositionString = when (newDevicePosition) {
                         AVCaptureDevicePositionBack -> "Back"
                         AVCaptureDevicePositionFront -> "Front"
                         else -> unreachable()
@@ -279,6 +312,60 @@ class IosCameraController(
 
     private class OutputCapturer(val cb: (TakePictureResponse) -> Unit) : NSObject(),
         AVCapturePhotoCaptureDelegateProtocol {
+
+        init {
+            println("IosCameraController::OutputCapturer::init($cb)")
+        }
+
+        @OptIn(ExperimentalForeignApi::class)
+        override fun captureOutput(
+            output: AVCapturePhotoOutput,
+            willBeginCaptureForResolvedSettings: AVCaptureResolvedPhotoSettings
+        ) {
+            println("IosCameraController::OutputCapturer::captureOutput::willBeginCapture($output, $willBeginCaptureForResolvedSettings)")
+            println("IosCameraController::OutputCapturer::captureOutput::willBeginCapture() - photoDimensions: ${willBeginCaptureForResolvedSettings.photoDimensions}")
+        }
+
+        override fun captureOutput(
+            output: AVCapturePhotoOutput,
+            didFinishCapturingDeferredPhotoProxy: AVCaptureDeferredPhotoProxy?,
+            error: NSError?
+        ) {
+            cb(TakePictureResponse(
+                ok = false,
+                data = null,
+                error = "Received DeferredPhotoProxy"
+            ))
+        }
+
+        @OptIn(ExperimentalForeignApi::class)
+        override fun captureOutput(
+            output: AVCapturePhotoOutput,
+            didFinishProcessingLivePhotoToMovieFileAtURL: NSURL,
+            duration: CValue<CMTime>,
+            photoDisplayTime: CValue<CMTime>,
+            resolvedSettings: AVCaptureResolvedPhotoSettings,
+            error: NSError?
+        ) {
+            cb(TakePictureResponse(
+                ok = false,
+                data = null,
+                error = "Received LivePhotoToMovieFileURL"
+            ))
+        }
+
+        override fun captureOutput(
+            output: AVCapturePhotoOutput,
+            didFinishCaptureForResolvedSettings: AVCaptureResolvedPhotoSettings,
+            error: NSError?
+        ) {
+            cb(TakePictureResponse(
+                ok = false,
+                data = null,
+                error = "Received didFinishCaptureForResolvedSettings"
+            ))
+        }
+
         override fun captureOutput(
             output: AVCapturePhotoOutput,
             didFinishProcessingPhoto: AVCapturePhoto,

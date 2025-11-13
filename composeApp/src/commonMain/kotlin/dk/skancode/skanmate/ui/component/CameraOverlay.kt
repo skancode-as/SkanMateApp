@@ -59,6 +59,7 @@ fun BoxScope.CameraOverlay(
         onStopCapture = {
             uiCameraController.stopCamera()
         },
+        canCaptureImage = controller.canTakePicture,
         onCaptureImage = {
             isCapturing = true
             controller.takePicture { res ->
@@ -87,11 +88,11 @@ fun BoxScope.CameraOverlay(
     )
 }
 
-@OptIn(ExperimentalAnimationSpecApi::class)
 @Composable
 fun BoxScope.ImageCapturingOverlay(
     painterIsLoading: Boolean,
     onStopCapture: () -> Unit,
+    canCaptureImage: Boolean,
     onCaptureImage: () -> Unit,
     flashState: Boolean,
     onToggleFlash: (Boolean) -> Unit,
@@ -141,34 +142,19 @@ fun BoxScope.ImageCapturingOverlay(
                 .align(Alignment.Center),
             onClick = onCaptureImage,
             loading = painterIsLoading,
+            enabled = canCaptureImage,
             minSize = minButtonSize,
             maxSize = maxButtonSize,
         )
 
-        val animator = animator(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = ArcAnimationSpec(durationMillis = 400)
-        )
-        val rotation by animator.value
-        IconButton(
+        SwitchCameraButton(
             modifier = Modifier
                 .align(Alignment.CenterEnd),
             onClick = {
-                animator.start()
                 onSwitchCamera()
             },
-            sizeValues = SizeValues(min = minButtonSize, max = maxButtonSize),
-            enabled = canSwitchCamera
-        ) {
-            Icon(
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .rotate(rotation.mod(360f)),
-                imageVector = vectorResource(Res.drawable.switch_camera),
-                contentDescription = null,
-            )
-        }
+            canSwitchCamera = canSwitchCamera,
+        )
     }
 }
 
@@ -259,11 +245,47 @@ fun AcceptImageButton(
     }
 }
 
+@OptIn(ExperimentalAnimationSpecApi::class)
+@Composable
+fun SwitchCameraButton(
+    modifier: Modifier,
+    onClick: () -> Unit,
+    canSwitchCamera: Boolean,
+    minButtonSize: Dp = 48.dp,
+    maxButtonSize: Dp = 64.dp
+) {
+    val animator = animator(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = ArcAnimationSpec(durationMillis = 400)
+    )
+    val onClick = {
+        animator.start()
+        onClick()
+    }
+    val rotation by animator.value
+    IconButton(
+        modifier = modifier,
+        onClick = onClick,
+        sizeValues = SizeValues(min = minButtonSize, max = maxButtonSize),
+        enabled = canSwitchCamera
+    ) {
+        Icon(
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .rotate(rotation.mod(360f)),
+            imageVector = vectorResource(Res.drawable.switch_camera),
+            contentDescription = null,
+        )
+    }
+}
+
 @Composable
 fun CaptureImageButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     loading: Boolean = true,
+    enabled: Boolean = true,
     minSize: Dp = 48.dp,
     maxSize: Dp = 64.dp
 ) {
@@ -271,7 +293,7 @@ fun CaptureImageButton(
         modifier = modifier,
         onClick = onClick,
         sizeValues = SizeValues(min = minSize, max = maxSize),
-        enabled = !loading,
+        enabled = enabled && !loading,
     ) {
         AnimatedContent(loading) { isLoading ->
             if (isLoading) {
