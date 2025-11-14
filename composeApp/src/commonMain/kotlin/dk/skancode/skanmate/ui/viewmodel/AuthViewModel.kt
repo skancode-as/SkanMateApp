@@ -6,6 +6,7 @@ import dk.skancode.skanmate.data.model.TenantModel
 import dk.skancode.skanmate.data.model.UserModel
 import dk.skancode.skanmate.data.service.AuthService
 import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.isValidEmail
 import dk.skancode.skanmate.util.snackbar.UserMessageService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,11 +16,12 @@ import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.auth_screen_fill_credentials
 import skanmate.composeapp.generated.resources.auth_screen_fill_email
 import skanmate.composeapp.generated.resources.auth_screen_fill_pin
+import skanmate.composeapp.generated.resources.auth_screen_invalid_email
 
 class AuthViewModel(
     val authService: AuthService,
     val userMessageService: UserMessageService,
-): ViewModel() {
+) : ViewModel() {
     private val _authedUser = MutableStateFlow<UserModel?>(null)
     val authedUser: StateFlow<UserModel?>
         get() = _authedUser
@@ -40,40 +42,58 @@ class AuthViewModel(
         }
     }
 
-    fun signIn(email: String, pw: String, cb: (Boolean) -> Unit = {}) {
+    fun validateCredentials(email: String, pw: String): Boolean {
+        return internalValidateCredentials(email, pw) == null
+    }
+
+    private fun internalValidateCredentials(email: String, pw: String): InternalStringResource? =
         when {
             email.isBlank() || pw.isBlank() -> {
-                userMessageService.displayError(
-                    message = InternalStringResource(
-                        Res.string.auth_screen_fill_credentials,
-                    )
+                InternalStringResource(
+                    Res.string.auth_screen_fill_credentials,
                 )
-                cb(false)
-            }
-            email.isBlank() -> {
-                userMessageService.displayError(
-                    message = InternalStringResource(
-                        Res.string.auth_screen_fill_email,
-                    )
-                )
-                cb(false)
-            }
-            pw.isBlank() -> {
-                userMessageService.displayError(
-                    message = InternalStringResource(
-                        Res.string.auth_screen_fill_pin,
-                    )
-                )
-                cb(false)
             }
 
-            else -> viewModelScope.launch {
+            email.isBlank() -> {
+                InternalStringResource(
+                    Res.string.auth_screen_fill_email,
+                )
+            }
+
+            !email.isValidEmail() -> {
+                InternalStringResource(
+                    Res.string.auth_screen_invalid_email,
+                )
+            }
+
+            pw.isBlank() -> {
+                InternalStringResource(
+                    Res.string.auth_screen_fill_pin,
+                )
+            }
+
+            else -> null
+        }
+
+
+    fun signIn(email: String, pw: String, cb: (Boolean) -> Unit = {}) {
+        val message = internalValidateCredentials(email, pw)
+
+        when (message) {
+            null -> viewModelScope.launch {
                 val res = authService.signIn(email, pw)
 
                 println("Sign in result: $res")
                 _authedUser.update { res.user }
                 _authedTenant.update { res.tenant }
                 cb(res.user != null && res.tenant != null)
+            }
+
+            else -> {
+                userMessageService.displayError(
+                    message = message
+                )
+                cb(false)
             }
         }
     }

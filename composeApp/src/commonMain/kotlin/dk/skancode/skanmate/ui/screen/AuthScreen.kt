@@ -96,6 +96,12 @@ fun AuthScreen(
                 AppNameAndIcon()
 
                 SignInCard(
+                    validateCredentials = { email, pin ->
+                        viewModel.validateCredentials(
+                            email,
+                            pin
+                        )
+                    },
                     submit = submit,
                     isLoading = isLoading,
                 )
@@ -134,6 +140,7 @@ fun AppNameAndIcon() {
 
 @Composable
 fun SignInCard(
+    validateCredentials: (email: String, pin: String) -> Boolean,
     submit: (email: String, pin: String) -> Unit,
     isLoading: Boolean,
 ) {
@@ -192,7 +199,7 @@ fun SignInCard(
                     disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
                 onClick = { submit(email, pin) },
-                enabled = email.isNotBlank() && pin.isNotBlank() && !isLoading,
+                enabled = validateCredentials(email, pin) && !isLoading,
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             ) {
                 Text(

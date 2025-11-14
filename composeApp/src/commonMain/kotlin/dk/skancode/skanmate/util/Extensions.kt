@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorModel
+import dk.skancode.skanmate.data.model.ColumnConstraint
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.max
 import kotlin.math.min
@@ -129,6 +130,8 @@ inline fun<reified S, T> Iterable<T>.reduceDefault(default: S, action: (S, T) ->
 
     return res
 }
+
+fun String.isValidEmail(): Boolean = ColumnConstraint.Email.regex.matches(this)
 
 inline fun unreachable(): Nothing = throw UnreachableException()
 inline fun unreachable(reason: String): Nothing = throw UnreachableException(message = "An unreachable statement has been reached: $reason")

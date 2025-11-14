@@ -17,9 +17,10 @@
     <string name="auth_screen_pin_placeholder">Indtast pinkode her</string>
     <string name="auth_screen_sign_in">Log ind</string>
     <string name="auth_screen_sign_in_success">Log ind vellykket</string>
-    <string name="auth_screen_sign_in_failed">Log ind fejlede. %1$s</string>
+    <string name="auth_screen_sign_in_failed">Log ind fejlede. %1$s.</string>
     <string name="auth_screen_fill_credentials">Udfyld email og pinkode før log ind.</string>
     <string name="auth_screen_fill_email">Udfyld email før log ind.</string>
+    <string name="auth_screen_invalid_email">Email er ikke gyldig.</string>
     <string name="auth_screen_fill_pin">Udfyld pinkode før log ind.</string>
 
     <string name="column_type_text">Tekst</string>

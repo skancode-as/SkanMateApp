@@ -17,9 +17,10 @@
     <string name="auth_screen_pin_placeholder">Enter Pin Here</string>
     <string name="auth_screen_sign_in">Sign in</string>
     <string name="auth_screen_sign_in_success">Sign in successful</string>
-    <string name="auth_screen_sign_in_failed">Sign in failed. %1$s</string>
+    <string name="auth_screen_sign_in_failed">Sign in failed. %1$s.</string>
     <string name="auth_screen_fill_credentials">Fill email and pin before signing in.</string>
     <string name="auth_screen_fill_email">Fill email before signing in.</string>
+    <string name="auth_screen_invalid_email">Email is not valid.</string>
     <string name="auth_screen_fill_pin">Fill pin before signing in.</string>
 
     <string name="column_type_text">Text</string>
