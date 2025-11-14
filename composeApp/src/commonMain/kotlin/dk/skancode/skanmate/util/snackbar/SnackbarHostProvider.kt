@@ -12,7 +12,6 @@ import androidx.compose.material3.SnackbarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -20,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
 import dk.skancode.skanmate.ui.component.IconButton
+import dk.skancode.skanmate.ui.component.TextButton
 
 @Composable
 fun SnackbarHostProvider(
@@ -37,6 +37,7 @@ fun SnackbarHostProvider(
                     @Composable {
                         TextButton(
                             colors = ButtonDefaults.textButtonColors(contentColor = SnackbarDefaults.actionColor),
+                            enabledWhenSnackbarActive = true,
                             onClick = { data.performAction() },
                             content = { Text(actionLabel) }
                         )
@@ -56,6 +57,7 @@ fun SnackbarHostProvider(
                                 )
                             },
                             elevation = CustomButtonElevation.None,
+                            enabledWhenSnackbarActive = true,
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = visuals.containerColor,
                                 contentColor = visuals.dismissActionContentColor,

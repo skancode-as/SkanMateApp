@@ -15,7 +15,7 @@ data class SkanMateSnackbarVisuals(
     override val duration: SnackbarDuration = if (withDismissAction) SnackbarDuration.Indefinite else SnackbarDuration.Short,
     private val config: SkanMateSnackbarVisualsConfig = SkanMateSnackbarVisualsConfig()
 ): SnackbarVisuals {
-    private val isError: Boolean by lazy { config.isError }
+    val isError: Boolean by lazy { config.isError }
     val description: String? by lazy { config.description }
     val shape: Shape
         @Composable get() = SnackbarDefaults.shape

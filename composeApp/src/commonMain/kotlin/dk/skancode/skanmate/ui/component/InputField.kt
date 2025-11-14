@@ -99,6 +99,7 @@ import androidx.compose.ui.util.fastFirstOrNull
 import dk.skancode.skanmate.ScanModule
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.keyboardVisibleAsState
+import dk.skancode.skanmate.util.snackbar.LocalSnackbarManager
 import dk.skancode.skanmate.util.unreachable
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.vectorResource
@@ -207,6 +208,9 @@ fun InputField(
     colors: TextFieldColors = TextFieldDefaults.colors(),
     onFocusChange: (Boolean) -> Unit = {},
 ) {
+    val snackbarManager = LocalSnackbarManager.current
+    val enabled = enabled && !snackbarManager.errorSnackbarActive
+
     val paddingValues = PaddingValues(16.dp)
     val interactionSource = interactionSource ?: remember { MutableInteractionSource() }
     val focused = interactionSource.collectIsFocusedAsState().value

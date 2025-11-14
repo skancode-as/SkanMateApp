@@ -3,10 +3,8 @@ package dk.skancode.skanmate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,13 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import dev.icerock.moko.permissions.PermissionState
-import dk.skancode.skanmate.ui.component.Button
 import dk.skancode.skanmate.ui.component.ContentDialog
-import dk.skancode.skanmate.ui.component.SizeValues
+import dk.skancode.skanmate.ui.component.TextButton
 import dk.skancode.skanmate.util.unreachable
 
 @Composable
@@ -100,11 +96,8 @@ fun CameraPermissionAlert(
                         style = MaterialTheme.typography.bodyLarge,
                     )
 
-                    Button(
-                        modifier = Modifier.width(IntrinsicSize.Max),
+                    TextButton(
                         onClick = onClick,
-                        contentPadding = PaddingValues(12.dp, 8.dp),
-                        sizeValues = SizeValues(min = Dp.Unspecified, max = Dp.Infinity),
                         colors = ButtonDefaults.textButtonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,

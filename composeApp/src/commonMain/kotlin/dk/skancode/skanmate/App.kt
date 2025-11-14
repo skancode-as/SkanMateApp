@@ -35,7 +35,9 @@ import dk.skancode.skanmate.util.jsonSerializer
 import dk.skancode.skanmate.util.snackbar.SnackbarAdapter
 import dk.skancode.skanmate.util.snackbar.SnackbarHostProvider
 import dk.skancode.skanmate.util.snackbar.SnackbarLayout
+import dk.skancode.skanmate.util.snackbar.SnackbarManagerProvider
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
+import dk.skancode.skanmate.util.snackbar.snackbarHostStateProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
@@ -111,14 +113,17 @@ fun App() {
                     .fillMaxSize(),
                 propagateMinConstraints = true,
             ) {
+                val snackbarHostState = snackbarHostStateProvider(adapter = snackbarAdapter)
                 SnackbarLayout(
-                    snackbar = { SnackbarHostProvider(adapter = snackbarAdapter) }
+                    snackbar = { SnackbarHostProvider(adapter = snackbarAdapter, snackbarHostState) }
                 ) {
-                    AppNavHost(
-                        authViewModel = authViewModel,
-                        initializerViewModel = initializerViewModel,
-                        tableViewModel = tableViewModel,
-                    )
+                    SnackbarManagerProvider(hostState = snackbarHostState) {
+                        AppNavHost(
+                            authViewModel = authViewModel,
+                            initializerViewModel = initializerViewModel,
+                            tableViewModel = tableViewModel,
+                        )
+                    }
                 }
                 if (showCamera) {
                     var scale by remember { mutableFloatStateOf(1f)}
