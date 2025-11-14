@@ -63,6 +63,13 @@ data class SignInResult(
 )
 
 @Serializable
+data class SignInUnprocessableEntityDetails(
+    val email: List<String>? = null,
+    val credential: List<String>? = null,
+    val type: List<String>? = null,
+)
+
+@Serializable
 data class SignInDTO(val token: String)
 
 @Serializable
