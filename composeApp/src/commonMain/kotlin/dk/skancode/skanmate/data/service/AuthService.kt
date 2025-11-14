@@ -1,26 +1,22 @@
 package dk.skancode.skanmate.data.service
 
 import com.russhwolf.settings.Settings
-import com.russhwolf.settings.get
 import com.russhwolf.settings.set
 import dk.skancode.skanmate.data.model.PinCredentialType
 import dk.skancode.skanmate.data.model.SignInResult
 import dk.skancode.skanmate.data.model.TenantModel
-import dk.skancode.skanmate.data.model.UserCredentialType
 import dk.skancode.skanmate.data.model.UserSignInDTO
 import dk.skancode.skanmate.data.model.UserModel
 import dk.skancode.skanmate.data.store.AuthStore
 import dk.skancode.skanmate.platformSettingsFactory
+import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
+import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.auth_screen_sign_in_failed
 
 interface AuthService {
     val userFlow: SharedFlow<UserModel?>
@@ -78,8 +74,16 @@ class AuthServiceImpl(
                 type = PinCredentialType,
             ),
         )
-        if (!signInRes.ok || signInRes.data == null)
+        if (!signInRes.ok || signInRes.data == null) {
+            UserMessageServiceImpl.displayError(
+                InternalStringResource(
+                    Res.string.auth_screen_sign_in_failed,
+                    listOf(signInRes.msg)
+                )
+            )
+
             return SignInResult(user = null, tenant = null)
+        }
 
         tokenFlow.emit(signInRes.data.token)
 

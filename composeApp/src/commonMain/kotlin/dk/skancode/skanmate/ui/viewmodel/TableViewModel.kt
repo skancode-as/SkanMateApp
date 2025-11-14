@@ -17,6 +17,7 @@ import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.state.toUiState
 import dk.skancode.skanmate.ui.state.check
 import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.snackbar.UserMessageService
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.FlowPreview
@@ -27,9 +28,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.constraint_error_server
+import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data
+import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data_constraint
+import skanmate.composeapp.generated.resources.table_vm_could_not_upload_image
 
 class TableViewModel(
     val tableService: TableService,
+    val userMessageService: UserMessageService,
 ) : ViewModel(), ScanEventHandler {
     private val _tableFlow = MutableStateFlow<List<TableSummaryModel>>(emptyList())
     val tableFlow: StateFlow<List<TableSummaryModel>>
@@ -117,6 +122,11 @@ class TableViewModel(
                     )
                 )
             }
+            userMessageService.displayError(
+                message = InternalStringResource(
+                    resource = Res.string.table_vm_could_not_submit_data_constraint,
+                )
+            )
             return
         }
 
@@ -138,6 +148,13 @@ class TableViewModel(
                                 )
                                 if (objectUrl == null) {
                                     println("Could not upload image")
+                                    userMessageService.displayError(
+                                        message = InternalStringResource(
+                                            resource = Res.string.table_vm_could_not_upload_image,
+                                        )
+                                    )
+                                    res = false
+                                    return@launch
                                 } else {
                                     println("Image uploaded to $objectUrl")
                                     if (col.value.localUrl != null) {
@@ -192,12 +209,24 @@ class TableViewModel(
                             }
                         }
                     }?.toTypedArray()
-                    if (err != null && err.isNotEmpty()) {
-                        constraintErrors = mapOf(*err)
-                    }
                     if (ok) {
                         deferred.forEach { it.await() }
                     } else {
+                        if (err != null && err.isNotEmpty()) {
+                            constraintErrors = mapOf(*err)
+                            userMessageService.displayError(
+                                message = InternalStringResource(
+                                    resource = Res.string.table_vm_could_not_submit_data_constraint,
+                                )
+                            )
+                        } else {
+                            userMessageService.displayError(
+                                message = InternalStringResource(
+                                    resource = Res.string.table_vm_could_not_submit_data,
+                                )
+                            )
+                        }
+
                         deferred.forEach { it.cancel() }
                     }
                     res = ok

@@ -6,14 +6,21 @@
     <string name="table_not_found">That table could no longer be found. Please go back and try again.</string>
     <string name="table_no_description">No description provided</string>
     <string name="cannot_display_image">Cannot display image</string>
-    <string name="main_screen_title">Tables</string>
     <string name="signed_out">You have been signed out</string>
+
+    <string name="main_screen_title">Tables</string>
+    <string name="main_screen_could_not_update_tables">Could not refresh tables. Try again.</string>
 
     <string name="auth_screen_email_label">Email</string>
     <string name="auth_screen_email_placeholder">Enter Your Email...</string>
     <string name="auth_screen_pin_label">Pin</string>
     <string name="auth_screen_pin_placeholder">Enter Pin Here</string>
     <string name="auth_screen_sign_in">Sign in</string>
+    <string name="auth_screen_sign_in_success">Sign in successful</string>
+    <string name="auth_screen_sign_in_failed">Sign in failed. %1$s</string>
+    <string name="auth_screen_fill_credentials">Fill email and pin before signing in.</string>
+    <string name="auth_screen_fill_email">Fill email before signing in.</string>
+    <string name="auth_screen_fill_pin">Fill pin before signing in.</string>
 
     <string name="column_type_text">Text</string>
     <string name="column_type_numeric">Number</string>
@@ -33,4 +40,8 @@
     <string name="constraint_error_email">Value must be a valid email</string>
     <string name="constraint_error_required">Field is required and cannot be empty</string>
     <string name="constraint_error_server">%1$s</string>
+
+    <string name="table_vm_could_not_upload_image">Could not upload image. Please try again.</string>
+    <string name="table_vm_could_not_submit_data">Data could not be submitted.</string>
+    <string name="table_vm_could_not_submit_data_constraint">Data could not be submitted. Fix errors, and try again.</string>
 </resources>

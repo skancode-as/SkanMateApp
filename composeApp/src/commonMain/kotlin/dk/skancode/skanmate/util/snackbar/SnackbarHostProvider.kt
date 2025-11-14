@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dk.skancode.skanmate.ui.component.CustomButtonElevation
 import dk.skancode.skanmate.ui.component.IconButton
 
 @Composable
@@ -53,7 +54,12 @@ fun SnackbarHostProvider(
                                     Icons.Filled.Close,
                                     contentDescription = "Dismiss snackbar icon",
                                 )
-                            }
+                            },
+                            elevation = CustomButtonElevation.None,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = visuals.containerColor,
+                                contentColor = visuals.dismissActionContentColor,
+                            )
                         )
                     }
                 } else {

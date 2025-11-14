@@ -22,7 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,7 +40,9 @@ import dk.skancode.skanmate.ui.component.FullWidthButton
 import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.TextTransformation
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
+import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.darken
+import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
@@ -51,6 +52,7 @@ import skanmate.composeapp.generated.resources.auth_screen_email_placeholder
 import skanmate.composeapp.generated.resources.auth_screen_pin_label
 import skanmate.composeapp.generated.resources.auth_screen_pin_placeholder
 import skanmate.composeapp.generated.resources.auth_screen_sign_in
+import skanmate.composeapp.generated.resources.auth_screen_sign_in_success
 import skanmate.composeapp.generated.resources.scan_barcode
 
 @Composable
@@ -58,14 +60,17 @@ fun AuthScreen(
     viewModel: AuthViewModel,
     navigate: () -> Unit,
 ) {
-    var email by remember { mutableStateOf("") }
-    var pin by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
 
-    val submit = {
+    val submit = { email: String, pin: String ->
         isLoading = true
         viewModel.signIn(email, pin) { ok ->
             if (ok) {
+                UserMessageServiceImpl.displayMessage(
+                    message = InternalStringResource(
+                        Res.string.auth_screen_sign_in_success,
+                    )
+                )
                 navigate()
             }
 
@@ -73,114 +78,135 @@ fun AuthScreen(
         }
     }
 
-    Scaffold { padding ->
-        Surface(
+    Scaffold(
+        modifier = Modifier
+            .padding(8.dp),
+    ) { padding ->
+        Box(
             modifier = Modifier
                 .padding(padding)
-                .padding(8.dp)
                 .fillMaxSize()
                 .imePadding(),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(
-                                    shape = MaterialTheme.shapes.medium,
-                                )
-                                .background(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = MaterialTheme.shapes.medium,
-                                )
-                                .requiredSize(48.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = vectorResource(Res.drawable.scan_barcode),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                        Text(stringResource(Res.string.app_name), fontWeight = FontWeight.SemiBold)
-                    }
-                    ElevatedCard(
-                        modifier = Modifier
-                            .padding(16.dp)
-                    ) {
-                        val elementPadding = PaddingValues(16.dp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+            ) {
+                AppNameAndIcon()
 
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(elementPadding),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            InputField(
-                                modifier = Modifier.fillMaxWidth(),
-                                value = email,
-                                onValueChange = { email = it },
-                                label = {
-                                    Text(stringResource(Res.string.auth_screen_email_label))
-                                },
-                                enabled = !isLoading,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Email,
-                                    imeAction = ImeAction.Next,
-                                ),
-                                placeholder = { Text(stringResource(Res.string.auth_screen_email_placeholder)) }
-                            )
-                            InputField(
-                                modifier = Modifier.fillMaxWidth(),
-                                value = pin,
-                                onValueChange = { pin = it },
-                                label = {
-                                    Text(stringResource(Res.string.auth_screen_pin_label))
-                                },
-                                placeholder = { Text(stringResource(Res.string.auth_screen_pin_placeholder)) },
-                                enabled = !isLoading,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.NumberPassword,
-                                    imeAction = ImeAction.Done,
-                                    autoCorrectEnabled = false,
-                                    capitalization = KeyboardCapitalization.None,
-                                ),
-                                keyboardActions = KeyboardActions {
-                                    submit()
-                                },
-                                textTransformation = TextTransformation.Password()
-                            )
-                            FullWidthButton(
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(.1f),
-                                    disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                ),
-                                onClick = submit,
-                                enabled = !isLoading,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                            ) {
-                                Text(
-                                    text = stringResource(Res.string.auth_screen_sign_in),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                AnimatedVisibility(isLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        color = LocalContentColor.current,
-                                        trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
-                                        strokeWidth = 2.dp,
-                                    )
-                                }
-                            }
-                        }
-                    }
+                SignInCard(
+                    submit = submit,
+                    isLoading = isLoading,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AppNameAndIcon() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(
+                    shape = MaterialTheme.shapes.medium,
+                )
+                .background(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = MaterialTheme.shapes.medium,
+                )
+                .requiredSize(48.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = vectorResource(Res.drawable.scan_barcode),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+        Text(stringResource(Res.string.app_name), fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+fun SignInCard(
+    submit: (email: String, pin: String) -> Unit,
+    isLoading: Boolean,
+) {
+    var email by remember { mutableStateOf("") }
+    var pin by remember { mutableStateOf("") }
+
+    ElevatedCard(
+        modifier = Modifier
+            .padding(16.dp)
+    ) {
+        val elementPadding = PaddingValues(16.dp)
+
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(elementPadding),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            InputField(
+                modifier = Modifier.fillMaxWidth(),
+                value = email,
+                onValueChange = { email = it },
+                label = {
+                    Text(stringResource(Res.string.auth_screen_email_label))
+                },
+                enabled = !isLoading,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next,
+                ),
+                placeholder = { Text(stringResource(Res.string.auth_screen_email_placeholder)) }
+            )
+            InputField(
+                modifier = Modifier.fillMaxWidth(),
+                value = pin,
+                onValueChange = { pin = it },
+                label = {
+                    Text(stringResource(Res.string.auth_screen_pin_label))
+                },
+                placeholder = { Text(stringResource(Res.string.auth_screen_pin_placeholder)) },
+                enabled = !isLoading,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.NumberPassword,
+                    imeAction = ImeAction.Done,
+                    autoCorrectEnabled = false,
+                    capitalization = KeyboardCapitalization.None,
+                ),
+                keyboardActions = KeyboardActions {
+                    submit(email, pin)
+                },
+                textTransformation = TextTransformation.Password()
+            )
+            FullWidthButton(
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(.1f),
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+                onClick = { submit(email, pin) },
+                enabled = email.isNotBlank() && pin.isNotBlank() && !isLoading,
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            ) {
+                Text(
+                    text = stringResource(Res.string.auth_screen_sign_in),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                AnimatedVisibility(isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = LocalContentColor.current,
+                        trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
+                        strokeWidth = 2.dp,
+                    )
                 }
             }
         }

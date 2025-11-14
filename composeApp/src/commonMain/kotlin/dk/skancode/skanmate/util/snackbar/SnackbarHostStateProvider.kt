@@ -13,6 +13,7 @@ fun snackbarHostStateProvider(
 
     LaunchedEffect(adapter) {
         for (snackbar in adapter.snackbars) {
+            println("snackbarHostStateProvider::LaunchedEffect - new snackbar: $snackbar")
             snackbarHostState.showSnackbar(snackbar)
         }
     }
