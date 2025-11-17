@@ -13,19 +13,37 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dk.skancode.skanmate.ScanModule
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
 import dk.skancode.skanmate.ui.component.IconButton
+import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.TextButton
 
 @Composable
 fun SnackbarHostProvider(
     adapter: SnackbarAdapter,
     hostState: SnackbarHostState = snackbarHostStateProvider(adapter),
+    scanModule: ScanModule = LocalScanModule.current,
 ) {
+    if (scanModule.isHardwareScanner()) {
+        val currentSnackbarData = hostState.currentSnackbarData
+        LaunchedEffect(currentSnackbarData) {
+            if (currentSnackbarData != null) {
+                val visuals = currentSnackbarData.visuals as? SkanMateSnackbarVisuals
+                if (visuals != null && visuals.isError) {
+                    scanModule.disableScan()
+                }
+            } else {
+                scanModule.enableScan()
+            }
+        }
+    }
+
     SnackbarHost(hostState) { data ->
         val visuals: SkanMateSnackbarVisuals? = data.visuals as? SkanMateSnackbarVisuals
         if (visuals == null) {
