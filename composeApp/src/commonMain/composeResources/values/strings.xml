@@ -11,6 +11,8 @@
     <string name="main_screen_title">Tables</string>
     <string name="main_screen_could_not_update_tables">Could not refresh tables. Try again.</string>
 
+    <string name="table_screen_data_submitted">Data was submitted successfully</string>
+
     <string name="auth_screen_email_label">Email</string>
     <string name="auth_screen_email_placeholder">Enter Your Email...</string>
     <string name="auth_screen_pin_label">Pin</string>

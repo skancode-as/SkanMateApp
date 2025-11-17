@@ -18,6 +18,12 @@ fun<T> StateFlow<List<T>>.find(predicate: (T) -> Boolean): T? {
     return this.collectAsState().value.find(predicate)
 }
 
+val Color.Companion.Success: Color
+    get() = Color(0xFF0D9A0D)
+
+val Color.Companion.OnSuccess: Color
+    get() = Color.White
+
 fun Color.darken(@FloatRange(from = 0.0, 1.0) factor: Float): Color {
     return this.add(
         red = -factor,
