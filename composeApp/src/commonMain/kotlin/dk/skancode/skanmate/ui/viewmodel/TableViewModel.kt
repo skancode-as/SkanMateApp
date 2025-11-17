@@ -194,10 +194,14 @@ class TableViewModel(
                         }
                     }
 
-                    val (ok, errors) = tableService.submitRow(
+                    val submitRes = tableService.submitRow(
                         tableId = state.model.id,
                         row = rowDataOf(columns),
                     )
+                    val ok = submitRes.ok
+                    val msg = submitRes.msg
+                    val errors = submitRes.errors
+
                     val err = errors?.columnErrors?.mapNotNull { (k, v) ->
                         columns.find { col -> col.dbName == k }?.let { col ->
                             println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}}")
@@ -209,27 +213,29 @@ class TableViewModel(
                             }
                         }
                     }?.toTypedArray()
-                    if (ok) {
-                        deferred.forEach { it.await() }
-                    } else {
-                        if (err != null && err.isNotEmpty()) {
-                            constraintErrors = mapOf(*err)
-                            userMessageService.displayError(
-                                message = InternalStringResource(
-                                    resource = Res.string.table_vm_could_not_submit_data_constraint,
-                                )
-                            )
+                    res = ok.also { ok ->
+                        if (ok) {
+                            deferred.forEach { it.await() }
                         } else {
-                            userMessageService.displayError(
-                                message = InternalStringResource(
-                                    resource = Res.string.table_vm_could_not_submit_data,
+                            if (err != null && err.isNotEmpty()) {
+                                constraintErrors = mapOf(*err)
+                                userMessageService.displayError(
+                                    message = InternalStringResource(
+                                        resource = Res.string.table_vm_could_not_submit_data_constraint,
+                                    )
                                 )
-                            )
-                        }
+                            } else {
+                                userMessageService.displayError(
+                                    message = InternalStringResource(
+                                        resource = Res.string.table_vm_could_not_submit_data,
+                                        args = listOf(msg)
+                                    )
+                                )
+                            }
 
-                        deferred.forEach { it.cancel() }
+                            deferred.forEach { it.cancel() }
+                        }
                     }
-                    res = ok
                 }
             } finally {
                 _uiState.update {

@@ -43,6 +43,6 @@
     <string name="constraint_error_server">%1$s</string>
 
     <string name="table_vm_could_not_upload_image">Kunne ikke uploade billede. Prøv venligst igen.</string>
-    <string name="table_vm_could_not_submit_data">Data kunne ikke indsendes.</string>
+    <string name="table_vm_could_not_submit_data">Data kunne ikke indsendes. %1$s</string>
     <string name="table_vm_could_not_submit_data_constraint">Data kunne ikke indsendes. Ret fejl og prøv igen.</string>
 </resources>
