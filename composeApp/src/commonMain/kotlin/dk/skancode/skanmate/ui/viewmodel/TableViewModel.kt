@@ -127,6 +127,7 @@ class TableViewModel(
                     resource = Res.string.table_vm_could_not_submit_data_constraint,
                 )
             )
+            cb(false)
             return
         }
 

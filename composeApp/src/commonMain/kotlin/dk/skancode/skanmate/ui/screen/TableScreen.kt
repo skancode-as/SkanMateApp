@@ -96,6 +96,7 @@ import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.LocalAudioPlayer
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import dk.skancode.skanmate.util.keyboardVisibleAsState
@@ -126,6 +127,7 @@ fun TableScreen(
     val table = viewModel.tableFlow.find { it.id == id }
     val tableUiState by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
+    val audioPlayer = LocalAudioPlayer.current
 
     Scaffold(
         topBar = {
@@ -185,6 +187,9 @@ fun TableScreen(
                                         Res.string.table_screen_data_submitted
                                     ),
                                 )
+                                audioPlayer.playSuccess()
+                            } else {
+                                audioPlayer.playError()
                             }
                         }
                     },

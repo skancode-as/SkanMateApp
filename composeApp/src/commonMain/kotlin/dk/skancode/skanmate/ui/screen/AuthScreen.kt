@@ -41,6 +41,7 @@ import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.TextTransformation
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.LocalAudioPlayer
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import org.jetbrains.compose.resources.stringResource
@@ -61,6 +62,7 @@ fun AuthScreen(
     navigate: () -> Unit,
 ) {
     var isLoading by remember { mutableStateOf(false) }
+    val audioPlayer = LocalAudioPlayer.current
 
     val submit = { email: String, pin: String ->
         isLoading = true
@@ -71,7 +73,10 @@ fun AuthScreen(
                         Res.string.auth_screen_sign_in_success,
                     )
                 )
+                audioPlayer.playSuccess()
                 navigate()
+            } else {
+                audioPlayer.playError()
             }
 
             isLoading = false
