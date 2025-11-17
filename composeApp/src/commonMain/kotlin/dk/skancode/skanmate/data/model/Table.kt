@@ -47,6 +47,12 @@ data class ColumnModel(
     val listOptions: List<String>,
 )
 
+data class SubmitRowResponse(
+    val ok: Boolean,
+    val msg: String,
+    val errors: TableRowErrors? = null,
+)
+
 @Serializable
 data class FullTableResponseDTO(
     val table: FullTableDTO

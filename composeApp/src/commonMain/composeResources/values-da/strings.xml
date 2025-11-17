@@ -6,14 +6,22 @@
     <string name="table_not_found">Den tabel kunne ikke længere findes. Venligst gå tilbage og prøv igen.</string>
     <string name="table_no_description">Ingen beskrivelse angivet</string>
     <string name="cannot_display_image">Kan ikke vise billede</string>
-    <string name="main_screen_title">Tabeller</string>
     <string name="signed_out">Du er blevet logget ud</string>
+
+    <string name="main_screen_title">Tabeller</string>
+    <string name="main_screen_could_not_update_tables">Kunne ikke opdatere tabeller. Prøv igen.</string>
 
     <string name="auth_screen_email_label">Email</string>
     <string name="auth_screen_email_placeholder">Indtast din email...</string>
     <string name="auth_screen_pin_label">Pinkode</string>
     <string name="auth_screen_pin_placeholder">Indtast pinkode her</string>
     <string name="auth_screen_sign_in">Log ind</string>
+    <string name="auth_screen_sign_in_success">Log ind vellykket</string>
+    <string name="auth_screen_sign_in_failed">Log ind fejlede. %1$s.</string>
+    <string name="auth_screen_fill_credentials">Udfyld email og pinkode før log ind.</string>
+    <string name="auth_screen_fill_email">Udfyld email før log ind.</string>
+    <string name="auth_screen_invalid_email">Email er ikke gyldig.</string>
+    <string name="auth_screen_fill_pin">Udfyld pinkode før log ind.</string>
 
     <string name="column_type_text">Tekst</string>
     <string name="column_type_numeric">Tal</string>
@@ -33,4 +41,8 @@
     <string name="constraint_error_email">Værdien skal være en gyldig email</string>
     <string name="constraint_error_required">Feltet er påkrævet og kan ikke være tomt</string>
     <string name="constraint_error_server">%1$s</string>
+
+    <string name="table_vm_could_not_upload_image">Kunne ikke uploade billede. Prøv venligst igen.</string>
+    <string name="table_vm_could_not_submit_data">Data kunne ikke indsendes. %1$s</string>
+    <string name="table_vm_could_not_submit_data_constraint">Data kunne ikke indsendes. Ret fejl og prøv igen.</string>
 </resources>

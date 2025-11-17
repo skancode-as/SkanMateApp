@@ -1,16 +1,21 @@
 package dk.skancode.skanmate.data.service
 
 import dk.skancode.skanmate.data.model.RowData
+import dk.skancode.skanmate.data.model.SubmitRowResponse
 import dk.skancode.skanmate.data.model.TableModel
 import dk.skancode.skanmate.data.model.TableRowErrors
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.data.store.TableStore
+import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.string
 import io.ktor.http.ContentType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.signed_out
 
 interface TableService {
     val tableFlow: SharedFlow<List<TableSummaryModel>>
@@ -18,7 +23,7 @@ interface TableService {
     suspend fun fetchTable(id: String): TableModel?
     suspend fun updateTableFlow(): Boolean
     suspend fun uploadImage(tableId: String, filename: String, data: ByteArray): String?
-    suspend fun submitRow(tableId: String, row: RowData): Pair<Boolean, TableRowErrors?>
+    suspend fun submitRow(tableId: String, row: RowData): SubmitRowResponse
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -97,9 +102,9 @@ class TableServiceImpl(
         }
     }
 
-    override suspend fun submitRow(tableId: String, row: RowData): Pair<Boolean, TableRowErrors?> {
+    override suspend fun submitRow(tableId: String, row: RowData): SubmitRowResponse {
         val token = _token
-        if (token == null) return false to null
+        if (token == null) return SubmitRowResponse(ok = false, msg = InternalStringResource(Res.string.signed_out).string())
         val res = tableStore.submitTableData(
             tableId = tableId,
             data = listOf(row),
@@ -109,7 +114,11 @@ class TableServiceImpl(
             TableRowErrors.decode(res.details)
         } else null
 
-        return res.ok to errors
+        return SubmitRowResponse(
+            ok = res.ok,
+            msg = res.msg,
+            errors = errors,
+        )
     }
 
 

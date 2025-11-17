@@ -1,6 +1,5 @@
 package dk.skancode.skanmate.data.store
 
-import dk.skancode.skanmate.data.model.ErrorResponse
 import dk.skancode.skanmate.data.model.SignInDTO
 import dk.skancode.skanmate.data.model.StoreResponse
 import dk.skancode.skanmate.data.model.SuccessResponse
@@ -11,14 +10,14 @@ import dk.skancode.skanmate.data.model.UserDTOResponse
 import dk.skancode.skanmate.data.model.UserSignInDTO
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 
 class AuthStore(
     val baseUrl: String,
@@ -26,36 +25,24 @@ class AuthStore(
 ) {
     suspend fun signIn(data: UserSignInDTO): StoreResponse<SignInDTO> {
         return tryCatch {
-            val res = client.post("$baseUrl/auth/token") {
-                headers {
-                    set(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    set("X-Platform", "app")
-                }
-                setBody(data)
-            }
+            handleResponse(
+                res = client.post("$baseUrl/auth/token") {
+                    headers {
+                        acceptLanguage()
+                        contentType(ContentType.Application.Json)
+                        set("X-Platform", "app")
+                    }
+                    setBody(data)
+                },
+                successCode = HttpStatusCode.Created,
+            ) { res ->
+                val body: SuccessResponse<SignInDTO> = res.body()
 
-            when (res.status) {
-                HttpStatusCode.Created -> {
-                    val body: SuccessResponse<SignInDTO> = res.body()
-
-                    return StoreResponse(
-                        ok = true,
-                        data = body.data,
-                        msg = "Success"
-                    )
-                }
-
-                else -> {
-                    val body: ErrorResponse = res.body()
-
-                    println(body.error)
-
-                    return StoreResponse(
-                        ok = false,
-                        data = null,
-                        msg = body.error,
-                    )
-                }
+                return StoreResponse(
+                    ok = true,
+                    data = body.data,
+                    msg = "Success"
+                )
             }
         }
     }
@@ -63,35 +50,23 @@ class AuthStore(
     suspend fun getUserInfo(
         token: String,
     ): StoreResponse<UserDTO> {
-        println(token)
         return tryCatch {
-            val res = client.get("$baseUrl/auth/user") {
-                headers {
-                    set(HttpHeaders.Authorization, "bearer $token")
-                }
-            }
+            handleResponse(
+                res = client.get("$baseUrl/auth/user") {
+                    headers {
+                        acceptLanguage()
+                        bearerAuth(token)
+                    }
+                },
+                successCode = HttpStatusCode.OK,
+            ) { res ->
+                val body: SuccessResponse<UserDTOResponse> = res.body()
 
-            when (res.status) {
-                HttpStatusCode.OK -> {
-                    val body: SuccessResponse<UserDTOResponse> = res.body()
-
-                    return StoreResponse(
-                        ok = true,
-                        data = body.data.user,
-                        msg = "Success"
-                    )
-                }
-                else -> {
-                    val body: ErrorResponse = res.body()
-
-                    println(body.error)
-
-                    return StoreResponse(
-                        ok = false,
-                        data = null,
-                        msg = body.error,
-                    )
-                }
+                return StoreResponse(
+                    ok = true,
+                    data = body.data.user,
+                    msg = "Success"
+                )
             }
         }
     }
@@ -100,35 +75,23 @@ class AuthStore(
         token: String,
     ): StoreResponse<TenantDTO> {
         return tryCatch {
-            val res = client.get("$baseUrl/auth/tenant") {
-                headers {
-                    set(HttpHeaders.Authorization, "bearer $token")
-                }
-            }
+            handleResponse(
+                res = client.get("$baseUrl/auth/tenant") {
+                    headers {
+                        acceptLanguage()
+                        bearerAuth(token)
+                    }
+                },
+                successCode = HttpStatusCode.OK,
+            ) { res ->
+                val body: SuccessResponse<TenantDTOResponse> = res.body()
 
-            when (res.status) {
-                HttpStatusCode.OK -> {
-                    val body: SuccessResponse<TenantDTOResponse> = res.body()
-
-                    return StoreResponse(
-                        ok = true,
-                        data = body.data.tenant,
-                        msg = "Success"
-                    )
-                }
-                else -> {
-                    val body: ErrorResponse = res.body()
-
-                    println(body.error)
-
-                    return StoreResponse(
-                        ok = false,
-                        data = null,
-                        msg = body.error,
-                    )
-                }
+                return StoreResponse(
+                    ok = true,
+                    data = body.data.tenant,
+                    msg = "Success"
+                )
             }
         }
     }
-
 }

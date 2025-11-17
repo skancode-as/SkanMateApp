@@ -36,8 +36,11 @@ import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.nav.NavRoute
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
+import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import org.jetbrains.compose.resources.stringResource
 import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.main_screen_could_not_update_tables
 import skanmate.composeapp.generated.resources.main_screen_title
 import skanmate.composeapp.generated.resources.table_no_description
 
@@ -81,7 +84,9 @@ fun MainScreen(
                 tableViewModel.updateTableFlow { ok ->
                     isRefreshing = false
                     if (!ok) {
-                        println("Could not update table flow")
+                        UserMessageServiceImpl.displayError(
+                            message = InternalStringResource(Res.string.main_screen_could_not_update_tables)
+                        )
                     }
                 }
             },

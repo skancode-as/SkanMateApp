@@ -21,6 +21,7 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
@@ -51,20 +53,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.Measurable
-import androidx.compose.ui.layout.MeasurePolicy
-import androidx.compose.ui.layout.MeasureResult
-import androidx.compose.ui.layout.MeasureScope
-import androidx.compose.ui.layout.layoutId
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.util.darken
+import dk.skancode.skanmate.util.snackbar.LocalSnackbarManager
 
 data class SizeValues(
     val minHeight: Dp = Dp.Unspecified,
@@ -106,6 +98,7 @@ fun PanelButton(
         disabledContainerColor = MaterialTheme.colorScheme.background,
     ),
     enabled: Boolean = true,
+    enabledWhenSnackbarActive: Boolean = false,
     loading: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(16.dp),
     interactionSource: InteractionSource = rememberInteractionSource(),
@@ -127,6 +120,7 @@ fun PanelButton(
         elevation = elevation,
         colors = colors,
         enabled = enabled && !loading,
+        enabledWhenSnackbarActive = enabledWhenSnackbarActive,
         interactionSource = interactionSource,
         shape = shape,
         sizeValues = heightValues,
@@ -195,6 +189,42 @@ fun PanelButton(
 }
 
 @Composable
+fun TextButton(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
+    elevation: CustomButtonElevation = CustomButtonElevation(),
+    colors: ButtonColors = ButtonDefaults.outlinedButtonColors(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        disabledContainerColor = MaterialTheme.colorScheme.background.darken(.1f),
+    ),
+    enabled: Boolean = true,
+    enabledWhenSnackbarActive: Boolean = false,
+    interactionSource: InteractionSource = rememberInteractionSource(),
+    shape: Shape = RoundedCornerShape(4.dp),
+    contentPadding: PaddingValues = PaddingValues(12.dp, 8.dp),
+    content: @Composable RowScope.() -> Unit,
+) {
+    Button(
+        modifier = modifier.width(IntrinsicSize.Max),
+        horizontalArrangement = horizontalArrangement,
+        verticalAlignment = verticalAlignment,
+        onClick = onClick,
+        elevation = elevation,
+        colors = colors,
+        enabled = enabled,
+        enabledWhenSnackbarActive = enabledWhenSnackbarActive,
+        interactionSource = interactionSource,
+        shape = shape,
+        sizeValues = SizeValues(min = Dp.Unspecified, max = Dp.Infinity),
+        contentPadding = contentPadding,
+        content = content,
+    )
+}
+
+@Composable
 fun FullWidthButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
@@ -207,6 +237,7 @@ fun FullWidthButton(
         disabledContainerColor = MaterialTheme.colorScheme.background.darken(.1f),
     ),
     enabled: Boolean = true,
+    enabledWhenSnackbarActive: Boolean = false,
     interactionSource: InteractionSource = rememberInteractionSource(),
     shape: Shape = RoundedCornerShape(4.dp),
     heightValues: SizeValues = SizeValues(minHeight = 36.dp, maxHeight = 64.dp),
@@ -221,6 +252,7 @@ fun FullWidthButton(
         elevation = elevation,
         colors = colors,
         enabled = enabled,
+        enabledWhenSnackbarActive = enabledWhenSnackbarActive,
         interactionSource = interactionSource,
         shape = shape,
         sizeValues = heightValues.copy(minWidth = Dp.Unspecified, maxWidth = Dp.Unspecified),
@@ -240,6 +272,7 @@ fun IconButton(
         disabledContainerColor = MaterialTheme.colorScheme.background.darken(.1f),
     ),
     enabled: Boolean = true,
+    enabledWhenSnackbarActive: Boolean = false,
     interactionSource: InteractionSource = rememberInteractionSource(),
     shape: Shape = RoundedCornerShape(8.dp),
     sizeValues: SizeValues = SizeValues(min = 48.dp, max = 64.dp),
@@ -261,6 +294,7 @@ fun IconButton(
         elevation = elevation,
         colors = colors,
         enabled = enabled,
+        enabledWhenSnackbarActive = enabledWhenSnackbarActive,
         interactionSource = interactionSource,
         shape = shape,
         sizeValues = sizeValues,
@@ -291,12 +325,17 @@ fun Button(
         disabledContainerColor = MaterialTheme.colorScheme.background.darken(.1f),
     ),
     enabled: Boolean = true,
+    enabledWhenSnackbarActive: Boolean,
     interactionSource: InteractionSource = rememberInteractionSource(),
     shape: Shape = RoundedCornerShape(4.dp),
     sizeValues: SizeValues = SizeValues(minHeight = 36.dp, maxHeight = 64.dp),
     contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable RowScope.() -> Unit,
 ) {
+    val snackbarManager = LocalSnackbarManager.current
+
+    val enabled = enabled && (enabledWhenSnackbarActive || !snackbarManager.errorSnackbarActive)
+
     val shadowElevation by elevation.shadowElevation(enabled, interactionSource)
     val containerColor =
         if (enabled) colors.containerColor else if (colors.disabledContainerColor == Color.Unspecified) colors.containerColor.darken(
@@ -352,6 +391,12 @@ data class CustomButtonElevation(
     private val hoveredElevation: Dp = ElevationTokens.Level3,
     private val disabledElevation: Dp = ElevationTokens.Level1,
 ) : ButtonElevation {
+    companion object {
+        val None: CustomButtonElevation = CustomButtonElevation(
+            all = 0.dp
+        )
+    }
+
     constructor(all: Dp) : this(
         defaultElevation = all,
         pressedElevation = all,

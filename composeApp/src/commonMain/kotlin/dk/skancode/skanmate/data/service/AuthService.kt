@@ -1,26 +1,29 @@
 package dk.skancode.skanmate.data.service
 
 import com.russhwolf.settings.Settings
-import com.russhwolf.settings.get
 import com.russhwolf.settings.set
 import dk.skancode.skanmate.data.model.PinCredentialType
 import dk.skancode.skanmate.data.model.SignInResult
+import dk.skancode.skanmate.data.model.SignInUnprocessableEntityDetails
 import dk.skancode.skanmate.data.model.TenantModel
-import dk.skancode.skanmate.data.model.UserCredentialType
 import dk.skancode.skanmate.data.model.UserSignInDTO
 import dk.skancode.skanmate.data.model.UserModel
 import dk.skancode.skanmate.data.store.AuthStore
+import dk.skancode.skanmate.data.store.ServerErrorCodes
 import dk.skancode.skanmate.platformSettingsFactory
+import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.jsonSerializer
+import dk.skancode.skanmate.util.snackbar.DefaultErrorOptions
+import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
+import dk.skancode.skanmate.util.string
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
+import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.auth_screen_email_label
+import skanmate.composeapp.generated.resources.auth_screen_pin_label
+import skanmate.composeapp.generated.resources.auth_screen_sign_in_failed
 
 interface AuthService {
     val userFlow: SharedFlow<UserModel?>
@@ -36,7 +39,7 @@ class AuthServiceImpl(
     val authStore: AuthStore,
     externalScope: CoroutineScope,
     settingsFactory: Settings.Factory = platformSettingsFactory,
-): AuthService {
+) : AuthService {
     private val settings = settingsFactory.create("user_info")
     val tokenFlow = MutableSharedFlow<String?>(1)
     private val _userFlow = MutableSharedFlow<UserModel?>(1)
@@ -78,8 +81,49 @@ class AuthServiceImpl(
                 type = PinCredentialType,
             ),
         )
-        if (!signInRes.ok || signInRes.data == null)
+        if (!signInRes.ok || signInRes.data == null) {
+            val (message, description) = when (signInRes.errorCode) {
+                ServerErrorCodes.UNPROCESSABLE_ENTITY -> {
+                    val desc = if (signInRes.details != null) {
+                        val details = jsonSerializer.decodeFromJsonElement(
+                            SignInUnprocessableEntityDetails.serializer(),
+                            signInRes.details
+                        )
+
+                        listOf(
+                            if (details.email != null) (InternalStringResource(Res.string.auth_screen_email_label) to details.email.joinToString(
+                                "\n  -  "
+                            )) else null,
+                            if (details.credential != null) (InternalStringResource(Res.string.auth_screen_pin_label) to details.credential.joinToString(
+                                "\n  -  "
+                            )) else null,
+                        ).mapNotNull {
+                            if (it != null) {
+                                val (res, err) = it
+                                "${res.string()}:\n  -  $err"
+                            } else null
+                        }.joinToString("\n")
+                    } else null
+
+                    InternalStringResource(
+                        Res.string.auth_screen_sign_in_failed,
+                        listOf(signInRes.msg)
+                    ) to desc
+                }
+
+                else -> InternalStringResource(
+                    Res.string.auth_screen_sign_in_failed,
+                    listOf(signInRes.msg)
+                ) to null
+            }
+
+            UserMessageServiceImpl.displayError(
+                message,
+                options = DefaultErrorOptions.copy(description = description)
+            )
+
             return SignInResult(user = null, tenant = null)
+        }
 
         tokenFlow.emit(signInRes.data.token)
 
