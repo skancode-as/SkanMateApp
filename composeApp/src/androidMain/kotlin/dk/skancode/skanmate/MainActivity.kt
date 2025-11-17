@@ -23,14 +23,20 @@ import dev.icerock.moko.permissions.compose.rememberPermissionsControllerFactory
 import dk.skancode.barcodescannermodule.ScannerActivity
 import dk.skancode.barcodescannermodule.compose.ScannerModuleProvider
 import dk.skancode.skanmate.ui.viewmodel.CameraScanViewModel
+import dk.skancode.skanmate.util.LocalAudioPlayer
 
 private val cameraScanManager = CameraScanManagerImpl()
 
 class MainActivity : ScannerActivity() {
+    private lateinit var audioPlayer: AndroidAudioPlayer
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        audioPlayer = AndroidAudioPlayer(
+            context = this,
+        )
 
         setContent {
             val factory = rememberPermissionsControllerFactory()
@@ -46,7 +52,8 @@ class MainActivity : ScannerActivity() {
             ScannerModuleProvider {
                 CompositionLocalProvider(
                     LocalCameraScanManager provides cameraScanManager,
-                    LocalPermissionsViewModel provides permissionsViewModel
+                    LocalPermissionsViewModel provides permissionsViewModel,
+                    LocalAudioPlayer provides audioPlayer,
                 ) {
                     Scaffold { padding ->
                         App()
@@ -78,5 +85,11 @@ class MainActivity : ScannerActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        audioPlayer.release()
     }
 }
