@@ -7,6 +7,8 @@ import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import dk.skancode.skanmate.util.OnSuccess
+import dk.skancode.skanmate.util.Success
 
 data class SkanMateSnackbarVisuals(
     override val message: String,
@@ -19,14 +21,14 @@ data class SkanMateSnackbarVisuals(
     val description: String? by lazy { config.description }
     val shape: Shape
         @Composable get() = SnackbarDefaults.shape
-    val actionContentColor: Color
-        @Composable get() = if (isError) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimaryContainer
-    val dismissActionContentColor: Color
-        @Composable get() = if (isError) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimaryContainer
     val containerColor: Color
-        @Composable get() = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primaryContainer
+        @Composable get() = if (isError) MaterialTheme.colorScheme.error else Color.Success
     val contentColor: Color
-        @Composable get() = if (isError) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimaryContainer
+        @Composable get() = if (isError) MaterialTheme.colorScheme.onError else Color.OnSuccess
+    val actionContentColor: Color
+        @Composable get() = contentColor
+    val dismissActionContentColor: Color
+        @Composable get() = contentColor
 }
 
 data class SkanMateSnackbarVisualsConfig(

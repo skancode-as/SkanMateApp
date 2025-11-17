@@ -99,6 +99,7 @@ import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import dk.skancode.skanmate.util.keyboardVisibleAsState
+import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
@@ -108,6 +109,7 @@ import skanmate.composeapp.generated.resources.input_placeholder
 import skanmate.composeapp.generated.resources.select_placeholder
 import skanmate.composeapp.generated.resources.submit
 import skanmate.composeapp.generated.resources.table_not_found
+import skanmate.composeapp.generated.resources.table_screen_data_submitted
 import skanmate.composeapp.generated.resources.triangle_alert
 import kotlin.math.roundToInt
 
@@ -178,6 +180,11 @@ fun TableScreen(
                         viewModel.submitData { ok ->
                             if (ok) {
                                 viewModel.resetColumnData()
+                                UserMessageServiceImpl.displayMessage(
+                                    message = InternalStringResource(
+                                        Res.string.table_screen_data_submitted
+                                    ),
+                                )
                             }
                         }
                     },
