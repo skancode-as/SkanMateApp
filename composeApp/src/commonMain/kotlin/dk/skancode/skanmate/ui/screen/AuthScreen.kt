@@ -40,9 +40,11 @@ import dk.skancode.skanmate.ui.component.FullWidthButton
 import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.TextTransformation
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
+import dk.skancode.skanmate.util.HapticKind
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.LocalAudioPlayer
 import dk.skancode.skanmate.util.darken
+import dk.skancode.skanmate.util.rememberHaptic
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
@@ -63,6 +65,8 @@ fun AuthScreen(
 ) {
     var isLoading by remember { mutableStateOf(false) }
     val audioPlayer = LocalAudioPlayer.current
+    val successHaptic = rememberHaptic(HapticKind.Success)
+    val errorHaptic = rememberHaptic(HapticKind.Error)
 
     val submit = { email: String, pin: String ->
         isLoading = true
@@ -74,9 +78,11 @@ fun AuthScreen(
                     )
                 )
                 audioPlayer.playSuccess()
+                successHaptic.start()
                 navigate()
             } else {
                 audioPlayer.playError()
+                errorHaptic.start()
             }
 
             isLoading = false

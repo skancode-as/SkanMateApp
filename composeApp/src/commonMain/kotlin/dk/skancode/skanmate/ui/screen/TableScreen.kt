@@ -95,11 +95,13 @@ import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
+import dk.skancode.skanmate.util.HapticKind
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.LocalAudioPlayer
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import dk.skancode.skanmate.util.keyboardVisibleAsState
+import dk.skancode.skanmate.util.rememberHaptic
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
@@ -128,6 +130,8 @@ fun TableScreen(
     val tableUiState by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
     val audioPlayer = LocalAudioPlayer.current
+    val successHaptic = rememberHaptic(HapticKind.Success)
+    val errorHaptic = rememberHaptic(HapticKind.Error)
 
     Scaffold(
         topBar = {
@@ -188,8 +192,10 @@ fun TableScreen(
                                     ),
                                 )
                                 audioPlayer.playSuccess()
+                                successHaptic.start()
                             } else {
                                 audioPlayer.playError()
+                                errorHaptic.start()
                             }
                         }
                     },
@@ -441,7 +447,6 @@ fun TableColumn(
             LaunchedEffect(focusRequester, isFocused) {
                 if (isFocused) {
                     focusRequester.requestFocus()
-                    //softwareKeyboardController?.hide()
                 }
             }
             TableColumnInput(

@@ -36,7 +36,9 @@ import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.nav.NavRoute
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
+import dk.skancode.skanmate.util.HapticKind
 import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.rememberHaptic
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import org.jetbrains.compose.resources.stringResource
 import skanmate.composeapp.generated.resources.Res
@@ -51,6 +53,8 @@ fun MainScreen(
     navigateTable: (NavRoute.App.TableScreen) -> Unit,
     signOut: () -> Unit,
 ) {
+    val errorHaptic = rememberHaptic(HapticKind.Error)
+
     LaunchedEffect(tableViewModel) {
         tableViewModel.resetUiState()
     }
@@ -87,6 +91,7 @@ fun MainScreen(
                         UserMessageServiceImpl.displayError(
                             message = InternalStringResource(Res.string.main_screen_could_not_update_tables)
                         )
+                        errorHaptic.start()
                     }
                 }
             },
@@ -122,7 +127,8 @@ fun TableCard(
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(containerColor = containerColor),
-        onClick = onClick
+        onClick = onClick,
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
