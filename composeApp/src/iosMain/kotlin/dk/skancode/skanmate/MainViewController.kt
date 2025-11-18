@@ -30,7 +30,7 @@ fun MainViewController() = ComposeUIViewController {
     CompositionLocalProvider(
         LocalCameraScanManager provides cameraScanManager,
         LocalAudioPlayer provides audioPlayer,
-        ) {
+    ) {
         Scaffold { padding ->
             App()
 
