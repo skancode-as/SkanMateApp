@@ -47,7 +47,7 @@ import kotlinx.coroutines.IO
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 // TODO: Find less temporary way of initializing stores and services
-// TODO: Haptic feedback
+// TODO: Haptic feedback (IOS)
 
 private const val BASE_URL =
     "https://skanmate-git-stage-skan-code-team.vercel.app/api/v1"
