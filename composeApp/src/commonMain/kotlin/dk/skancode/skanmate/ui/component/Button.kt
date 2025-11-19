@@ -364,8 +364,7 @@ fun Button(
     ) {
         Row(
             modifier = Modifier
-                .padding(contentPadding)
-                .fillMaxWidth(),
+                .padding(contentPadding),
             horizontalArrangement = horizontalArrangement,
             verticalAlignment = verticalAlignment,
         ) {

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -30,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,7 +42,6 @@ import dk.skancode.skanmate.ui.component.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -87,11 +86,12 @@ import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.loadImage
 import dk.skancode.skanmate.ui.component.ColumnWithErrorLayout
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
-import dk.skancode.skanmate.ui.component.FullWidthButton
 import dk.skancode.skanmate.ui.component.ImageCaptureAction
 import dk.skancode.skanmate.ui.component.ImageCaptureListener
+import dk.skancode.skanmate.ui.component.KeyboardAwareScaffold
 import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
+import dk.skancode.skanmate.ui.component.fab.FloatingActionButton
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
@@ -133,7 +133,26 @@ fun TableScreen(
     val successHaptic = rememberHaptic(HapticKind.Success)
     val errorHaptic = rememberHaptic(HapticKind.Error)
 
-    Scaffold(
+    val submitData = {
+        focusManager.clearFocus(true)
+        viewModel.submitData { ok ->
+            if (ok) {
+                viewModel.resetColumnData()
+                UserMessageServiceImpl.displayMessage(
+                    message = InternalStringResource(
+                        Res.string.table_screen_data_submitted
+                    ),
+                )
+                audioPlayer.playSuccess()
+                successHaptic.start()
+            } else {
+                audioPlayer.playError()
+                errorHaptic.start()
+            }
+        }
+    }
+
+    KeyboardAwareScaffold(
         topBar = {
             TopAppBar(
                 title = {
@@ -157,6 +176,13 @@ fun TableScreen(
                 )
             )
         },
+        floatingActionButton = {
+            TableFloatingActionButton(
+                isVisible = tableUiState.status == FetchStatus.Success,
+                submitData = submitData,
+                tableUiState = tableUiState,
+            )
+        },
     ) { paddingValues ->
         if (table == null || tableUiState.status == FetchStatus.NotFound) {
             TableNotFound(
@@ -164,7 +190,7 @@ fun TableScreen(
             )
         } else {
             Surface(
-                modifier = Modifier.padding(paddingValues).imePadding(),
+                modifier = Modifier.padding(paddingValues),
             ) {
                 LaunchedEffect(viewModel) {
                     viewModel.setCurrentTableId(id)
@@ -184,24 +210,7 @@ fun TableScreen(
                             viewModel.setFocusedColumn(null)
                         }
                     },
-                    submitData = {
-                        focusManager.clearFocus(true)
-                        viewModel.submitData { ok ->
-                            if (ok) {
-                                viewModel.resetColumnData()
-                                UserMessageServiceImpl.displayMessage(
-                                    message = InternalStringResource(
-                                        Res.string.table_screen_data_submitted
-                                    ),
-                                )
-                                audioPlayer.playSuccess()
-                                successHaptic.start()
-                            } else {
-                                audioPlayer.playError()
-                                errorHaptic.start()
-                            }
-                        }
-                    },
+                    submitData = submitData,
                     validateColumn = { col, value ->
                         viewModel.validateColumn(col, value)
                     },
@@ -212,6 +221,50 @@ fun TableScreen(
                 ) { columns ->
                     viewModel.updateColumns(columns)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun TableFloatingActionButton(
+    submitData: () -> Unit,
+    isVisible: Boolean,
+    tableUiState: TableUiState,
+) {
+    val noErrors = tableUiState.constraintErrors.values.all { list -> list.isEmpty() }
+
+    AnimatedVisibility(
+        visible = isVisible,
+    ) {
+        FloatingActionButton(
+            modifier = Modifier.padding(16.dp),
+            onClick = submitData,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
+                    .15f
+                ),
+                disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ),
+            enabled = !tableUiState.isSubmitting && noErrors,
+            expanded = noErrors,
+            icon = {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Submit icon"
+                )
+            }
+        ) {
+            Text(stringResource(Res.string.submit))
+            AnimatedVisibility(tableUiState.isSubmitting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = LocalContentColor.current,
+                    trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
+                    strokeWidth = 2.dp,
+                )
             }
         }
     }
@@ -296,34 +349,6 @@ fun TableContent(
                                 validateColumn = validateColumn,
                                 enabled = !tableUiState.isSubmitting
                             )
-                        }
-
-                        FullWidthButton(
-                            modifier = Modifier.padding(16.dp),
-                            onClick = submitData,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
-                                    .15f
-                                ),
-                                disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
-                            horizontalArrangement = Arrangement.spacedBy(
-                                8.dp,
-                                Alignment.CenterHorizontally
-                            ),
-                            enabled = !tableUiState.isSubmitting && tableUiState.constraintErrors.values.all { list -> list.isEmpty() }
-                        ) {
-                            Text(stringResource(Res.string.submit))
-                            AnimatedVisibility(tableUiState.isSubmitting) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = LocalContentColor.current,
-                                    trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
-                                    strokeWidth = 2.dp,
-                                )
-                            }
                         }
                     }
                 }
