@@ -223,7 +223,7 @@ private class KeyboardAwareWindowInsets(
         max(keyboardInsets.getBottom(density), insets.getBottom(density))
 }
 
-private val FabSpacing = 16.dp
+private val FabSpacing = 0.dp
 
 private enum class ScaffoldLayoutContent {
     TopBar,
