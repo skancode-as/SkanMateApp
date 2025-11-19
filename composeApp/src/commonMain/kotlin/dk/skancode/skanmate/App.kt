@@ -24,6 +24,7 @@ import dk.skancode.skanmate.data.store.TableStore
 import dk.skancode.skanmate.nav.AppNavHost
 import dk.skancode.skanmate.ui.component.CameraOverlay
 import dk.skancode.skanmate.ui.component.ImagePreview
+import dk.skancode.skanmate.ui.component.LocalLabelTextStyle
 import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.UiCameraController
@@ -107,6 +108,7 @@ fun App() {
         CompositionLocalProvider(
             LocalScanModule provides scanModule,
             LocalUiCameraController provides uiCameraController,
+            LocalLabelTextStyle provides MaterialTheme.typography.labelLarge,
         ) {
             Box(
                 modifier = Modifier

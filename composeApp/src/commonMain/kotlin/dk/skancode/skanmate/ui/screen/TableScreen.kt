@@ -4,16 +4,16 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -24,12 +24,12 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActionScope
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,7 +42,6 @@ import dk.skancode.skanmate.ui.component.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -61,13 +60,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -87,11 +87,15 @@ import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.loadImage
 import dk.skancode.skanmate.ui.component.ColumnWithErrorLayout
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
-import dk.skancode.skanmate.ui.component.FullWidthButton
 import dk.skancode.skanmate.ui.component.ImageCaptureAction
 import dk.skancode.skanmate.ui.component.ImageCaptureListener
+import dk.skancode.skanmate.ui.component.KeyboardAwareScaffold
+import dk.skancode.skanmate.ui.component.LocalLabelTextStyle
 import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
+import dk.skancode.skanmate.ui.component.PanelButton
+import dk.skancode.skanmate.ui.component.SizeValues
+import dk.skancode.skanmate.ui.component.fab.FloatingActionButton
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
@@ -113,11 +117,15 @@ import skanmate.composeapp.generated.resources.select_placeholder
 import skanmate.composeapp.generated.resources.submit
 import skanmate.composeapp.generated.resources.table_not_found
 import skanmate.composeapp.generated.resources.table_screen_data_submitted
+import skanmate.composeapp.generated.resources.table_screen_retake_picture
+import skanmate.composeapp.generated.resources.table_screen_take_picture
 import skanmate.composeapp.generated.resources.triangle_alert
 import kotlin.math.roundToInt
 
-private val LocalImageResourceMap: ProvidableCompositionLocal<Map<String, ImageResource<Painter>>> = compositionLocalOf { emptyMap() }
-private val LocalImageResource: ProvidableCompositionLocal<ImageResource<Painter>?> = compositionLocalOf { null }
+private val LocalImageResourceMap: ProvidableCompositionLocal<Map<String, ImageResource<Painter>>> =
+    compositionLocalOf { emptyMap() }
+private val LocalImageResource: ProvidableCompositionLocal<ImageResource<Painter>?> =
+    compositionLocalOf { null }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,7 +141,26 @@ fun TableScreen(
     val successHaptic = rememberHaptic(HapticKind.Success)
     val errorHaptic = rememberHaptic(HapticKind.Error)
 
-    Scaffold(
+    val submitData = {
+        focusManager.clearFocus(true)
+        viewModel.submitData { ok ->
+            if (ok) {
+                viewModel.resetColumnData()
+                UserMessageServiceImpl.displayMessage(
+                    message = InternalStringResource(
+                        Res.string.table_screen_data_submitted
+                    ),
+                )
+                audioPlayer.playSuccess()
+                successHaptic.start()
+            } else {
+                audioPlayer.playError()
+                errorHaptic.start()
+            }
+        }
+    }
+
+    KeyboardAwareScaffold(
         topBar = {
             TopAppBar(
                 title = {
@@ -157,6 +184,13 @@ fun TableScreen(
                 )
             )
         },
+        floatingActionButton = {
+            TableFloatingActionButton(
+                isVisible = tableUiState.status == FetchStatus.Success,
+                submitData = submitData,
+                tableUiState = tableUiState,
+            )
+        },
     ) { paddingValues ->
         if (table == null || tableUiState.status == FetchStatus.NotFound) {
             TableNotFound(
@@ -164,7 +198,7 @@ fun TableScreen(
             )
         } else {
             Surface(
-                modifier = Modifier.padding(paddingValues).imePadding(),
+                modifier = Modifier.padding(paddingValues),
             ) {
                 LaunchedEffect(viewModel) {
                     viewModel.setCurrentTableId(id)
@@ -184,24 +218,7 @@ fun TableScreen(
                             viewModel.setFocusedColumn(null)
                         }
                     },
-                    submitData = {
-                        focusManager.clearFocus(true)
-                        viewModel.submitData { ok ->
-                            if (ok) {
-                                viewModel.resetColumnData()
-                                UserMessageServiceImpl.displayMessage(
-                                    message = InternalStringResource(
-                                        Res.string.table_screen_data_submitted
-                                    ),
-                                )
-                                audioPlayer.playSuccess()
-                                successHaptic.start()
-                            } else {
-                                audioPlayer.playError()
-                                errorHaptic.start()
-                            }
-                        }
-                    },
+                    submitData = submitData,
                     validateColumn = { col, value ->
                         viewModel.validateColumn(col, value)
                     },
@@ -212,6 +229,50 @@ fun TableScreen(
                 ) { columns ->
                     viewModel.updateColumns(columns)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun TableFloatingActionButton(
+    submitData: () -> Unit,
+    isVisible: Boolean,
+    tableUiState: TableUiState,
+) {
+    val noErrors = tableUiState.constraintErrors.values.all { list -> list.isEmpty() }
+
+    AnimatedVisibility(
+        visible = isVisible,
+    ) {
+        FloatingActionButton(
+            modifier = Modifier.padding(16.dp),
+            onClick = submitData,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
+                    .15f
+                ),
+                disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ),
+            enabled = !tableUiState.isSubmitting && noErrors,
+            expanded = noErrors,
+            icon = {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Submit icon"
+                )
+            }
+        ) {
+            Text(stringResource(Res.string.submit))
+            AnimatedVisibility(tableUiState.isSubmitting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = LocalContentColor.current,
+                    trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
+                    strokeWidth = 2.dp,
+                )
             }
         }
     }
@@ -257,7 +318,7 @@ fun TableContent(
                     Box(
                         modifier = modifier
                             .requiredSize(48.dp)
-                            .align(Alignment.Center) ,
+                            .align(Alignment.Center),
                         contentAlignment = Alignment.Center,
                         propagateMinConstraints = true,
                     ) {
@@ -296,32 +357,14 @@ fun TableContent(
                                 validateColumn = validateColumn,
                                 enabled = !tableUiState.isSubmitting
                             )
-                        }
 
-                        FullWidthButton(
-                            modifier = Modifier.padding(16.dp),
-                            onClick = submitData,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                disabledContainerColor = MaterialTheme.colorScheme.primaryContainer.darken(
-                                    .15f
-                                ),
-                                disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
-                            horizontalArrangement = Arrangement.spacedBy(
-                                8.dp,
-                                Alignment.CenterHorizontally
-                            ),
-                            enabled = !tableUiState.isSubmitting && tableUiState.constraintErrors.values.all { list -> list.isEmpty() }
-                        ) {
-                            Text(stringResource(Res.string.submit))
-                            AnimatedVisibility(tableUiState.isSubmitting) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = LocalContentColor.current,
-                                    trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
-                                    strokeWidth = 2.dp,
+                            item(
+                                span = { GridItemSpan(maxCurrentLineSpan) }
+                            ) {
+                                val lineHeightDp =
+                                    with(LocalDensity.current) { LocalLabelTextStyle.current.lineHeight.toDp() }
+                                Spacer(
+                                    modifier = Modifier.height(lineHeightDp + 56.dp)
                                 )
                             }
                         }
@@ -548,7 +591,7 @@ fun TableColumnInput(
         validateValue(it)
     }
     val labelComposable: (@Composable () -> Unit) = {
-        Text(label)
+        Text(label, style = LocalLabelTextStyle.current)
     }
     val placeholder: (@Composable () -> Unit) = {
         Text(
@@ -614,7 +657,6 @@ fun TableColumnFile(
     enabled: Boolean = true,
 ) {
     val imageResource = LocalImageResource.current
-    val loading = imageResource?.isLoading?.value ?: true
     val painter = imageResource?.state?.value
 
     val uiCameraController = LocalUiCameraController.current
@@ -636,72 +678,79 @@ fun TableColumnFile(
         }
     }
 
+    val hasImage = value != null
     val size = 56.dp
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(label)
-        AnimatedContent(value) { targetValue ->
-            if (targetValue == null) {
-                IconButton(
-                    modifier = Modifier.requiredSize(size = size),
-                    onClick = {
-                        focusManager.clearFocus()
-                        uiCameraController.startCamera(listener)
-                    },
-                    enabled = enabled,
-                ) {
-                    Icon(
-                        modifier = Modifier.minimumInteractiveComponentSize(),
-                        imageVector = vectorResource(Res.drawable.camera),
-                        contentDescription = null,
-                    )
+        Text(label, style = LocalLabelTextStyle.current)
+        PanelButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                if (!hasImage) {
+                    focusManager.clearFocus()
+                    uiCameraController.startCamera(listener)
+                } else {
+                    uiCameraController.showPreview(value, listener)
                 }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .requiredSize(size = size)
-                        .shadow(2.dp, RoundedCornerShape(8.dp))
-                        .background(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            RoundedCornerShape(8.dp)
+            },
+            textStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
+            heightValues = SizeValues(minHeight = size, maxHeight = size),
+            contentPadding = PaddingValues(0.dp),
+            enabled = enabled,
+            leftPanel = {
+                AnimatedContent(hasImage) { targetValue ->
+                    if (!targetValue) {
+                        Icon(
+                            modifier = Modifier.padding(12.dp).minimumInteractiveComponentSize(),
+                            imageVector = vectorResource(Res.drawable.camera),
+                            contentDescription = null,
                         )
-                        .clickable {
-                            uiCameraController.showPreview(targetValue, listener)
-                        },
-                    contentAlignment = Alignment.Center,
-                    propagateMinConstraints = true,
-                ) {
-                    AnimatedContent(loading) { isLoadingImage ->
-                        if (isLoadingImage) {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .padding(all = 4.dp)
-                                    .fillMaxSize(),
-                            )
-                        } else {
-                            when (painter) {
-                                is ImageResourceState.Image<*> ->
-                                    Image(
-                                        painter = (painter as ImageResourceState.Image<*>).data,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.FillWidth,
-                                    )
-                                is ImageResourceState.Error ->
-                                    Text(stringResource(Res.string.cannot_display_image))
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .aspectRatio(1f)
+                                .background(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                ),
+                            contentAlignment = Alignment.Center,
+                            propagateMinConstraints = true,
+                        ) {
+                            AnimatedContent(painter) { targetPainter ->
+                                when (targetPainter) {
+                                    is ImageResourceState.Image<*> ->
+                                        Image(
+                                            painter = (targetPainter as ImageResourceState.Image<*>).data,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.FillWidth,
+                                        )
 
-                                else ->
-                                    CircularProgressIndicator(
-                                        modifier = Modifier
-                                            .padding(all = 4.dp)
-                                            .fillMaxSize(),
-                                    )
+                                    is ImageResourceState.Error ->
+                                        Text(stringResource(Res.string.cannot_display_image))
+
+                                    else ->
+                                        CircularProgressIndicator(
+                                            modifier = Modifier
+                                                .padding(all = 4.dp)
+                                                .fillMaxSize(),
+                                        )
+                                }
                             }
                         }
                     }
                 }
             }
+        ) {
+            val text = if (!hasImage) {
+                stringResource(Res.string.table_screen_take_picture)
+            } else {
+                stringResource(Res.string.table_screen_retake_picture)
+            }
+            Text(
+                modifier = Modifier.padding(12.dp),
+                text = text,
+            )
         }
     }
 }
@@ -726,7 +775,9 @@ fun TableColumnList(
         InputField(
             value = selected,
             onValueChange = { selected = it },
-            label = { Text(label) },
+            label = {
+                Text(text = label, style = LocalLabelTextStyle.current)
+            },
             placeholder = {
                 Text(stringResource(Res.string.select_placeholder, label)) //"Select $label..."
             },
@@ -773,7 +824,7 @@ fun TableColumnCheckbox(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(label)
+        Text(text = label, style = LocalLabelTextStyle.current)
         Checkbox(
             checked = checked,
             onCheckedChange = {

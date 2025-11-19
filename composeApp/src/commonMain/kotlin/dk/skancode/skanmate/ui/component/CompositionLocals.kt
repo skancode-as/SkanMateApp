@@ -2,6 +2,7 @@ package dk.skancode.skanmate.ui.component
 
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.text.TextStyle
 import dk.skancode.skanmate.ScanEventHandler
 import dk.skancode.skanmate.ScanModule
 import dk.skancode.skanmate.data.model.TenantModel
@@ -29,3 +30,5 @@ val LocalUiCameraController: ProvidableCompositionLocal<UiCameraController> = co
 
 val LocalCameraScanManager: ProvidableCompositionLocal<CameraScanManager> =
     compositionLocalOf { CameraScanManagerImpl() }
+
+val LocalLabelTextStyle: ProvidableCompositionLocal<TextStyle> = compositionLocalOf { TextStyle() }

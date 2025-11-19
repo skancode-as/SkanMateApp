@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
@@ -53,8 +54,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dk.skancode.skanmate.util.ProvideContentColorTextStyle
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.snackbar.LocalSnackbarManager
 
@@ -97,15 +100,16 @@ fun PanelButton(
         contentColor = MaterialTheme.colorScheme.onBackground,
         disabledContainerColor = MaterialTheme.colorScheme.background,
     ),
+    textStyle: TextStyle = MaterialTheme.typography.labelLarge,
     enabled: Boolean = true,
     enabledWhenSnackbarActive: Boolean = false,
     loading: Boolean = false,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
+    contentPadding: PaddingValues = PaddingValues(8.dp),
     interactionSource: InteractionSource = rememberInteractionSource(),
     shape: Shape = RoundedCornerShape(4.dp),
     heightValues: SizeValues = SizeValues(minHeight = 36.dp, maxHeight = 64.dp),
     leftPanel: (@Composable BoxScope.() -> Unit)? = null,
-    leftPanelColor: Color = colors.containerColor.darken(0.15f),//MaterialTheme.colorScheme.surfaceContainer,
+    leftPanelColor: Color = colors.containerColor.darken(0.15f),
     rightPanel: (@Composable BoxScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -126,61 +130,68 @@ fun PanelButton(
         sizeValues = heightValues,
         contentPadding = PaddingValues(0.dp),
     ) {
-        if (leftPanel != null) {
-            Box(
-                modifier = Modifier
-                    .background(color = leftPanelColor)
-                    .padding(contentPadding)
-                    .sizeIn(minHeight = minHeight, maxHeight = maxHeight),
-                contentAlignment = Alignment.Center,
-            ) {
-                AnimatedContent(
-                    targetState = loading
-                ) { targetIsLoading ->
-                    if (targetIsLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.padding(contentPadding)
-                                .sizeIn(minHeight = minHeight, maxHeight = maxHeight),
-                            color = LocalContentColor.current,
-                            trackColor = containerColor,
-                        )
-                    } else {
-                        leftPanel()
+        ProvideContentColorTextStyle(
+            contentColor = colors.contentColor,
+            textStyle = textStyle,
+        ) {
+            if (leftPanel != null) {
+                Box(
+                    modifier = Modifier
+                        .background(color = leftPanelColor)
+                        .padding(contentPadding)
+                        .heightIn(min = minHeight, max = maxHeight)
+                        .aspectRatio(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AnimatedContent(
+                        targetState = loading
+                    ) { targetIsLoading ->
+                        if (targetIsLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.padding(contentPadding)
+                                    .sizeIn(minHeight = minHeight, maxHeight = maxHeight),
+                                color = LocalContentColor.current,
+                                trackColor = containerColor,
+                            )
+                        } else {
+                            leftPanel()
+                        }
                     }
                 }
+                VerticalDivider(
+                    color = leftPanelColor.darken(0.1f),
+                )
             }
-            VerticalDivider(
-                color = leftPanelColor.darken(0.1f),
-            )
-        }
-        Box(
-            modifier = Modifier
-                .padding(contentPadding)
-                .weight(1f),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            content()
-        }
-        if (rightPanel != null) {
             Box(
                 modifier = Modifier
                     .padding(contentPadding)
-                    .sizeIn(minHeight = minHeight, maxHeight = maxHeight),
-                contentAlignment = Alignment.Center,
+                    .weight(1f),
+                contentAlignment = Alignment.CenterStart,
             ) {
-                AnimatedContent(
-                    targetState = loading && leftPanel == null
-                ) { targetIsLoading ->
-                    if (targetIsLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(24.dp),
-                            color = LocalContentColor.current,
-                            trackColor = containerColor,
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        rightPanel()
+                content()
+            }
+            if (rightPanel != null) {
+                Box(
+                    modifier = Modifier
+                        .padding(contentPadding)
+                        .heightIn(min = minHeight, max = maxHeight)
+                        .aspectRatio(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AnimatedContent(
+                        targetState = loading && leftPanel == null
+                    ) { targetIsLoading ->
+                        if (targetIsLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(24.dp),
+                                color = LocalContentColor.current,
+                                trackColor = containerColor,
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            rightPanel()
+                        }
                     }
                 }
             }
@@ -364,8 +375,7 @@ fun Button(
     ) {
         Row(
             modifier = Modifier
-                .padding(contentPadding)
-                .fillMaxWidth(),
+                .padding(contentPadding),
             horizontalArrangement = horizontalArrangement,
             verticalAlignment = verticalAlignment,
         ) {
@@ -547,7 +557,6 @@ internal suspend fun Animatable<Dp, *>.animateElevation(
 
 
 internal object ElevationTokens {
-    val Level0 = 0.0.dp
     val Level1 = 1.0.dp
     val Level2 = 3.0.dp
     val Level3 = 6.0.dp
