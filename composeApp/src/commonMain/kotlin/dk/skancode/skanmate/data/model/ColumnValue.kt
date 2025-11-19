@@ -53,6 +53,17 @@ private object ColumnValueSerializer : KSerializer<ColumnValue> {
 
 @Serializable(with = ColumnValueSerializer::class)
 sealed class ColumnValue {
+    override fun toString(): String {
+        return when(this) {
+            is Boolean -> "Boolean($checked)"
+            is File -> "File()"
+            Null -> "Null"
+            is Numeric -> "Numeric($num)"
+            is OptionList -> "OptionsList($selected, $options)"
+            is Text -> "Text($text)"
+        }
+    }
+
     data class Boolean(val checked: kotlin.Boolean = false) : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
     }

@@ -174,6 +174,9 @@ fun TableScreen(
 
                 TableContent(
                     tableUiState = tableUiState,
+                    getUpdatedColumns = {
+                        viewModel.uiState.value.columns
+                    },
                     setFocusedColumn = { id, focused ->
                         if (focused && tableUiState.focusedColumnId != id) {
                             viewModel.setFocusedColumn(id)
@@ -218,6 +221,7 @@ fun TableScreen(
 fun TableContent(
     modifier: Modifier = Modifier,
     tableUiState: TableUiState,
+    getUpdatedColumns: () -> List<ColumnUiState>,
     setFocusedColumn: (String, Boolean) -> Unit = { _, _ -> },
     submitData: () -> Unit = {},
     deleteLocalFile: (path: String) -> Unit,
@@ -279,7 +283,7 @@ fun TableContent(
                                 constraintErrors = tableUiState.constraintErrors,
                                 updateCol = { col ->
                                     updateColumns(
-                                        columns
+                                        getUpdatedColumns()
                                             .map { c -> if (c.id == col.id) col else c }
                                     )
                                 },
