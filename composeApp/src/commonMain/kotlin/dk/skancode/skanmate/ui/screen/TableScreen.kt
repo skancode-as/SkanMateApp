@@ -4,11 +4,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
@@ -24,6 +27,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActionScope
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -31,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,6 +65,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -73,6 +77,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import dk.skancode.skanmate.ImageData
 import dk.skancode.skanmate.ImageResource
 import dk.skancode.skanmate.ImageResourceState
@@ -85,6 +90,7 @@ import dk.skancode.skanmate.ui.component.ScanableInputField
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.loadImage
+import dk.skancode.skanmate.ui.component.Badge
 import dk.skancode.skanmate.ui.component.ColumnWithErrorLayout
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
 import dk.skancode.skanmate.ui.component.ImageCaptureAction
@@ -95,6 +101,8 @@ import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.PanelButton
 import dk.skancode.skanmate.ui.component.SizeValues
+import dk.skancode.skanmate.ui.component.Switch
+import dk.skancode.skanmate.ui.component.SwitchDefaults
 import dk.skancode.skanmate.ui.component.fab.FloatingActionButton
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
@@ -105,6 +113,7 @@ import dk.skancode.skanmate.util.LocalAudioPlayer
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import dk.skancode.skanmate.util.keyboardVisibleAsState
+import dk.skancode.skanmate.util.measureText
 import dk.skancode.skanmate.util.rememberHaptic
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import org.jetbrains.compose.resources.stringResource
@@ -118,6 +127,8 @@ import skanmate.composeapp.generated.resources.submit
 import skanmate.composeapp.generated.resources.table_not_found
 import skanmate.composeapp.generated.resources.table_screen_data_submitted
 import skanmate.composeapp.generated.resources.table_screen_retake_picture
+import skanmate.composeapp.generated.resources.table_screen_switch_off
+import skanmate.composeapp.generated.resources.table_screen_switch_on
 import skanmate.composeapp.generated.resources.table_screen_take_picture
 import skanmate.composeapp.generated.resources.triangle_alert
 import kotlin.math.roundToInt
@@ -218,6 +229,13 @@ fun TableScreen(
                             viewModel.setFocusedColumn(null)
                         }
                     },
+                    focusNextColumn = {
+                        val nextId = tableUiState.columns.indexOfFirst { col -> col.id == tableUiState.focusedColumnId }.let { idx ->
+                            tableUiState.columns.getOrNull((idx+1) % tableUiState.columns.size)?.id
+                        }
+
+                        viewModel.setFocusedColumn(nextId)
+                    },
                     submitData = submitData,
                     validateColumn = { col, value ->
                         viewModel.validateColumn(col, value)
@@ -284,6 +302,7 @@ fun TableContent(
     tableUiState: TableUiState,
     getUpdatedColumns: () -> List<ColumnUiState>,
     setFocusedColumn: (String, Boolean) -> Unit = { _, _ -> },
+    focusNextColumn: () -> Unit,
     submitData: () -> Unit = {},
     deleteLocalFile: (path: String) -> Unit,
     validateColumn: (ColumnUiState, ColumnValue) -> Boolean,
@@ -304,8 +323,13 @@ fun TableContent(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .pointerInput(focusManager) {
-                    detectTapGestures { focusManager.clearFocus() }
+                .pointerInput(focusManager, tableUiState) {
+                    detectTapGestures {
+                        focusManager.clearFocus()
+                        tableUiState.focusedColumnId?.also { focusedColumnId ->
+                            setFocusedColumn(focusedColumnId, false)
+                        }
+                    }
                 },
             contentAlignment = Alignment.Center,
             propagateMinConstraints = true,
@@ -350,6 +374,9 @@ fun TableContent(
                                 },
                                 focusedColumnId = tableUiState.focusedColumnId,
                                 setFocus = setFocusedColumn,
+                                onNext = {
+                                    focusNextColumn()
+                                },
                                 onDone = {
                                     submitData()
                                 },
@@ -382,6 +409,7 @@ fun LazyGridScope.tableColumns(
     updateCol: (ColumnUiState) -> Unit,
     focusedColumnId: String?,
     setFocus: (String, Boolean) -> Unit = { _, _ -> },
+    onNext: () -> Unit = {},
     onDone: () -> Unit = {},
     deleteFile: (String) -> Unit,
     enabled: Boolean = true,
@@ -405,6 +433,7 @@ fun LazyGridScope.tableColumns(
                 deleteFile = deleteFile,
                 onKeyboardAction = { action ->
                     when (action) {
+                        ImeAction.Next -> onNext()
                         ImeAction.Done -> onDone()
                     }
                 },
@@ -431,17 +460,25 @@ fun TableColumn(
     validateValue: (ColumnValue) -> Boolean,
     updateValue: (ColumnValue) -> Unit = {},
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
     ColumnWithErrorLayout(
         modifier = Modifier.wrapContentHeight(),
         errors = errors,
     ) {
         val enabled = enabled
         val modifier = Modifier.fillMaxWidth()
-        val focusRequester = remember { FocusRequester() }
         val imeAction = if (isLast) ImeAction.Done else ImeAction.Next
 
         if (col.type == ColumnType.Boolean && col.value is ColumnValue.Boolean) {
-            TableColumnCheckbox(
+            LaunchedEffect(focusManager, isFocused) {
+                if (isFocused) {
+                    focusManager.clearFocus()
+                }
+            }
+
+            TableColumnBoolean(
                 modifier = modifier.focusRequester(focusRequester),
                 label = col.name,
                 checked = col.value.checked,
@@ -449,8 +486,15 @@ fun TableColumn(
                     updateValue(col.value.copy(checked = checked))
                 },
                 enabled = enabled,
+                isFocused = isFocused,
             )
         } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
+            LaunchedEffect(focusManager, isFocused) {
+                if (isFocused) {
+                    focusManager.clearFocus()
+                }
+            }
+
             TableColumnFile(
                 modifier = Modifier.fillMaxWidth(),
                 label = col.name,
@@ -476,10 +520,17 @@ fun TableColumn(
                     )
                 },
                 enabled = enabled,
+                isFocused = isFocused,
             )
         } else if (col.type == ColumnType.List && col.value is ColumnValue.OptionList) {
+            LaunchedEffect(focusRequester, isFocused) {
+                if (isFocused) {
+                    focusRequester.requestFocus()
+                }
+            }
+
             TableColumnList(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                 selectOption = { opt ->
                     updateValue(
                         col.value.copy(selected = opt)
@@ -488,6 +539,9 @@ fun TableColumn(
                 option = col.value.selected,
                 options = col.value.options,
                 label = col.name,
+                setFocus = {
+                    setFocus(col.id, it)
+                },
                 enabled = enabled,
             )
         } else {
@@ -558,7 +612,7 @@ fun TableColumnInput(
     type: ColumnType,
     enabled: Boolean = type.autogenerated,
     imeAction: ImeAction = ImeAction.Next,
-    onKeyboardAction: KeyboardActionScope.() -> Unit = {},
+    onKeyboardAction: (KeyboardActionScope.() -> Unit)? = null,
     keyboardType: KeyboardType = type.keyboardType(),
     setFocus: (Boolean) -> Unit = {},
     scanModule: ScanModule = LocalScanModule.current,
@@ -607,8 +661,7 @@ fun TableColumnInput(
     }
     val keyboardActions = KeyboardActions {
         setValue(text)
-        onKeyboardAction()
-        defaultKeyboardAction(imeAction = imeAction)
+        onKeyboardAction?.invoke(this) ?: defaultKeyboardAction(imeAction = imeAction)
     }
     val colors = TextFieldDefaults.colors(
         errorContainerColor = MaterialTheme.colorScheme.errorContainer,
@@ -655,6 +708,7 @@ fun TableColumnFile(
     setValue: (data: ImageData?) -> Unit,
     deleteFile: (String?) -> Unit,
     enabled: Boolean = true,
+    isFocused: Boolean,
 ) {
     val imageResource = LocalImageResource.current
     val painter = imageResource?.state?.value
@@ -685,8 +739,16 @@ fun TableColumnFile(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(label, style = LocalLabelTextStyle.current)
+
+        val buttonShape = RoundedCornerShape(4.dp)
+        val buttonModifier = if (isFocused) {
+            Modifier.fillMaxWidth().border(1.dp, color = Color.Black, shape = buttonShape)
+        } else {
+            Modifier.fillMaxWidth()
+        }
         PanelButton(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = buttonModifier,
+            shape = buttonShape,
             onClick = {
                 if (!hasImage) {
                     focusManager.clearFocus()
@@ -761,6 +823,7 @@ fun TableColumnList(
     modifier: Modifier = Modifier,
     label: String,
     selectOption: (String) -> Unit,
+    setFocus: (Boolean) -> Unit,
     option: String?,
     options: List<String>,
     enabled: Boolean = true,
@@ -787,6 +850,7 @@ fun TableColumnList(
             enabled = enabled,
             onFocusChange = {
                 expanded = it
+                setFocus(it)
             }
         )
         ExposedDropdownMenu(
@@ -812,27 +876,62 @@ fun TableColumnList(
 }
 
 @Composable
-fun TableColumnCheckbox(
+fun TableColumnBoolean(
     modifier: Modifier = Modifier,
     label: String,
     checked: Boolean,
     setChecked: (Boolean) -> Unit,
     enabled: Boolean = true,
+    isFocused: Boolean,
 ) {
     val focusManager = LocalFocusManager.current
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(text = label, style = LocalLabelTextStyle.current)
-        Checkbox(
-            checked = checked,
-            onCheckedChange = {
-                focusManager.clearFocus()
-                setChecked(it)
-            },
-            enabled = enabled,
-        )
+        Row(
+            modifier = Modifier
+                .height(56.dp)
+                .border(
+                    width = if (isFocused) 1.dp else Dp.Unspecified,
+                    color = Color.Black,
+                    shape = RoundedCornerShape(4.dp)
+                )
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val switchColors = SwitchDefaults.colors()
+            Switch(
+                checked = checked,
+                onCheckedChange = {
+                    focusManager.clearFocus()
+                    setChecked(it)
+                },
+                enabled = enabled,
+                colors = switchColors,
+            )
+
+            val badgeTextStyle = MaterialTheme.typography.labelLarge
+            val onText = stringResource(Res.string.table_screen_switch_on)
+            val offText = stringResource(Res.string.table_screen_switch_off)
+            val requiredTextWidth = max(
+                a = measureText(onText, badgeTextStyle).width,
+                b = measureText(offText, badgeTextStyle).width,
+            )
+            Badge(
+                color = switchColors.containerColor(checked, enabled = true),
+                contentStyle = badgeTextStyle,
+                contentPadding = PaddingValues(4.dp, 3.dp)
+            ) {
+                Text(
+                    modifier = Modifier
+                        .requiredWidthIn(min = requiredTextWidth + 8.dp),
+                    text = if (checked) onText else offText,
+                )
+            }
+        }
     }
 }
 

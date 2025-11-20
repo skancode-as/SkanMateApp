@@ -15,6 +15,11 @@ fun InternalStringResource(
     args: List<Any> = emptyList(),
 ): InternalStringResource = InternalStringResourceImpl(resource, args)
 
+fun InternalStringResource(
+    resource: StringResource,
+    vararg args: Any,
+): InternalStringResource = InternalStringResourceImpl(resource, args.toList())
+
 private data class InternalStringResourceImpl(
     override val resource: StringResource,
     override val args: List<Any> = emptyList(),
