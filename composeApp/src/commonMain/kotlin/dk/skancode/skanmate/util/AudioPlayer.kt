@@ -9,6 +9,8 @@ interface AudioPlayer {
     fun release()
 }
 
+expect val AudioPlayerInstance: AudioPlayer
+
 val LocalAudioPlayer: ProvidableCompositionLocal<AudioPlayer> = compositionLocalOf {
     object : AudioPlayer {
         override fun playSuccess() { }

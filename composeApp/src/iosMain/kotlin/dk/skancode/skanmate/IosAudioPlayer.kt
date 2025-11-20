@@ -17,6 +17,11 @@ class IosAudioPlayer(
 
     private val audioEngine = AVAudioEngine()
     private val audioPlayerNode = AVAudioPlayerNode()
+    private var isReleased: Boolean = false
+
+    companion object {
+        var instance: IosAudioPlayer? = null
+    }
 
     init {
         audioEngine.attachNode(audioPlayerNode)
@@ -25,6 +30,12 @@ class IosAudioPlayer(
             audioEngine.outputNode,
             null,
         )
+        if (instance?.isReleased == false) {
+            instance?.release()
+            instance = null
+        }
+
+        instance = this
     }
 
     override fun playSuccess() {
@@ -40,6 +51,7 @@ class IosAudioPlayer(
         audioEngine.disconnectNodeOutput(audioPlayerNode)
         audioEngine.detachNode(audioPlayerNode)
         audioEngine.stop()
+        isReleased = true
     }
 
     @OptIn(ExperimentalForeignApi::class)

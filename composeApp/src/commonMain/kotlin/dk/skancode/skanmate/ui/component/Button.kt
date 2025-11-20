@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -98,7 +99,8 @@ fun PanelButton(
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(
         containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
-        disabledContainerColor = MaterialTheme.colorScheme.background,
+        disabledContainerColor = Color.DarkGray.copy(alpha = 0.12f).compositeOver(MaterialTheme.colorScheme.surface),
+        disabledContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.12f).compositeOver(MaterialTheme.colorScheme.surface),
     ),
     textStyle: TextStyle = MaterialTheme.typography.labelLarge,
     enabled: Boolean = true,
@@ -109,11 +111,12 @@ fun PanelButton(
     shape: Shape = RoundedCornerShape(4.dp),
     heightValues: SizeValues = SizeValues(minHeight = 36.dp, maxHeight = 64.dp),
     leftPanel: (@Composable BoxScope.() -> Unit)? = null,
-    leftPanelColor: Color = colors.containerColor.darken(0.15f),
+    leftPanelColor: Color = if(enabled) colors.containerColor.darken(0.15f) else colors.disabledContainerColor.darken(0.15f),
     rightPanel: (@Composable BoxScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val containerColor = if (enabled) colors.containerColor else colors.disabledContainerColor
+    val contentColor = if (enabled) colors.contentColor else colors.disabledContentColor
     val (minHeight, maxHeight) = key(heightValues) { heightValues.heightValues() }
 
     Button(
@@ -131,7 +134,7 @@ fun PanelButton(
         contentPadding = PaddingValues(0.dp),
     ) {
         ProvideContentColorTextStyle(
-            contentColor = colors.contentColor,
+            contentColor = contentColor,
             textStyle = textStyle,
         ) {
             if (leftPanel != null) {

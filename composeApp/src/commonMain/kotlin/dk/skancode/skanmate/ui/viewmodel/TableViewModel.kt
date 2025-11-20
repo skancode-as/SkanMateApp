@@ -16,8 +16,10 @@ import dk.skancode.skanmate.ui.state.MutableTableUiState
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.state.toUiState
 import dk.skancode.skanmate.ui.state.check
+import dk.skancode.skanmate.util.AudioPlayerInstance
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.snackbar.UserMessageService
+import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.FlowPreview
@@ -25,12 +27,14 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.constraint_error_server
 import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data
 import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data_constraint
 import skanmate.composeapp.generated.resources.table_vm_could_not_upload_image
+import skanmate.composeapp.generated.resources.table_vm_scan_not_possible_for_col
 
 class TableViewModel(
     val tableService: TableService,
@@ -75,12 +79,14 @@ class TableViewModel(
     }
 
     fun setFocusedColumn(id: String?) {
-        if (id == null) _uiState.update { it.copy(focusedColumnId = null) }
-        else _uiState.update {
+        val newState = if (id == null) _uiState.updateAndGet { it.copy(focusedColumnId = null) }
+        else _uiState.updateAndGet {
             it.copy(
                 focusedColumnId = it.columns.find { col -> col.id == id }?.id,
             )
         }
+
+        println("TableViewModel::setFocusedColumn($id) - new focused column id: ${newState.focusedColumnId}, name: ${newState.columns.find { it.id == newState.focusedColumnId}?.name}")
     }
 
     fun deleteLocalImage(
@@ -281,15 +287,30 @@ class TableViewModel(
                         idx = i
                         col.copy(
                             value = when (col.value) {
-                                is ColumnValue.Text -> ColumnValue.Text(v)
-                                is ColumnValue.Numeric -> ColumnValue.Numeric(
-                                    v.toIntOrNull() ?: v.toDoubleOrNull()
-                                )
+                                is ColumnValue.Text -> {
+                                    idx = i
+                                    ColumnValue.Text(v)
+                                }
+                                is ColumnValue.Numeric -> {
+                                    idx = i
+                                    ColumnValue.Numeric(
+                                        v.toIntOrNull() ?: v.toDoubleOrNull()
+                                    )
+                                }
 
                                 is ColumnValue.Boolean,
                                 is ColumnValue.File,
                                 is ColumnValue.OptionList,
-                                ColumnValue.Null -> col.value.clone()
+                                ColumnValue.Null -> {
+                                    AudioPlayerInstance.playError()
+                                    UserMessageServiceImpl.displayError(
+                                        message = InternalStringResource(
+                                            Res.string.table_vm_scan_not_possible_for_col,
+                                            col.name,
+                                        )
+                                    )
+                                    col.value.clone()
+                                }
                             }
                         )
                     }
@@ -304,7 +325,10 @@ class TableViewModel(
         val focusedColumnId = _uiState.value.focusedColumnId
         val focusedColumn = columns.find { col -> col.id == focusedColumnId }
 
-        if (focusedColumn == null || focusedColumnId == null) return -1
+        if (focusedColumn == null || focusedColumnId == null) {
+            AudioPlayerInstance.playError()
+            return -1
+        }
 
         return updateColumn(focusedColumnId, v)
     }
@@ -339,11 +363,7 @@ class TableViewModel(
             idx
         }
 
-        _uiState.update {
-            it.copy(
-                focusedColumnId = columns.getOrNull(newFocusIdx)?.id
-            )
-        }
+        setFocusedColumn(id = columns.getOrNull(newFocusIdx)?.id)
         println("Handle event done: $event")
     }
 }
