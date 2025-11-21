@@ -18,6 +18,7 @@ import dk.skancode.skanmate.ui.state.toUiState
 import dk.skancode.skanmate.ui.state.check
 import dk.skancode.skanmate.util.AudioPlayerInstance
 import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.assert
 import dk.skancode.skanmate.util.snackbar.UserMessageService
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import kotlinx.coroutines.CoroutineStart
@@ -258,8 +259,18 @@ class TableViewModel(
 
     fun resetColumnData() {
         _uiState.update {
+            assert(it.columns.size == it.model?.columns?.size)
+            val resatColumns = it.model?.columns?.mapIndexed { idx, col ->
+                var colUiState = col.toUiState()
+                if (col.rememberValue) {
+                    colUiState = colUiState.copy(value = it.columns[idx].value)
+                }
+
+                colUiState
+            } ?: emptyList()
             it.copy(
-                columns = it.model?.columns?.map { col -> col.toUiState() } ?: emptyList(),
+                columns = resatColumns,
+                focusedColumnId = resatColumns.firstOrNull { col -> !col.rememberValue }?.id
             )
         }
     }

@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,12 +46,16 @@ import dk.skancode.skanmate.ui.component.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -66,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -110,18 +116,24 @@ import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.HapticKind
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.LocalAudioPlayer
+import dk.skancode.skanmate.util.Success
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.find
 import dk.skancode.skanmate.util.keyboardVisibleAsState
 import dk.skancode.skanmate.util.measureText
 import dk.skancode.skanmate.util.rememberHaptic
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.camera
 import skanmate.composeapp.generated.resources.cannot_display_image
 import skanmate.composeapp.generated.resources.input_placeholder
+import skanmate.composeapp.generated.resources.save
 import skanmate.composeapp.generated.resources.select_placeholder
 import skanmate.composeapp.generated.resources.submit
 import skanmate.composeapp.generated.resources.table_not_found
@@ -176,8 +188,7 @@ fun TableScreen(
             TopAppBar(
                 title = {
                     Text(table?.name ?: "Oh no!")
-                },
-                navigationIcon = {
+                }, navigationIcon = {
                     IconButton(
                         onClick = navigateBack,
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = LocalContentColor.current),
@@ -188,8 +199,7 @@ fun TableScreen(
                             contentDescription = null
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
+                }, colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
@@ -217,34 +227,28 @@ fun TableScreen(
 
                 RegisterScanEventHandler(handler = viewModel)
 
-                TableContent(
-                    tableUiState = tableUiState,
-                    getUpdatedColumns = {
-                        viewModel.uiState.value.columns
-                    },
-                    setFocusedColumn = { id, focused ->
-                        if (focused && tableUiState.focusedColumnId != id) {
-                            viewModel.setFocusedColumn(id)
-                        } else if (!focused && tableUiState.focusedColumnId == id) {
-                            viewModel.setFocusedColumn(null)
-                        }
-                    },
-                    focusNextColumn = {
-                        val nextId = tableUiState.columns.indexOfFirst { col -> col.id == tableUiState.focusedColumnId }.let { idx ->
-                            tableUiState.columns.getOrNull((idx+1) % tableUiState.columns.size)?.id
-                        }
-
-                        viewModel.setFocusedColumn(nextId)
-                    },
-                    submitData = submitData,
-                    validateColumn = { col, value ->
-                        viewModel.validateColumn(col, value)
-                    },
-                    deleteLocalFile = { path ->
-                        println("TableScreen::deleteLocalFile($path)")
-                        viewModel.deleteLocalImage(path)
+                TableContent(tableUiState = tableUiState, getUpdatedColumns = {
+                    viewModel.uiState.value.columns
+                }, setFocusedColumn = { id, focused ->
+                    if (focused && tableUiState.focusedColumnId != id) {
+                        viewModel.setFocusedColumn(id)
+                    } else if (!focused && tableUiState.focusedColumnId == id) {
+                        viewModel.setFocusedColumn(null)
                     }
-                ) { columns ->
+                }, focusNextColumn = {
+                    val nextId =
+                        tableUiState.columns.indexOfFirst { col -> col.id == tableUiState.focusedColumnId }
+                            .let { idx ->
+                                tableUiState.columns.getOrNull((idx + 1) % tableUiState.columns.size)?.id
+                            }
+
+                    viewModel.setFocusedColumn(nextId)
+                }, submitData = submitData, validateColumn = { col, value ->
+                    viewModel.validateColumn(col, value)
+                }, deleteLocalFile = { path ->
+                    println("TableScreen::deleteLocalFile($path)")
+                    viewModel.deleteLocalImage(path)
+                }) { columns ->
                     viewModel.updateColumns(columns)
                 }
             }
@@ -278,11 +282,9 @@ fun TableFloatingActionButton(
             expanded = noErrors,
             icon = {
                 Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = "Submit icon"
+                    imageVector = Icons.Filled.Check, contentDescription = "Submit icon"
                 )
-            }
-        ) {
+            }) {
             Text(stringResource(Res.string.submit))
             AnimatedVisibility(tableUiState.isSubmitting) {
                 CircularProgressIndicator(
@@ -321,16 +323,14 @@ fun TableContent(
 
     CompositionLocalProvider(LocalImageResourceMap provides imageResourceMap) {
         Box(
-            modifier = modifier
-                .fillMaxSize()
-                .pointerInput(focusManager, tableUiState) {
-                    detectTapGestures {
-                        focusManager.clearFocus()
-                        tableUiState.focusedColumnId?.also { focusedColumnId ->
-                            setFocusedColumn(focusedColumnId, false)
-                        }
+            modifier = modifier.fillMaxSize().pointerInput(focusManager, tableUiState) {
+                detectTapGestures {
+                    focusManager.clearFocus()
+                    tableUiState.focusedColumnId?.also { focusedColumnId ->
+                        setFocusedColumn(focusedColumnId, false)
                     }
-                },
+                }
+            },
             contentAlignment = Alignment.Center,
             propagateMinConstraints = true,
         ) {
@@ -340,21 +340,17 @@ fun TableContent(
                 val columns = tableUiState.columns
                 if (isFetching) {
                     Box(
-                        modifier = modifier
-                            .requiredSize(48.dp)
-                            .align(Alignment.Center),
+                        modifier = modifier.requiredSize(48.dp).align(Alignment.Center),
                         contentAlignment = Alignment.Center,
                         propagateMinConstraints = true,
                     ) {
                         CircularProgressIndicator(
-                            modifier = Modifier
-                                .padding(4.dp)
+                            modifier = Modifier.padding(4.dp)
                         )
                     }
                 } else {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize(),
+                        modifier = Modifier.fillMaxSize(),
                     ) {
                         LazyVerticalGrid(
                             modifier = Modifier.weight(1f, fill = true),
@@ -368,9 +364,7 @@ fun TableContent(
                                 constraintErrors = tableUiState.constraintErrors,
                                 updateCol = { col ->
                                     updateColumns(
-                                        getUpdatedColumns()
-                                            .map { c -> if (c.id == col.id) col else c }
-                                    )
+                                        getUpdatedColumns().map { c -> if (c.id == col.id) col else c })
                                 },
                                 focusedColumnId = tableUiState.focusedColumnId,
                                 setFocus = setFocusedColumn,
@@ -386,8 +380,7 @@ fun TableContent(
                             )
 
                             item(
-                                span = { GridItemSpan(maxCurrentLineSpan) }
-                            ) {
+                                span = { GridItemSpan(maxCurrentLineSpan) }) {
                                 val lineHeightDp =
                                     with(LocalDensity.current) { LocalLabelTextStyle.current.lineHeight.toDp() }
                                 Spacer(
@@ -414,14 +407,9 @@ fun LazyGridScope.tableColumns(
     deleteFile: (String) -> Unit,
     enabled: Boolean = true,
 ) {
-    itemsIndexed(
-        items = columns,
-        key = { _, c -> c.id },
-        span = { _, col ->
-            GridItemSpan((maxLineSpan * col.width).roundToInt())
-        },
-        contentType = { _, col -> col.type }
-    ) { idx, col ->
+    itemsIndexed(items = columns, key = { _, c -> c.id }, span = { _, col ->
+        GridItemSpan((maxLineSpan * col.width).roundToInt())
+    }, contentType = { _, col -> col.type }) { idx, col ->
         CompositionLocalProvider(LocalImageResource provides LocalImageResourceMap.current[col.name]) {
             TableColumn(
                 col = col,
@@ -439,8 +427,7 @@ fun LazyGridScope.tableColumns(
                 },
                 validateValue = { value ->
                     validateColumn(col, value)
-                }
-            ) { newColValue ->
+                }) { newColValue ->
                 updateCol(col.copy(value = newColValue))
             }
         }
@@ -462,6 +449,10 @@ fun TableColumn(
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+
+    val rememberComposable = if (col.rememberValue) (@Composable {
+        TableRememberValueBadge()
+    }) else null
 
     ColumnWithErrorLayout(
         modifier = Modifier.wrapContentHeight(),
@@ -498,13 +489,10 @@ fun TableColumn(
             TableColumnFile(
                 modifier = Modifier.fillMaxWidth(),
                 label = col.name,
-                value =
-                    if (col.value.localUrl == null) null
-                    else ImageData(
-                        path = col.value.localUrl,
-                        name = col.value.fileName,
-                        data = col.value.bytes
-                    ),
+                value = if (col.value.localUrl == null) null
+                else ImageData(
+                    path = col.value.localUrl, name = col.value.fileName, data = col.value.bytes
+                ),
                 deleteFile = { path ->
                     println("TableColumn::deleteFile($path)")
                     if (path != null) deleteFile(path)
@@ -551,7 +539,13 @@ fun TableColumn(
                 }
             }
             TableColumnInput(
-                modifier = modifier.focusRequester(focusRequester),
+                modifier = modifier
+                    .focusRequester(focusRequester)
+                    .border(
+                        if (col.rememberValue) 1.dp else Dp.Unspecified,
+                        if (col.value.isNotEmpty()) Color.Success else MaterialTheme.colorScheme.error,
+                        RoundedCornerShape(4.dp)
+                    ),
                 label = col.name,
                 value = when (col.value) {
                     is ColumnValue.Text -> col.value.text
@@ -591,7 +585,8 @@ fun TableColumn(
                 imeAction = imeAction,
                 keyboardType = if (col.constraints.any { it is ColumnConstraint.Email }) KeyboardType.Email else col.type.keyboardType(),
                 onKeyboardAction = { onKeyboardAction(imeAction) },
-                isError = errors.isNotEmpty()
+                isError = errors.isNotEmpty(),
+                rememberComposable = rememberComposable,
             )
         }
     }
@@ -599,6 +594,45 @@ fun TableColumn(
 
 fun ColumnType.keyboardType(): KeyboardType {
     return if (this is ColumnType.Numeric) KeyboardType.Number else KeyboardType.Ascii
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TableRememberValueBadge() {
+    val tooltipState = rememberTooltipState(isPersistent = true)
+    val scope = CoroutineScope(Dispatchers.IO)
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = {
+            PlainTooltip(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shadowElevation = 4.dp,
+            ) {
+                Text(text = "Feltet huskes efter indsendelse")
+            }
+        },
+        state = tooltipState,
+    ) {
+        Badge(
+            modifier = Modifier
+                .clickable {
+                    scope.launch {
+                        tooltipState.show()
+                    }
+                },
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            contentStyle = MaterialTheme.typography.labelMedium,
+            contentPadding = PaddingValues(6.dp),
+        ) {
+            Icon(
+                modifier = Modifier.size(18.dp),
+                imageVector = vectorResource(Res.drawable.save),
+                contentDescription = "ColumnSavedIcon",
+            )
+        }
+    }
 }
 
 @Composable
@@ -616,21 +650,18 @@ fun TableColumnInput(
     keyboardType: KeyboardType = type.keyboardType(),
     setFocus: (Boolean) -> Unit = {},
     scanModule: ScanModule = LocalScanModule.current,
+    shape: Shape = RoundedCornerShape(4.dp),
+    rememberComposable: (@Composable () -> Unit)? = null,
 ) {
     val keyboardVisible by keyboardVisibleAsState()
 
     val keyboardOptions = remember(type, keyboardVisible) {
         when (type) {
-            ColumnType.Unknown,
-            ColumnType.Boolean,
-            ColumnType.File,
-            ColumnType.List,
-            ColumnType.Id,
-            ColumnType.Timestamp,
-            ColumnType.User -> KeyboardOptions.Default.copy(imeAction = imeAction)
+            ColumnType.Unknown, ColumnType.Boolean, ColumnType.File, ColumnType.List, ColumnType.Id, ColumnType.Timestamp, ColumnType.User -> KeyboardOptions.Default.copy(
+                imeAction = imeAction
+            )
 
-            ColumnType.Numeric,
-            ColumnType.Text -> KeyboardOptions(
+            ColumnType.Numeric, ColumnType.Text -> KeyboardOptions(
                 capitalization = if (keyboardType == KeyboardType.Ascii) KeyboardCapitalization.Sentences else KeyboardCapitalization.None,
                 keyboardType = keyboardType,
                 showKeyboardOnFocus = keyboardVisible || !scanModule.isHardwareScanner(),
@@ -645,7 +676,26 @@ fun TableColumnInput(
         validateValue(it)
     }
     val labelComposable: (@Composable () -> Unit) = {
-        Text(label, style = LocalLabelTextStyle.current)
+        val labelText = @Composable {
+            Text(label, style = LocalLabelTextStyle.current)
+        }
+
+        when (rememberComposable) {
+            null -> {
+                labelText()
+            }
+
+            else -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    labelText()
+                    rememberComposable()
+                }
+            }
+        }
     }
     val placeholder: (@Composable () -> Unit) = {
         Text(
@@ -682,6 +732,7 @@ fun TableColumnInput(
             onFocusChange = onFocusChange,
             isError = isError,
             colors = colors,
+            shape = shape,
         )
     } else {
         InputField(
@@ -696,6 +747,7 @@ fun TableColumnInput(
             onFocusChange = onFocusChange,
             isError = isError,
             colors = colors,
+            shape = shape,
         )
     }
 }
@@ -771,39 +823,31 @@ fun TableColumnFile(
                         )
                     } else {
                         Box(
-                            modifier = Modifier
-                                .aspectRatio(1f)
-                                .background(
-                                    color = MaterialTheme.colorScheme.secondaryContainer,
-                                ),
+                            modifier = Modifier.aspectRatio(1f).background(
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                            ),
                             contentAlignment = Alignment.Center,
                             propagateMinConstraints = true,
                         ) {
                             AnimatedContent(painter) { targetPainter ->
                                 when (targetPainter) {
-                                    is ImageResourceState.Image<*> ->
-                                        Image(
-                                            painter = (targetPainter as ImageResourceState.Image<*>).data,
-                                            contentDescription = null,
-                                            contentScale = ContentScale.FillWidth,
-                                        )
+                                    is ImageResourceState.Image<*> -> Image(
+                                        painter = (targetPainter as ImageResourceState.Image<*>).data,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.FillWidth,
+                                    )
 
-                                    is ImageResourceState.Error ->
-                                        Text(stringResource(Res.string.cannot_display_image))
+                                    is ImageResourceState.Error -> Text(stringResource(Res.string.cannot_display_image))
 
-                                    else ->
-                                        CircularProgressIndicator(
-                                            modifier = Modifier
-                                                .padding(all = 4.dp)
-                                                .fillMaxSize(),
-                                        )
+                                    else -> CircularProgressIndicator(
+                                        modifier = Modifier.padding(all = 4.dp).fillMaxSize(),
+                                    )
                                 }
                             }
                         }
                     }
                 }
-            }
-        ) {
+            }) {
             val text = if (!hasImage) {
                 stringResource(Res.string.table_screen_take_picture)
             } else {
@@ -851,12 +895,9 @@ fun TableColumnList(
             onFocusChange = {
                 expanded = it
                 setFocus(it)
-            }
-        )
+            })
         ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+            expanded = expanded, onDismissRequest = { expanded = false }) {
             repeat(options.size) { idx ->
                 val option = options[idx]
                 DropdownMenuItem(
@@ -891,14 +932,11 @@ fun TableColumnBoolean(
     ) {
         Text(text = label, style = LocalLabelTextStyle.current)
         Row(
-            modifier = Modifier
-                .height(56.dp)
-                .border(
-                    width = if (isFocused) 1.dp else Dp.Unspecified,
-                    color = Color.Black,
-                    shape = RoundedCornerShape(4.dp)
-                )
-                .padding(horizontal = 8.dp),
+            modifier = Modifier.height(56.dp).border(
+                width = if (isFocused) 1.dp else Dp.Unspecified,
+                color = Color.Black,
+                shape = RoundedCornerShape(4.dp)
+            ).padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -926,8 +964,7 @@ fun TableColumnBoolean(
                 contentPadding = PaddingValues(4.dp, 3.dp)
             ) {
                 Text(
-                    modifier = Modifier
-                        .requiredWidthIn(min = requiredTextWidth + 8.dp),
+                    modifier = Modifier.requiredWidthIn(min = requiredTextWidth + 8.dp),
                     text = if (checked) onText else offText,
                 )
             }
@@ -940,20 +977,16 @@ fun TableNotFound(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier
-            .fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
         propagateMinConstraints = true
     ) {
         Column(
-            modifier = Modifier
-                .wrapContentSize()
-                .padding(20.dp),
+            modifier = Modifier.wrapContentSize().padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(
-                imageVector = vectorResource(Res.drawable.triangle_alert),
-                contentDescription = null
+                imageVector = vectorResource(Res.drawable.triangle_alert), contentDescription = null
             )
 
             Spacer(modifier = Modifier.size(8.dp))

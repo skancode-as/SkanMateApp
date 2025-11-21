@@ -33,8 +33,8 @@ fun Badge(
         .background(color, shape)
         .padding(contentPadding)
     Box(
-        modifier = modifier
-            .then(boxModifier),
+        modifier = boxModifier
+            .then(modifier),
         contentAlignment = Alignment.Center,
     ) {
         ProvideContentColorTextStyle(

@@ -11,6 +11,7 @@
     <string name="main_screen_title">Tabeller</string>
     <string name="main_screen_could_not_update_tables">Kunne ikke opdatere tabeller. Prøv igen.</string>
 
+    <string name="table_screen_data_remembered">Gemt</string>
     <string name="table_screen_data_submitted">Data blev indsat succesfuldt!</string>
     <string name="table_screen_take_picture">Tag billede</string>
     <string name="table_screen_retake_picture">Nyt billede</string>

@@ -11,7 +11,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 @OptIn(SealedSerializationApi::class)
-private class ColumnValueSerialDescriptor(): SerialDescriptor {
+private class ColumnValueSerialDescriptor() : SerialDescriptor {
     override val serialName: String
         get() = ColumnValue::class.qualifiedName ?: "dk.skancode.ColumnValue"
     override val kind: SerialKind
@@ -24,7 +24,8 @@ private class ColumnValueSerialDescriptor(): SerialDescriptor {
     override fun getElementAnnotations(index: Int): List<Annotation> = error()
     override fun getElementDescriptor(index: Int): SerialDescriptor = error()
     override fun isElementOptional(index: Int): Boolean = error()
-    private fun error(): Nothing = throw IllegalStateException("ColumnValueDescriptor does not have elements")
+    private fun error(): Nothing =
+        throw IllegalStateException("ColumnValueDescriptor does not have elements")
 }
 
 private object ColumnValueSerializer : KSerializer<ColumnValue> {
@@ -36,12 +37,12 @@ private object ColumnValueSerializer : KSerializer<ColumnValue> {
         encoder: Encoder,
         value: ColumnValue
     ) {
-        when(value) {
+        when (value) {
             is ColumnValue.Boolean -> encoder.encodeBoolean(value.checked)
             ColumnValue.Null -> encoder.encodeNull()
-            is ColumnValue.Numeric -> if(value.num != null) encoder.encodeDouble(value.num.toDouble()) else encoder.encodeNull()
+            is ColumnValue.Numeric -> if (value.num != null) encoder.encodeDouble(value.num.toDouble()) else encoder.encodeNull()
             is ColumnValue.Text -> encoder.encodeString(value.text)
-            is ColumnValue.File -> if(value.objectUrl != null) encoder.encodeString(value.objectUrl) else encoder.encodeNull()
+            is ColumnValue.File -> if (value.objectUrl != null) encoder.encodeString(value.objectUrl) else encoder.encodeNull()
             is ColumnValue.OptionList -> if (value.selected != null) encoder.encodeString(value.selected) else encoder.encodeNull()
         }
     }
@@ -54,7 +55,7 @@ private object ColumnValueSerializer : KSerializer<ColumnValue> {
 @Serializable(with = ColumnValueSerializer::class)
 sealed class ColumnValue {
     override fun toString(): String {
-        return when(this) {
+        return when (this) {
             is Boolean -> "Boolean($checked)"
             is File -> "File()"
             Null -> "Null"
@@ -66,13 +67,25 @@ sealed class ColumnValue {
 
     data class Boolean(val checked: kotlin.Boolean = false) : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
+        override fun isEmpty(): kotlin.Boolean {
+            return false
+        }
     }
+
     data class Text(val text: String = "") : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
+        override fun isEmpty(): kotlin.Boolean {
+            return text.isEmpty()
+        }
     }
+
     data class Numeric(val num: Number? = null) : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
+        override fun isEmpty(): kotlin.Boolean {
+            return num == null
+        }
     }
+
     data class File(
         val fileName: String? = null,
         val localUrl: String? = null,
@@ -81,6 +94,9 @@ sealed class ColumnValue {
         val isUploaded: kotlin.Boolean = false,
     ) : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
+        override fun isEmpty(): kotlin.Boolean {
+            return fileName == null
+        }
 
         override fun equals(other: Any?): kotlin.Boolean {
             if (this === other) return true
@@ -105,15 +121,21 @@ sealed class ColumnValue {
         }
     }
 
-    data class OptionList(val options: List<String>, val selected: String? = null): ColumnValue() {
+    data class OptionList(val options: List<String>, val selected: String? = null) : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
+        override fun isEmpty(): kotlin.Boolean {
+            return selected == null
+        }
     }
 
     data object Null : ColumnValue() {
         override fun clone(): ColumnValue = this
+        override fun isEmpty(): kotlin.Boolean = true
     }
 
     abstract fun clone(): ColumnValue
+    abstract fun isEmpty(): kotlin.Boolean
+    fun isNotEmpty(): kotlin.Boolean = !isEmpty()
 
     companion object {
         fun fromType(t: ColumnType, options: List<String>): ColumnValue = when (t) {
