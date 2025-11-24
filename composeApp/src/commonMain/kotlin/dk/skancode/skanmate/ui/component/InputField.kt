@@ -102,7 +102,7 @@ import androidx.compose.ui.unit.offset
 import androidx.compose.ui.util.fastFirst
 import androidx.compose.ui.util.fastFirstOrNull
 import dk.skancode.skanmate.ScanModule
-import dk.skancode.skanmate.util.darken
+import dk.skancode.skanmate.util.borderColorFor
 import dk.skancode.skanmate.util.keyboardVisibleAsState
 import dk.skancode.skanmate.util.snackbar.LocalSnackbarManager
 import dk.skancode.skanmate.util.unreachable
@@ -146,7 +146,7 @@ fun ScanableInputField(
         (@Composable {
             val focusManager = LocalFocusManager.current
             val isImeVisible by keyboardVisibleAsState()
-            IconButton( {
+            IconButton({
                 if (isImeVisible) {
                     focusManager.clearFocus()
                 }
@@ -377,9 +377,14 @@ fun InputField(
                                         modifier = Modifier
                                             .border(
                                                 width = borderWidth,
-                                                color = when(borderColor) {
-                                                    Color.Unspecified -> colors.borderColor(enabled, isError, focused)
-                                                    else -> borderColor
+                                                color = borderColor.takeOrElse {
+                                                    borderColorFor(
+                                                        colors.containerColor(
+                                                            enabled,
+                                                            isError,
+                                                            focused
+                                                        )
+                                                    )
                                                 },
                                                 shape = shape
                                             )
@@ -517,14 +522,24 @@ fun InputField(
                                         modifier = Modifier
                                             .border(
                                                 1.dp,
-                                                colors.borderColor(enabled, isError, focused),
+                                                borderColorFor(
+                                                    colors.containerColor(
+                                                        enabled,
+                                                        isError,
+                                                        focused
+                                                    )
+                                                ),
                                                 shape,
                                             ),
                                         onClick = {
                                             baseInputFieldState.clearText()
                                         },
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = colors.containerColor(enabled, isError, focused),
+                                            containerColor = colors.containerColor(
+                                                enabled,
+                                                isError,
+                                                focused
+                                            ),
                                         ),
                                         shape = shape,
                                         sizeValues = SizeValues(max = 20.dp),
@@ -600,9 +615,10 @@ fun BaseInputField(
     val modifier: Modifier = modifier
     val inputTransformation: InputTransformation? = null
     val onKeyboardAction: KeyboardActionHandler? = KeyboardActionHandler { default ->
-        when(imeAction) {
+        when (imeAction) {
             ImeAction.Unspecified,
             ImeAction.Default -> default()
+
             else -> keyboardActionRunner.runAction(imeAction)
         }
     }
@@ -614,7 +630,7 @@ fun BaseInputField(
         onTextLayout(getResult() ?: throw IllegalStateException("Could not get TextLayoutResult"))
     }
     val outputTransformation: OutputTransformation? = textTransformation
-    val decorator: TextFieldDecorator? = TextFieldDecorator{ inner ->
+    val decorator: TextFieldDecorator? = TextFieldDecorator { inner ->
         decorationBox(inner)
     }
     val scrollState: ScrollState = rememberScrollState()
@@ -646,14 +662,20 @@ private fun rememberKeyboardActionRunner(
     keyboardController: SoftwareKeyboardController? = LocalSoftwareKeyboardController.current,
     focusManager: FocusManager = LocalFocusManager.current,
 ): KeyboardActionRunner {
-    return remember(keyboardActions, keyboardController, focusManager) { KeyboardActionRunner(keyboardActions, keyboardController, focusManager) }
+    return remember(keyboardActions, keyboardController, focusManager) {
+        KeyboardActionRunner(
+            keyboardActions,
+            keyboardController,
+            focusManager
+        )
+    }
 }
 
 private class KeyboardActionRunner(
     private val keyboardActions: KeyboardActions,
     private val keyboardController: SoftwareKeyboardController?,
     private val focusManager: FocusManager,
-): KeyboardActionScope {
+) : KeyboardActionScope {
     fun runAction(imeAction: ImeAction) {
         println("KeyboardActionRunner::runAction($imeAction) - keyboardActions: $keyboardActions")
         val keyboardAction =
@@ -666,6 +688,7 @@ private class KeyboardActionRunner(
                 ImeAction.Send -> keyboardActions.onSend
                 ImeAction.Default,
                 ImeAction.None -> null
+
                 else -> unreachable()
             }
         println("KeyboardActionRunner::runAction($imeAction) - keyboardAction: $keyboardAction")
@@ -681,9 +704,11 @@ private class KeyboardActionRunner(
             ImeAction.Next -> {
                 focusManager.moveFocus(FocusDirection.Next)
             }
+
             ImeAction.Previous -> {
                 focusManager.moveFocus(FocusDirection.Previous)
             }
+
             ImeAction.Done -> {
                 keyboardController?.hide()
             }
@@ -694,16 +719,16 @@ private class KeyboardActionRunner(
 
 sealed class TextTransformation(
     private val visualTransformation: VisualTransformation,
-): OutputTransformation, VisualTransformation {
+) : OutputTransformation, VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         return visualTransformation.filter(text)
     }
 
-    data object None: TextTransformation(VisualTransformation.None) {
-        override fun TextFieldBuffer.transformOutput() { }
+    data object None : TextTransformation(VisualTransformation.None) {
+        override fun TextFieldBuffer.transformOutput() {}
     }
 
-    data class Password(private val mask: Char = '\u2022'): TextTransformation(
+    data class Password(private val mask: Char = '\u2022') : TextTransformation(
         PasswordVisualTransformation(mask)
     ) {
         override fun TextFieldBuffer.transformOutput() {
@@ -736,10 +761,6 @@ private fun Decoration(
 @Composable
 private fun Decoration(contentColor: Color, content: @Composable () -> Unit) =
     CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
-
-fun TextFieldColors.borderColor(
-    enabled: Boolean, isError: Boolean, focused: Boolean,
-): Color = containerColor(enabled, isError, focused).darken(.1f)
 
 fun TextFieldColors.containerColor(
     enabled: Boolean, isError: Boolean, focused: Boolean,

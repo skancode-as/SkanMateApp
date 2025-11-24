@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -89,10 +90,7 @@ fun AuthScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier
-            .padding(8.dp),
-    ) { padding ->
+    Scaffold { padding ->
         Box(
             modifier = Modifier
                 .padding(padding)
@@ -160,7 +158,11 @@ fun SignInCard(
 
     ElevatedCard(
         modifier = Modifier
-            .padding(16.dp)
+            .padding(16.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        )
     ) {
         val elementPadding = PaddingValues(16.dp)
 

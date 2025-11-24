@@ -52,8 +52,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
@@ -107,6 +105,7 @@ import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.PanelButton
 import dk.skancode.skanmate.ui.component.SizeValues
+import dk.skancode.skanmate.ui.component.SkanMateTopAppBar
 import dk.skancode.skanmate.ui.component.Switch
 import dk.skancode.skanmate.ui.component.SwitchDefaults
 import dk.skancode.skanmate.ui.component.fab.FloatingActionButton
@@ -185,24 +184,23 @@ fun TableScreen(
 
     KeyboardAwareScaffold(
         topBar = {
-            TopAppBar(
+            SkanMateTopAppBar(
                 title = {
                     Text(table?.name ?: "Oh no!")
-                }, navigationIcon = {
+                },
+                navigationIcon = {
                     IconButton(
                         onClick = navigateBack,
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = LocalContentColor.current),
-                        elevation = CustomButtonElevation(all = Dp.Unspecified)
+                        elevation = CustomButtonElevation.None,
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null
+                            contentDescription = null,
+                            tint = LocalContentColor.current,
                         )
                     }
-                }, colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                },
             )
         },
         floatingActionButton = {
