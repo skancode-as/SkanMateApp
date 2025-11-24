@@ -45,6 +45,7 @@ data class ColumnModel(
     val type: ColumnType,
     val constraints: List<ColumnConstraint>,
     val listOptions: List<String>,
+    val rememberValue: Boolean,
 )
 
 data class SubmitRowResponse(
@@ -84,6 +85,7 @@ data class TableColumnDTO(
     val type: ColumnType,
     val constraints: List<ColumnConstraint>,
     val listOptions: List<String> = emptyList(),
+    val rememberValue: Boolean = false,
 ) {
     fun toModel(): ColumnModel = ColumnModel(
         id = id,
@@ -93,6 +95,7 @@ data class TableColumnDTO(
         type = type,
         constraints = constraints,
         listOptions = listOptions,
+        rememberValue = rememberValue,
     )
 }
 

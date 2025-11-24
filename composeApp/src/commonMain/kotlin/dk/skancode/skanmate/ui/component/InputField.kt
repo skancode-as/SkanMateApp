@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActionScope
@@ -35,8 +36,12 @@ import androidx.compose.foundation.text.input.TextFieldBuffer
 import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -130,6 +135,8 @@ fun ScanableInputField(
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     minLines: Int = 1,
     interactionSource: MutableInteractionSource? = null,
+    borderWidth: Dp = Dp.Hairline,
+    borderColor: Color = Color.Unspecified,
     shape: Shape = RoundedCornerShape(4.dp),
     colors: TextFieldColors = TextFieldDefaults.colors(),
     onFocusChange: (Boolean) -> Unit = {},
@@ -175,6 +182,8 @@ fun ScanableInputField(
         maxLines = maxLines,
         minLines = minLines,
         interactionSource = interactionSource,
+        borderWidth = borderWidth,
+        borderColor = borderColor,
         shape = shape,
         colors = colors,
         onFocusChange = onFocusChange,
@@ -204,6 +213,8 @@ fun InputField(
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     minLines: Int = 1,
     interactionSource: MutableInteractionSource? = null,
+    borderWidth: Dp = Dp.Hairline,
+    borderColor: Color = Color.Unspecified,
     shape: Shape = RoundedCornerShape(4.dp),
     colors: TextFieldColors = TextFieldDefaults.colors(),
     onFocusChange: (Boolean) -> Unit = {},
@@ -276,25 +287,30 @@ fun InputField(
                                     }
                                         .text
                                         .text
-                                val inputState =
-                                    when {
-                                        focused -> InputPhase.Focused
-                                        transformedText.isEmpty() -> InputPhase.UnfocusedEmpty
-                                        else -> InputPhase.UnfocusedNotEmpty
-                                    }
+                                val inputState = if (focused) {
+                                    if (transformedText.isEmpty()) InputPhase.FocusedEmpty else InputPhase.FocusedNotEmpty
+                                } else {
+                                    if (transformedText.isEmpty()) InputPhase.UnfocusedEmpty else InputPhase.UnfocusedNotEmpty
+                                }
                                 val transition =
                                     updateTransition(inputState, label = "TextFieldInputState")
                                 val placeholderOpacity by
                                 transition.animateFloat(
                                     label = "PlaceholderOpacity",
                                     transitionSpec = {
-                                        if (InputPhase.Focused isTransitioningTo InputPhase.UnfocusedEmpty) {
+                                        if (InputPhase.FocusedEmpty isTransitioningTo InputPhase.UnfocusedEmpty) {
+                                            tween(
+                                                durationMillis = PlaceholderAnimationDelayOrDuration,
+                                                easing = LinearEasing
+                                            )
+                                        } else if (InputPhase.FocusedNotEmpty isTransitioningTo InputPhase.UnfocusedEmpty) {
                                             tween(
                                                 durationMillis = PlaceholderAnimationDelayOrDuration,
                                                 easing = LinearEasing
                                             )
                                         } else if (
-                                            InputPhase.UnfocusedEmpty isTransitioningTo InputPhase.Focused ||
+                                            InputPhase.UnfocusedEmpty isTransitioningTo InputPhase.FocusedEmpty ||
+                                            InputPhase.UnfocusedEmpty isTransitioningTo InputPhase.FocusedNotEmpty ||
                                             InputPhase.UnfocusedNotEmpty isTransitioningTo InputPhase.UnfocusedEmpty
                                         ) {
                                             tween(
@@ -308,9 +324,47 @@ fun InputField(
                                     }
                                 ) {
                                     when (it) {
-                                        InputPhase.Focused -> 1f
+                                        InputPhase.FocusedNotEmpty -> 1f
+                                        InputPhase.FocusedEmpty -> 1f
                                         InputPhase.UnfocusedEmpty -> 1f
                                         InputPhase.UnfocusedNotEmpty -> 0f
+                                    }
+                                }
+
+                                val clearOpacity by
+                                transition.animateFloat(
+                                    label = "ClearOpacity",
+                                    transitionSpec = {
+                                        if (InputPhase.FocusedEmpty isTransitioningTo InputPhase.UnfocusedEmpty) {
+                                            tween(
+                                                durationMillis = PlaceholderAnimationDelayOrDuration,
+                                                easing = LinearEasing
+                                            )
+                                        } else if (InputPhase.FocusedNotEmpty isTransitioningTo InputPhase.UnfocusedEmpty) {
+                                            tween(
+                                                durationMillis = PlaceholderAnimationDelayOrDuration,
+                                                easing = LinearEasing
+                                            )
+                                        } else if (
+                                            InputPhase.UnfocusedEmpty isTransitioningTo InputPhase.FocusedEmpty ||
+                                            InputPhase.UnfocusedEmpty isTransitioningTo InputPhase.FocusedNotEmpty ||
+                                            InputPhase.UnfocusedNotEmpty isTransitioningTo InputPhase.UnfocusedEmpty
+                                        ) {
+                                            tween(
+                                                durationMillis = PlaceholderAnimationDuration,
+                                                delayMillis = PlaceholderAnimationDelayOrDuration,
+                                                easing = LinearEasing
+                                            )
+                                        } else {
+                                            spring()
+                                        }
+                                    }
+                                ) {
+                                    when (it) {
+                                        InputPhase.FocusedNotEmpty -> 1f
+                                        InputPhase.FocusedEmpty -> 0f
+                                        InputPhase.UnfocusedEmpty -> 0f
+                                        InputPhase.UnfocusedNotEmpty -> 1f
                                     }
                                 }
 
@@ -322,12 +376,11 @@ fun InputField(
                                     Box(
                                         modifier = Modifier
                                             .border(
-                                                width = Dp.Hairline,
-                                                color = colors.borderColor(
-                                                    enabled,
-                                                    isError,
-                                                    focused
-                                                ),
+                                                width = borderWidth,
+                                                color = when(borderColor) {
+                                                    Color.Unspecified -> colors.borderColor(enabled, isError, focused)
+                                                    else -> borderColor
+                                                },
                                                 shape = shape
                                             )
                                             .background(containerColor, shape = shape)
@@ -453,6 +506,38 @@ fun InputField(
                                         )
                                     }
                                 }
+
+                                Box(
+                                    modifier = Modifier
+                                        .layoutId(ClearId)
+                                        .graphicsLayer { alpha = clearOpacity }
+                                ) {
+                                    val shape = CircleShape
+                                    IconButton(
+                                        modifier = Modifier
+                                            .border(
+                                                1.dp,
+                                                colors.borderColor(enabled, isError, focused),
+                                                shape,
+                                            ),
+                                        onClick = {
+                                            baseInputFieldState.clearText()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = colors.containerColor(enabled, isError, focused),
+                                        ),
+                                        shape = shape,
+                                        sizeValues = SizeValues(max = 20.dp),
+                                        contentPadding = PaddingValues(2.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Clear,
+                                            contentDescription = "Clear input field icon",
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
+                                }
+
                                 Box(
                                     modifier = Modifier.layoutId(TextFieldId).then(textPadding)
                                 ) {
@@ -628,7 +713,8 @@ sealed class TextTransformation(
 }
 
 enum class InputPhase {
-    Focused,
+    FocusedEmpty,
+    FocusedNotEmpty,
     UnfocusedEmpty,
     UnfocusedNotEmpty,
 }
@@ -810,6 +896,9 @@ private class TextFieldMeasurePolicy(
             )
         val height = totalHeight
 
+        val clearPlaceable =
+            measurables.fastFirst { it.layoutId == ClearId }.measure(looseConstraints)
+
         val containerPlaceable =
             measurables
                 .fastFirst { it.layoutId == ContainerId }
@@ -832,6 +921,7 @@ private class TextFieldMeasurePolicy(
                 trailingPlaceable = trailingPlaceable,
                 prefixPlaceable = prefixPlaceable,
                 suffixPlaceable = suffixPlaceable,
+                clearPlaceable = clearPlaceable,
                 containerPlaceable = containerPlaceable,
                 singleLine = singleLine,
                 density = density,
@@ -1055,6 +1145,7 @@ private fun Placeable.PlacementScope.placeWithoutLabel(
     trailingPlaceable: Placeable?,
     prefixPlaceable: Placeable?,
     suffixPlaceable: Placeable?,
+    clearPlaceable: Placeable,
     containerPlaceable: Placeable,
     singleLine: Boolean,
     density: Float,
@@ -1106,6 +1197,14 @@ private fun Placeable.PlacementScope.placeWithoutLabel(
         width - trailingPlaceable.width,
         Alignment.CenterVertically.align(trailingPlaceable.height, height)
     )
+
+    clearPlaceable.place(
+        position = IntOffset(
+            x = -(clearPlaceable.width / 3),
+            y = -(clearPlaceable.height / 3),
+        ),
+        zIndex = 100f,
+    )
 }
 
 private fun widthOrZero(placeable: Placeable?) = placeable?.width ?: 0
@@ -1121,6 +1220,7 @@ internal const val LeadingId = "Leading"
 internal const val TrailingId = "Trailing"
 internal const val PrefixId = "Prefix"
 internal const val SuffixId = "Suffix"
+internal const val ClearId = "Clear"
 internal val ZeroConstraints = Constraints(0, 0, 0, 0)
 
 private const val PlaceholderAnimationDuration = 83

@@ -61,9 +61,10 @@ fun ColumnModel.toUiState(): ColumnUiState = ColumnUiState(
     type = type,
     width = width,
     constraints = constraints,
+    rememberValue = rememberValue,
 ).let { col ->
-    if (col.constraints.any { v -> v is ColumnConstraint.ConstantValue }) {
-        val v = (col.constraints.first { v -> v is ColumnConstraint.ConstantValue } as ColumnConstraint.ConstantValue).value
+    if (col.hasConstantValue) {
+        val v = col.constantValue
         col.copy(
             value = when(col.value) {
                 is ColumnValue.Text -> col.value.copy(v)
@@ -71,8 +72,8 @@ fun ColumnModel.toUiState(): ColumnUiState = ColumnUiState(
                 else -> col.value
             }
         )
-    } else if (col.constraints.any { v -> v is ColumnConstraint.DefaultValue }) {
-        val v = (col.constraints.first { v -> v is ColumnConstraint.DefaultValue } as ColumnConstraint.DefaultValue).value
+    } else if (col.hasDefaultValue) {
+        val v = col.defaultValue
         col.copy(
             value = when(col.value) {
                 is ColumnValue.Text -> col.value.copy(v)
@@ -92,8 +93,19 @@ data class ColumnUiState(
     val value: ColumnValue,
     val type: ColumnType,
     val width: Float,
-    val constraints: List<ColumnConstraint>
-)
+    val constraints: List<ColumnConstraint>,
+    val rememberValue: Boolean,
+) {
+    val hasConstantValue: Boolean
+        get() = constraints.any { v -> v is ColumnConstraint.ConstantValue }
+    val constantValue: String
+        get() = (constraints.first { v -> v is ColumnConstraint.ConstantValue } as ColumnConstraint.ConstantValue).value
+
+    val hasDefaultValue: Boolean
+        get() = constraints.any { v -> v is ColumnConstraint.DefaultValue }
+    val defaultValue: String
+        get() = (constraints.first { v -> v is ColumnConstraint.DefaultValue } as ColumnConstraint.DefaultValue).value
+}
 
 fun columnCheckError(displayName: String, vararg errors: InternalStringResource): ColumnCheckResult {
     return ColumnCheckResult(
