@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.requiredWidthIn
@@ -44,6 +45,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import dk.skancode.skanmate.ui.component.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.PlainTooltip
@@ -460,6 +462,8 @@ fun TableColumn(
         TableRememberValueBadge()
     }) else null
 
+    val inputHeight = 56.dp
+
     ColumnWithErrorLayout(
         modifier = Modifier.wrapContentHeight(),
         errors = errors,
@@ -515,6 +519,7 @@ fun TableColumn(
                 },
                 enabled = enabled,
                 isFocused = isFocused,
+                buttonHeight = inputHeight,
             )
         } else if (col.type == ColumnType.List && col.value is ColumnValue.OptionList) {
             LaunchedEffect(focusRequester, isFocused) {
@@ -524,7 +529,10 @@ fun TableColumn(
             }
 
             TableColumnList(
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = inputHeight)
+                    .focusRequester(focusRequester),
                 selectOption = { opt ->
                     updateValue(
                         col.value.copy(selected = opt)
@@ -546,6 +554,7 @@ fun TableColumn(
             }
             TableColumnInput(
                 modifier = modifier
+                    .heightIn(max = inputHeight)
                     .focusRequester(focusRequester),
                 borderColor =
                     if (col.rememberValue)
@@ -770,6 +779,7 @@ fun TableColumnFile(
     deleteFile: (String?) -> Unit,
     enabled: Boolean = true,
     isFocused: Boolean,
+    buttonHeight: Dp = 56.dp,
 ) {
     val imageResource = LocalImageResource.current
     val painter = imageResource?.state?.value
@@ -794,7 +804,7 @@ fun TableColumnFile(
     }
 
     val hasImage = value != null
-    val size = 56.dp
+    val buttonSize = buttonHeight
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -818,8 +828,8 @@ fun TableColumnFile(
                     uiCameraController.showPreview(value, listener)
                 }
             },
-            textStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
-            heightValues = SizeValues(minHeight = size, maxHeight = size),
+            textStyle = LocalTextStyle.current.copy(fontWeight = FontWeight.Medium),
+            heightValues = SizeValues(minHeight = buttonSize, maxHeight = buttonSize),
             contentPadding = PaddingValues(0.dp),
             enabled = enabled,
             leftPanel = {
