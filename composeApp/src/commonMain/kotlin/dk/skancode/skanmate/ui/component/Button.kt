@@ -10,6 +10,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.FocusInteraction
@@ -55,10 +56,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.util.ProvideContentColorTextStyle
+import dk.skancode.skanmate.util.borderColorFor
 import dk.skancode.skanmate.util.darken
 import dk.skancode.skanmate.util.snackbar.LocalSnackbarManager
 
@@ -97,10 +100,10 @@ fun PanelButton(
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     elevation: CustomButtonElevation = CustomButtonElevation(),
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        disabledContainerColor = Color.DarkGray.copy(alpha = 0.12f).compositeOver(MaterialTheme.colorScheme.surface),
-        disabledContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.12f).compositeOver(MaterialTheme.colorScheme.surface),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.12f).compositeOver(MaterialTheme.colorScheme.surface),
+        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f).compositeOver(MaterialTheme.colorScheme.surface),
     ),
     textStyle: TextStyle = MaterialTheme.typography.labelLarge,
     enabled: Boolean = true,
@@ -111,7 +114,7 @@ fun PanelButton(
     shape: Shape = RoundedCornerShape(4.dp),
     heightValues: SizeValues = SizeValues(minHeight = 36.dp, maxHeight = 64.dp),
     leftPanel: (@Composable BoxScope.() -> Unit)? = null,
-    leftPanelColor: Color = if(enabled) colors.containerColor.darken(0.15f) else colors.disabledContainerColor.darken(0.15f),
+    leftPanelColor: Color = if(enabled) MaterialTheme.colorScheme.surfaceContainerLow else colors.disabledContainerColor.darken(0.15f),
     rightPanel: (@Composable BoxScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -120,7 +123,8 @@ fun PanelButton(
     val (minHeight, maxHeight) = key(heightValues) { heightValues.heightValues() }
 
     Button(
-        modifier = modifier,
+        modifier = modifier
+            .border(width = Dp.Hairline, color = borderColorFor(containerColor), shape = shape),
         horizontalArrangement = horizontalArrangement,
         verticalAlignment = verticalAlignment,
         onClick = onClick,
@@ -162,7 +166,7 @@ fun PanelButton(
                     }
                 }
                 VerticalDivider(
-                    color = leftPanelColor.darken(0.1f),
+                    color = borderColorFor(leftPanelColor),
                 )
             }
             Box(
@@ -347,16 +351,13 @@ fun Button(
     content: @Composable RowScope.() -> Unit,
 ) {
     val snackbarManager = LocalSnackbarManager.current
-
     val enabled = enabled && (enabledWhenSnackbarActive || !snackbarManager.errorSnackbarActive)
 
     val shadowElevation by elevation.shadowElevation(enabled, interactionSource)
     val containerColor =
-        if (enabled) colors.containerColor else if (colors.disabledContainerColor == Color.Unspecified) colors.containerColor.darken(
-            .1f
-        ) else colors.disabledContainerColor
+        if (enabled) colors.containerColor else colors.disabledContainerColor.takeOrElse { colors.containerColor.darken(.1f) }
     val contentColor =
-        if (enabled) colors.contentColor else if (colors.disabledContentColor == Color.Unspecified) colors.contentColor else colors.disabledContentColor
+        if (enabled) colors.contentColor else colors.disabledContentColor.takeOrElse { colors.contentColor }
     val (minHeight, maxHeight) = key(sizeValues) { sizeValues.heightValues() }
     val (minWidth, maxWidth) = key(sizeValues) { sizeValues.widthValues() }
 

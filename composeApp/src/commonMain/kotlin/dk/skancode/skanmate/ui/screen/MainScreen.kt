@@ -9,17 +9,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +33,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.nav.NavRoute
+import dk.skancode.skanmate.ui.component.CustomButtonElevation
+import dk.skancode.skanmate.ui.component.IconButton
+import dk.skancode.skanmate.ui.component.SkanMateTopAppBar
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.HapticKind
 import dk.skancode.skanmate.util.InternalStringResource
@@ -61,19 +62,20 @@ fun MainScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            SkanMateTopAppBar(
                 title = {
                     Text(stringResource(Res.string.main_screen_title))
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
                 actions = {
                     IconButton(
                         onClick = signOut,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = LocalContentColor.current),
+                        elevation = CustomButtonElevation.None,
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = null,
+                        )
                     }
                 },
             )

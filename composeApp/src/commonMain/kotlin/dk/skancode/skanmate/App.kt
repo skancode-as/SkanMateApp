@@ -28,6 +28,7 @@ import dk.skancode.skanmate.ui.component.LocalLabelTextStyle
 import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.UiCameraController
+import dk.skancode.skanmate.ui.theme.SkanMateTheme
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
@@ -45,7 +46,6 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import org.jetbrains.compose.ui.tooling.preview.Preview
 
 // TODO: Find less temporary way of initializing stores and services
 // TODO: Haptic feedback (IOS)
@@ -83,7 +83,6 @@ private val ioScope = CoroutineScope(Dispatchers.IO)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-@Preview
 fun App() {
     UserMessageServiceImpl.adapter = snackbarAdapter
     UserMessageServiceImpl.externalScope = ioScope
@@ -98,7 +97,7 @@ fun App() {
         TableViewModel(tableService, UserMessageServiceImpl)
     }
 
-    MaterialTheme {
+    SkanMateTheme {
         val scanModule = rememberScanModule()
         val uiCameraController = remember { UiCameraController() }
         val showCamera by uiCameraController.isStarted.collectAsState()
