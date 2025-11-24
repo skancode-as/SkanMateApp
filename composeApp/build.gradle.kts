@@ -1,3 +1,4 @@
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import org.gradle.kotlin.dsl.dependencies
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -76,8 +77,8 @@ android {
         applicationId = "dk.skancode.skanmate"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 16
+        versionName = "1.0.0-beta"
         multiDexEnabled = true
     }
     packaging {
@@ -87,7 +88,29 @@ android {
     }
     buildTypes {
         getByName("release") {
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+            )
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+            applicationVariants.all {
+                outputs.all {
+                    val output = this as BaseVariantOutputImpl
+                    output.outputFileName = "SkanMate-${versionName}.apk"
+                }
+            }
+        }
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "+debug"
+            isDebuggable = true
+            applicationVariants.all {
+                outputs.all {
+                    val output = this as BaseVariantOutputImpl
+                    output.outputFileName = "SkanMate-${versionName}.apk"
+                }
+            }
         }
     }
     compileOptions {
