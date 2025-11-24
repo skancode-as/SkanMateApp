@@ -227,28 +227,36 @@ fun TableScreen(
 
                 RegisterScanEventHandler(handler = viewModel)
 
-                TableContent(tableUiState = tableUiState, getUpdatedColumns = {
-                    viewModel.uiState.value.columns
-                }, setFocusedColumn = { id, focused ->
-                    if (focused && tableUiState.focusedColumnId != id) {
-                        viewModel.setFocusedColumn(id)
-                    } else if (!focused && tableUiState.focusedColumnId == id) {
-                        viewModel.setFocusedColumn(null)
-                    }
-                }, focusNextColumn = {
-                    val nextId =
-                        tableUiState.columns.indexOfFirst { col -> col.id == tableUiState.focusedColumnId }
-                            .let { idx ->
-                                tableUiState.columns.getOrNull((idx + 1) % tableUiState.columns.size)?.id
-                            }
+                TableContent(
+                    tableUiState = tableUiState,
+                    getUpdatedColumns = {
+                        viewModel.uiState.value.columns
+                    },
+                    setFocusedColumn = { id, focused ->
+                        if (focused && tableUiState.focusedColumnId != id) {
+                            viewModel.setFocusedColumn(id)
+                        } else if (!focused && tableUiState.focusedColumnId == id) {
+                            viewModel.setFocusedColumn(null)
+                        }
+                    },
+                    focusNextColumn = {
+                        val nextId =
+                            tableUiState.columns.indexOfFirst { col -> col.id == tableUiState.focusedColumnId }
+                                .let { idx ->
+                                    tableUiState.columns.getOrNull((idx + 1) % tableUiState.columns.size)?.id
+                                }
 
-                    viewModel.setFocusedColumn(nextId)
-                }, submitData = submitData, validateColumn = { col, value ->
-                    viewModel.validateColumn(col, value)
-                }, deleteLocalFile = { path ->
-                    println("TableScreen::deleteLocalFile($path)")
-                    viewModel.deleteLocalImage(path)
-                }) { columns ->
+                        viewModel.setFocusedColumn(nextId)
+                    },
+                    submitData = submitData,
+                    validateColumn = { col, value ->
+                        viewModel.validateColumn(col, value)
+                    },
+                    deleteLocalFile = { path ->
+                        println("TableScreen::deleteLocalFile($path)")
+                        viewModel.deleteLocalImage(path)
+                    },
+                ) { columns ->
                     viewModel.updateColumns(columns)
                 }
             }
@@ -540,12 +548,11 @@ fun TableColumn(
             }
             TableColumnInput(
                 modifier = modifier
-                    .focusRequester(focusRequester)
-                    .border(
-                        if (col.rememberValue) 1.dp else Dp.Unspecified,
-                        if (col.value.isNotEmpty()) Color.Success else MaterialTheme.colorScheme.error,
-                        RoundedCornerShape(4.dp)
-                    ),
+                    .focusRequester(focusRequester),
+                borderColor =
+                    if (col.rememberValue)
+                        if (col.value.isNotEmpty()) Color.Success else MaterialTheme.colorScheme.error
+                    else Color.Unspecified,
                 label = col.name,
                 value = when (col.value) {
                     is ColumnValue.Text -> col.value.text
@@ -650,6 +657,7 @@ fun TableColumnInput(
     keyboardType: KeyboardType = type.keyboardType(),
     setFocus: (Boolean) -> Unit = {},
     scanModule: ScanModule = LocalScanModule.current,
+    borderColor: Color = Color.Unspecified,
     shape: Shape = RoundedCornerShape(4.dp),
     rememberComposable: (@Composable () -> Unit)? = null,
 ) {
@@ -674,6 +682,7 @@ fun TableColumnInput(
     val onValueChange: (String) -> Unit = {
         text = it
         validateValue(it)
+        if (it.isEmpty() && value.isNotEmpty()) setValue(it)
     }
     val labelComposable: (@Composable () -> Unit) = {
         val labelText = @Composable {
@@ -731,6 +740,7 @@ fun TableColumnInput(
             placeholder = placeholder,
             onFocusChange = onFocusChange,
             isError = isError,
+            borderColor = borderColor,
             colors = colors,
             shape = shape,
         )
@@ -746,6 +756,7 @@ fun TableColumnInput(
             placeholder = placeholder,
             onFocusChange = onFocusChange,
             isError = isError,
+            borderColor = borderColor,
             colors = colors,
             shape = shape,
         )
