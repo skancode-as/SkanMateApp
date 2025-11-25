@@ -106,6 +106,7 @@ import dk.skancode.skanmate.ui.component.LocalLabelTextStyle
 import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.PanelButton
+import dk.skancode.skanmate.ui.component.AutoSizeText
 import dk.skancode.skanmate.ui.component.SizeValues
 import dk.skancode.skanmate.ui.component.SkanMateTopAppBar
 import dk.skancode.skanmate.ui.component.Switch
@@ -488,6 +489,7 @@ fun TableColumn(
                 },
                 enabled = enabled,
                 isFocused = isFocused,
+                height = inputHeight,
             )
         } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
             LaunchedEffect(focusManager, isFocused) {
@@ -531,7 +533,6 @@ fun TableColumn(
             TableColumnList(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = inputHeight)
                     .focusRequester(focusRequester),
                 selectOption = { opt ->
                     updateValue(
@@ -545,6 +546,7 @@ fun TableColumn(
                     setFocus(col.id, it)
                 },
                 enabled = enabled,
+                inputHeight = inputHeight,
             )
         } else {
             LaunchedEffect(focusRequester, isFocused) {
@@ -872,8 +874,8 @@ fun TableColumnFile(
             } else {
                 stringResource(Res.string.table_screen_retake_picture)
             }
-            Text(
-                modifier = Modifier.padding(12.dp),
+            AutoSizeText(
+                modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 12.dp),
                 text = text,
             )
         }
@@ -890,6 +892,7 @@ fun TableColumnList(
     option: String?,
     options: List<String>,
     enabled: Boolean = true,
+    inputHeight: Dp = 56.dp,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -907,7 +910,10 @@ fun TableColumnList(
             placeholder = {
                 Text(stringResource(Res.string.select_placeholder, label)) //"Select $label..."
             },
-            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            modifier = Modifier
+                .heightIn(max = inputHeight)
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
             singleLine = true,
             readOnly = true,
             enabled = enabled,
@@ -916,6 +922,7 @@ fun TableColumnList(
                 setFocus(it)
             })
         ExposedDropdownMenu(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             expanded = expanded, onDismissRequest = { expanded = false }) {
             repeat(options.size) { idx ->
                 val option = options[idx]
@@ -943,6 +950,7 @@ fun TableColumnBoolean(
     setChecked: (Boolean) -> Unit,
     enabled: Boolean = true,
     isFocused: Boolean,
+    height: Dp = 56.dp,
 ) {
     val focusManager = LocalFocusManager.current
     Column(
@@ -951,7 +959,7 @@ fun TableColumnBoolean(
     ) {
         Text(text = label, style = LocalLabelTextStyle.current)
         Row(
-            modifier = Modifier.height(56.dp).border(
+            modifier = Modifier.height(height).border(
                 width = if (isFocused) 1.dp else Dp.Unspecified,
                 color = Color.Black,
                 shape = RoundedCornerShape(4.dp)
