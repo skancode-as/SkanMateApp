@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.requiredWidthIn
@@ -44,6 +45,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import dk.skancode.skanmate.ui.component.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.PlainTooltip
@@ -104,6 +106,7 @@ import dk.skancode.skanmate.ui.component.LocalLabelTextStyle
 import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.PanelButton
+import dk.skancode.skanmate.ui.component.AutoSizeText
 import dk.skancode.skanmate.ui.component.SizeValues
 import dk.skancode.skanmate.ui.component.SkanMateTopAppBar
 import dk.skancode.skanmate.ui.component.Switch
@@ -460,6 +463,8 @@ fun TableColumn(
         TableRememberValueBadge()
     }) else null
 
+    val inputHeight = 56.dp
+
     ColumnWithErrorLayout(
         modifier = Modifier.wrapContentHeight(),
         errors = errors,
@@ -484,6 +489,7 @@ fun TableColumn(
                 },
                 enabled = enabled,
                 isFocused = isFocused,
+                height = inputHeight,
             )
         } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
             LaunchedEffect(focusManager, isFocused) {
@@ -515,6 +521,7 @@ fun TableColumn(
                 },
                 enabled = enabled,
                 isFocused = isFocused,
+                buttonHeight = inputHeight,
             )
         } else if (col.type == ColumnType.List && col.value is ColumnValue.OptionList) {
             LaunchedEffect(focusRequester, isFocused) {
@@ -524,7 +531,9 @@ fun TableColumn(
             }
 
             TableColumnList(
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
                 selectOption = { opt ->
                     updateValue(
                         col.value.copy(selected = opt)
@@ -537,6 +546,7 @@ fun TableColumn(
                     setFocus(col.id, it)
                 },
                 enabled = enabled,
+                inputHeight = inputHeight,
             )
         } else {
             LaunchedEffect(focusRequester, isFocused) {
@@ -546,6 +556,7 @@ fun TableColumn(
             }
             TableColumnInput(
                 modifier = modifier
+                    .heightIn(max = inputHeight)
                     .focusRequester(focusRequester),
                 borderColor =
                     if (col.rememberValue)
@@ -770,6 +781,7 @@ fun TableColumnFile(
     deleteFile: (String?) -> Unit,
     enabled: Boolean = true,
     isFocused: Boolean,
+    buttonHeight: Dp = 56.dp,
 ) {
     val imageResource = LocalImageResource.current
     val painter = imageResource?.state?.value
@@ -794,7 +806,7 @@ fun TableColumnFile(
     }
 
     val hasImage = value != null
-    val size = 56.dp
+    val buttonSize = buttonHeight
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -818,8 +830,8 @@ fun TableColumnFile(
                     uiCameraController.showPreview(value, listener)
                 }
             },
-            textStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
-            heightValues = SizeValues(minHeight = size, maxHeight = size),
+            textStyle = LocalTextStyle.current.copy(fontWeight = FontWeight.Medium),
+            heightValues = SizeValues(minHeight = buttonSize, maxHeight = buttonSize),
             contentPadding = PaddingValues(0.dp),
             enabled = enabled,
             leftPanel = {
@@ -862,8 +874,8 @@ fun TableColumnFile(
             } else {
                 stringResource(Res.string.table_screen_retake_picture)
             }
-            Text(
-                modifier = Modifier.padding(12.dp),
+            AutoSizeText(
+                modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 12.dp),
                 text = text,
             )
         }
@@ -880,6 +892,7 @@ fun TableColumnList(
     option: String?,
     options: List<String>,
     enabled: Boolean = true,
+    inputHeight: Dp = 56.dp,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -897,7 +910,10 @@ fun TableColumnList(
             placeholder = {
                 Text(stringResource(Res.string.select_placeholder, label)) //"Select $label..."
             },
-            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            modifier = Modifier
+                .heightIn(max = inputHeight)
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
             singleLine = true,
             readOnly = true,
             enabled = enabled,
@@ -906,6 +922,7 @@ fun TableColumnList(
                 setFocus(it)
             })
         ExposedDropdownMenu(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             expanded = expanded, onDismissRequest = { expanded = false }) {
             repeat(options.size) { idx ->
                 val option = options[idx]
@@ -933,6 +950,7 @@ fun TableColumnBoolean(
     setChecked: (Boolean) -> Unit,
     enabled: Boolean = true,
     isFocused: Boolean,
+    height: Dp = 56.dp,
 ) {
     val focusManager = LocalFocusManager.current
     Column(
@@ -941,7 +959,7 @@ fun TableColumnBoolean(
     ) {
         Text(text = label, style = LocalLabelTextStyle.current)
         Row(
-            modifier = Modifier.height(56.dp).border(
+            modifier = Modifier.height(height).border(
                 width = if (isFocused) 1.dp else Dp.Unspecified,
                 color = Color.Black,
                 shape = RoundedCornerShape(4.dp)
