@@ -69,7 +69,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
@@ -488,7 +487,7 @@ fun TableColumn(
             }
 
             TableColumnBoolean(
-                modifier = modifier.focusRequester(focusRequester),
+                modifier = modifier,
                 label = col.name,
                 checked = col.value.checked,
                 setChecked = { checked ->
@@ -506,7 +505,7 @@ fun TableColumn(
             }
 
             TableColumnFile(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = modifier,
                 label = col.name,
                 value = if (col.value.localUrl == null) null
                 else ImageData(
@@ -538,9 +537,7 @@ fun TableColumn(
             }
 
             TableColumnList(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester),
+                modifier = modifier,
                 selectOption = { opt ->
                     updateValue(
                         col.value.copy(selected = opt)
@@ -553,6 +550,7 @@ fun TableColumn(
                     setFocus(col.id, it)
                 },
                 enabled = enabled,
+                focusRequester = focusRequester,
                 inputHeight = inputHeight,
             )
         } else {
@@ -563,8 +561,7 @@ fun TableColumn(
             }
             TableColumnInput(
                 modifier = modifier
-                    .heightIn(max = inputHeight)
-                    .focusRequester(focusRequester),
+                    .heightIn(max = inputHeight),
                 borderColor =
                     if (col.rememberValue)
                         if (col.value.isNotEmpty()) Color.Success else MaterialTheme.colorScheme.error
@@ -609,6 +606,7 @@ fun TableColumn(
                 keyboardType = if (col.constraints.any { it is ColumnConstraint.Email }) KeyboardType.Email else col.type.keyboardType(),
                 onKeyboardAction = { onKeyboardAction(imeAction) },
                 isError = errors.isNotEmpty(),
+                focusRequester = focusRequester,
                 rememberComposable = rememberComposable,
             )
         }
@@ -675,6 +673,7 @@ fun TableColumnInput(
     scanModule: ScanModule = LocalScanModule.current,
     borderColor: Color = Color.Unspecified,
     shape: Shape = RoundedCornerShape(4.dp),
+    focusRequester: FocusRequester,
     rememberComposable: (@Composable () -> Unit)? = null,
 ) {
     val keyboardVisible by keyboardVisibleAsState()
@@ -759,6 +758,7 @@ fun TableColumnInput(
             borderColor = borderColor,
             colors = colors,
             shape = shape,
+            focusRequester = focusRequester,
         )
     } else {
         InputField(
@@ -775,6 +775,7 @@ fun TableColumnInput(
             borderColor = borderColor,
             colors = colors,
             shape = shape,
+            focusRequester = focusRequester,
         )
     }
 }
@@ -900,6 +901,7 @@ fun TableColumnList(
     options: List<String>,
     enabled: Boolean = true,
     inputHeight: Dp = 56.dp,
+    focusRequester: FocusRequester,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -927,7 +929,9 @@ fun TableColumnList(
             onFocusChange = {
                 expanded = it
                 setFocus(it)
-            })
+            },
+            focusRequester = focusRequester,
+        )
         ExposedDropdownMenu(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             expanded = expanded, onDismissRequest = { expanded = false }) {
