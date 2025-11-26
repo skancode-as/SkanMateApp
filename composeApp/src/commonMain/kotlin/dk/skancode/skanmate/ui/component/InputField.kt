@@ -604,7 +604,11 @@ fun BaseInputField(
                 state.text
             }
 
-            flow.collect { onValueChange(it.toString()) }
+            flow.collect {
+                if (it.toString() != value) {
+                    onValueChange(it.toString())
+                }
+            }
         }
 
         onDispose {

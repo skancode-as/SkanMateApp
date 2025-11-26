@@ -218,7 +218,7 @@ class TableViewModel(
 
                     val err = errors?.columnErrors?.mapNotNull { (k, v) ->
                         columns.find { col -> col.dbName == k }?.let { col ->
-                            println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}}")
+                            println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}")
                             col.name to v.map { serverError ->
                                 InternalStringResource(
                                     Res.string.constraint_error_server,

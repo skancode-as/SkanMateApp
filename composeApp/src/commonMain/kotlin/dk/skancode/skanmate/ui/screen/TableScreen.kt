@@ -294,19 +294,23 @@ fun TableFloatingActionButton(
             enabled = !tableUiState.isSubmitting && noErrors,
             expanded = noErrors,
             icon = {
-                Icon(
-                    imageVector = Icons.Filled.Check, contentDescription = "Submit icon"
-                )
-            }) {
+                AnimatedContent(targetState = tableUiState.isSubmitting) { submitting ->
+                    if (submitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = LocalContentColor.current,
+                            trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.Check, contentDescription = "Submit icon"
+                        )
+                    }
+                }
+            },
+        ) {
             Text(stringResource(Res.string.submit))
-            AnimatedVisibility(tableUiState.isSubmitting) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = LocalContentColor.current,
-                    trackColor = MaterialTheme.colorScheme.primaryContainer.darken(0.15f),
-                    strokeWidth = 2.dp,
-                )
-            }
         }
     }
 }
