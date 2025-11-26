@@ -64,6 +64,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -140,6 +142,7 @@ fun ScanableInputField(
     shape: Shape = RoundedCornerShape(4.dp),
     colors: TextFieldColors = TextFieldDefaults.colors(),
     onFocusChange: (Boolean) -> Unit = {},
+    focusRequester: FocusRequester? = null,
     scanModule: ScanModule = LocalScanModule.current,
 ) {
     val trailingIcon: (@Composable () -> Unit)? = if (!scanModule.isHardwareScanner()) {
@@ -187,6 +190,7 @@ fun ScanableInputField(
         shape = shape,
         colors = colors,
         onFocusChange = onFocusChange,
+        focusRequester = focusRequester,
     )
 }
 
@@ -218,7 +222,9 @@ fun InputField(
     shape: Shape = RoundedCornerShape(4.dp),
     colors: TextFieldColors = TextFieldDefaults.colors(),
     onFocusChange: (Boolean) -> Unit = {},
+    focusRequester: FocusRequester? = null,
 ) {
+    val focusRequester = focusRequester ?: remember { FocusRequester() }
     val snackbarManager = LocalSnackbarManager.current
     val enabled = enabled && !snackbarManager.errorSnackbarActive
 
@@ -250,6 +256,7 @@ fun InputField(
                         .onFocusChanged {
                             onFocusChange(it.isFocused)
                         }
+                        .focusRequester(focusRequester)
                         .defaultMinSize(
                             minWidth = TextFieldDefaults.MinWidth,
                             minHeight = TextFieldDefaults.MinHeight
@@ -533,6 +540,7 @@ fun InputField(
                                             ),
                                         onClick = {
                                             baseInputFieldState.clearText()
+                                            focusRequester.requestFocus()
                                         },
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = colors.containerColor(
@@ -604,7 +612,11 @@ fun BaseInputField(
                 state.text
             }
 
-            flow.collect { onValueChange(it.toString()) }
+            flow.collect {
+                if (it.toString() != value) {
+                    onValueChange(it.toString())
+                }
+            }
         }
 
         onDispose {

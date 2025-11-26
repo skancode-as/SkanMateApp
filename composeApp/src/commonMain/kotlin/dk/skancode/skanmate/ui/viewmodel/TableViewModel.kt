@@ -25,6 +25,8 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -49,6 +51,10 @@ class TableViewModel(
     private val _uiState = MutableStateFlow(MutableTableUiState())
     val uiState: StateFlow<TableUiState>
         get() = _uiState
+
+    private val _submitResultChannel = Channel<Boolean>(capacity = Channel.CONFLATED)
+    val submitResultChannel: ReceiveChannel<Boolean>
+        get() = _submitResultChannel
 
     init {
         viewModelScope.launch {
@@ -113,32 +119,32 @@ class TableViewModel(
         return constraintResults.all { it == ConstraintCheckResult.Ok }
     }
 
-    fun submitData(cb: (Boolean) -> Unit) {
+    fun submitData() {
         _uiState.update {
             it.copy(isSubmitting = true)
         }
 
-        val state = _uiState.value
-        val checkResults = state.columns.map { col -> col.check() }
-        if (checkResults.any { v -> !v.ok }) {
-            _uiState.update {
-                it.copy(
-                    isSubmitting = false,
-                    constraintErrors = mapOf(
-                        *checkResults.map { v -> v.displayName to v.errors }.toTypedArray()
+        viewModelScope.launch {
+            val state = _uiState.value
+            val checkResults = state.columns.map { col -> col.check() }
+            if (checkResults.any { v -> !v.ok }) {
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        constraintErrors = mapOf(
+                            *checkResults.map { v -> v.displayName to v.errors }.toTypedArray()
+                        )
+                    )
+                }
+                userMessageService.displayError(
+                    message = InternalStringResource(
+                        resource = Res.string.table_vm_could_not_submit_data_constraint,
                     )
                 )
+                _submitResultChannel.send(false)
+                return@launch
             }
-            userMessageService.displayError(
-                message = InternalStringResource(
-                    resource = Res.string.table_vm_could_not_submit_data_constraint,
-                )
-            )
-            cb(false)
-            return
-        }
 
-        viewModelScope.launch {
             var res = false
             var constraintErrors: Map<String, List<InternalStringResource>> = emptyMap()
             try {
@@ -212,7 +218,7 @@ class TableViewModel(
 
                     val err = errors?.columnErrors?.mapNotNull { (k, v) ->
                         columns.find { col -> col.dbName == k }?.let { col ->
-                            println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}}")
+                            println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}")
                             col.name to v.map { serverError ->
                                 InternalStringResource(
                                     Res.string.constraint_error_server,
@@ -252,7 +258,7 @@ class TableViewModel(
                         constraintErrors = constraintErrors,
                     )
                 }
-                cb(res)
+                _submitResultChannel.send(res)
             }
         }
     }
@@ -366,15 +372,24 @@ class TableViewModel(
         } else {
             updateNextColumn(v = barcode)
         }
-
         val columns = _uiState.value.columns
-        val newFocusIdx = if (columns.getOrNull(idx)?.check().let { it != null && it.ok }) {
-            (idx + 1) % columns.size
-        } else {
-            idx
+        val displayColumns = _uiState.value.displayColumns
+
+        val isLast = displayColumns.isNotEmpty() && columns.getOrNull(idx)?.id == displayColumns.last().id
+        val isValid = columns.getOrNull(idx)?.check().let { it != null && it.ok }
+
+        val newFocusIdx = when {
+            isLast && isValid -> -1
+            isValid -> (idx + 1) % columns.size
+            else -> idx
         }
 
         setFocusedColumn(id = columns.getOrNull(newFocusIdx)?.id)
+
+        if (isLast && isValid) {
+            println("submitting data after event handled")
+            submitData()
+        }
         println("Handle event done: $event")
     }
 }
