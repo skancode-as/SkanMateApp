@@ -77,8 +77,8 @@ android {
         applicationId = "dk.skancode.skanmate"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 17
-        versionName = "1.0.0-beta.17"
+        versionCode = 18
+        versionName = "1.0.0-beta.18"
         multiDexEnabled = true
     }
     packaging {
