@@ -70,7 +70,10 @@ interface Animator<T : Number> {
     val value: State<T>
     fun start()
     fun animateTo(value: T)
+    fun animateToAndReset(value: T)
 }
+
+private data class AnimationRequest<T: Number>(val target: T, val resetOnEnd: Boolean)
 
 @Composable
 fun animator(
@@ -81,33 +84,42 @@ fun animator(
 ): Animator<Float> {
     val animator = remember {
         object : Animator<Float> {
-            val targetChannel: Channel<Float> = Channel(capacity = Channel.BUFFERED)
+            val requestChannel: Channel<AnimationRequest<Float>> = Channel(capacity = Channel.BUFFERED)
             val animatable: Animatable<Float, AnimationVector1D> = Animatable(initialValue)
             val internalValue = mutableStateOf(initialValue)
             override val value: State<Float>
                 get() = internalValue
 
             override fun start() {
-                animateTo(targetValue)
+                animateToAndReset(targetValue)
             }
 
             override fun animateTo(value: Float) {
                 coroutineScope.launch {
-                    targetChannel.send(value)
+                    requestChannel.send(AnimationRequest(value, resetOnEnd = false))
+                }
+            }
+
+            override fun animateToAndReset(value: Float) {
+                coroutineScope.launch {
+                    requestChannel.send(AnimationRequest(value, resetOnEnd = true))
                 }
             }
         }
     }
 
-    LaunchedEffect(animator.targetChannel) {
-        for (target in animator.targetChannel) {
+    LaunchedEffect(animator.requestChannel) {
+        for (request in animator.requestChannel) {
             if (animator.animatable.isRunning) animator.animatable.stop()
             launch {
                 animator.animatable.animateTo(
-                    targetValue = target,
+                    targetValue = request.target,
                     animationSpec = animationSpec,
                 ) {
                     animator.internalValue.value = value
+                }
+                if (request.resetOnEnd) {
+                    animator.animatable.snapTo(initialValue)
                 }
             }
         }
