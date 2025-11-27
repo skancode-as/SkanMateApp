@@ -59,6 +59,7 @@ kotlin {
             implementation(libs.ktor.json.ktx)
             implementation(libs.multiplatform.settings)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.material.icons.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
