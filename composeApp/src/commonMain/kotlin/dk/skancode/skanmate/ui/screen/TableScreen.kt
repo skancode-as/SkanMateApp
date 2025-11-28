@@ -560,6 +560,21 @@ fun TableColumn(
                     focusRequester.requestFocus()
                 }
             }
+            val prefixSuffix = { value: String ->
+                (@Composable {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(4.dp),
+                            )
+                            .padding(horizontal = 4.dp),
+                    ) {
+                        Text(value)
+                    }
+                })
+            }
+
             TableColumnInput(
                 modifier = modifier
                     .heightIn(max = inputHeight),
@@ -604,10 +619,12 @@ fun TableColumn(
                 enabled = enabled,
                 setFocus = { setFocus(col.id, it) },
                 imeAction = imeAction,
-                keyboardType = if (col.constraints.any { it is ColumnConstraint.Email }) KeyboardType.Email else col.type.keyboardType(),
+                keyboardType = if (col.hasConstraint<ColumnConstraint.Email>()) KeyboardType.Email else col.type.keyboardType(),
                 onKeyboardAction = { onKeyboardAction(imeAction) },
                 isError = errors.isNotEmpty(),
                 focusRequester = focusRequester,
+                prefix = if (!col.hasPrefix) null else prefixSuffix(col.prefix),
+                suffix = if (!col.hasSuffix) null else prefixSuffix(col.suffix),
                 rememberComposable = rememberComposable,
             )
         }
@@ -675,6 +692,8 @@ fun TableColumnInput(
     borderColor: Color = Color.Unspecified,
     shape: Shape = RoundedCornerShape(4.dp),
     focusRequester: FocusRequester,
+    prefix: (@Composable () -> Unit)?,
+    suffix: (@Composable () -> Unit)?,
     rememberComposable: (@Composable () -> Unit)? = null,
 ) {
     val keyboardVisible by keyboardVisibleAsState()
@@ -750,6 +769,8 @@ fun TableColumnInput(
             onValueChange = onValueChange,
             scanIconOnClick = { setFocus(true) },
             label = labelComposable,
+            prefix = prefix,
+            suffix = suffix,
             enabled = enabled,
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
@@ -767,6 +788,8 @@ fun TableColumnInput(
             value = text,
             onValueChange = onValueChange,
             label = labelComposable,
+            prefix = prefix,
+            suffix = suffix,
             enabled = enabled,
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,

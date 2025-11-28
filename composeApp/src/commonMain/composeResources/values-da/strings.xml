@@ -47,6 +47,8 @@
     <string name="constraint_error_constant_value">Værdien skal være lig med %1$d</string>
     <string name="constraint_error_email">Værdien skal være en gyldig email</string>
     <string name="constraint_error_required">Feltet er påkrævet og kan ikke være tomt</string>
+    <string name="constraint_error_starts_with">Værdien skal starte med %1$s</string>
+    <string name="constraint_error_ends_with">Værdien skal slutte med %1$s</string>
     <string name="constraint_error_server">%1$s</string>
 
     <string name="table_vm_could_not_upload_image">Kunne ikke uploade billede. Prøv venligst igen.</string>

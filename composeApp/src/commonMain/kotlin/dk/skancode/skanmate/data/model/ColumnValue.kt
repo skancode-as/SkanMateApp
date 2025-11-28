@@ -70,12 +70,38 @@ sealed class ColumnValue {
         override fun isEmpty(): kotlin.Boolean {
             return false
         }
+
+        override fun equals(other: Any?): kotlin.Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+
+            other as Boolean
+
+            return checked == other.checked
+        }
+
+        override fun hashCode(): Int {
+            return checked.hashCode()
+        }
     }
 
     data class Text(val text: String = "") : ColumnValue() {
         override fun clone(): ColumnValue = this.copy()
         override fun isEmpty(): kotlin.Boolean {
             return text.isEmpty()
+        }
+
+        override fun equals(other: Any?): kotlin.Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+
+            other as Text
+
+            return text == other.text
+        }
+
+        override fun hashCode(): Int {
+            return text.hashCode()
         }
     }
 
@@ -84,6 +110,20 @@ sealed class ColumnValue {
         override fun isEmpty(): kotlin.Boolean {
             return num == null
         }
+
+        override fun equals(other: Any?): kotlin.Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+
+            other as Numeric
+
+            return num == other.num
+        }
+
+        override fun hashCode(): Int {
+            return num?.hashCode() ?: 0
+        }
+
     }
 
     data class File(
@@ -125,6 +165,21 @@ sealed class ColumnValue {
         override fun clone(): ColumnValue = this.copy()
         override fun isEmpty(): kotlin.Boolean {
             return selected == null
+        }
+
+        override fun equals(other: Any?): kotlin.Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+
+            other as OptionList
+
+            return options == other.options && selected == other.selected
+        }
+
+        override fun hashCode(): Int {
+            var result = options.hashCode()
+            result = 31 * result + (selected?.hashCode() ?: 0)
+            return result
         }
     }
 

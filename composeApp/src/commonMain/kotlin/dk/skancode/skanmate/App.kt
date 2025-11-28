@@ -51,7 +51,7 @@ import kotlinx.coroutines.IO
 // TODO: Haptic feedback (IOS)
 
 private const val BASE_URL =
-    "https://skanmate-git-stage-skan-code-team.vercel.app/api/v1"
+    "https://skanmate-git-feat-prefix-suffix-constraint-skan-code-team.vercel.app/api/v1"
 private val httpClient = HttpClient {
     install(ContentNegotiation) {
         json(jsonSerializer)
