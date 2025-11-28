@@ -459,7 +459,14 @@ fun InputField(
                                             start = if (prefix == null) startPadding else 0.dp,
                                             end = if (suffix == null) endPadding else 0.dp,
                                         )
-                                val prefixSuffixAlpha by animateFloatAsState(if (focused) 1.0f else 0.0f)
+                                val prefixSuffixAlpha by animateFloatAsState(
+                                    targetValue = when (inputState) {
+                                        InputPhase.FocusedEmpty        -> 1.0f
+                                        InputPhase.FocusedNotEmpty     -> 1.0f
+                                        InputPhase.UnfocusedNotEmpty   -> 1.0f
+                                        InputPhase.UnfocusedEmpty      -> 0.0f
+                                    }
+                                )
                                 if (prefix != null) {
                                     val prefixColor = colors.prefixColor(enabled, isError, focused)
                                     Box(
@@ -626,7 +633,7 @@ fun BaseInputField(
 
     val modifier: Modifier = modifier
     val inputTransformation: InputTransformation? = null
-    val onKeyboardAction: KeyboardActionHandler? = KeyboardActionHandler { default ->
+    val onKeyboardAction = KeyboardActionHandler { default ->
         when (imeAction) {
             ImeAction.Unspecified,
             ImeAction.Default -> default()
@@ -638,11 +645,11 @@ fun BaseInputField(
         singleLine -> TextFieldLineLimits.SingleLine
         else -> TextFieldLineLimits.MultiLine(minLines, maxLines)
     }
-    val onTextLayout: (Density.(getResult: () -> TextLayoutResult?) -> Unit)? = { getResult ->
+    val onTextLayout: (Density.(getResult: () -> TextLayoutResult?) -> Unit) = { getResult ->
         onTextLayout(getResult() ?: throw IllegalStateException("Could not get TextLayoutResult"))
     }
-    val outputTransformation: OutputTransformation? = textTransformation
-    val decorator: TextFieldDecorator? = TextFieldDecorator { inner ->
+    val outputTransformation: OutputTransformation = textTransformation
+    val decorator = TextFieldDecorator { inner ->
         decorationBox(inner)
     }
     val scrollState: ScrollState = rememberScrollState()
