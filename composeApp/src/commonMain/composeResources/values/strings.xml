@@ -47,6 +47,8 @@
     <string name="constraint_error_constant_value">Value must be equal to %1$d</string>
     <string name="constraint_error_email">Value must be a valid email</string>
     <string name="constraint_error_required">Field is required and cannot be empty</string>
+    <string name="constraint_error_starts_with">Value must start with %1$s</string>
+    <string name="constraint_error_ends_with">Value must end with %1$s</string>
     <string name="constraint_error_server">%1$s</string>
 
     <string name="table_vm_could_not_upload_image">Could not upload image. Please try again.</string>

@@ -201,4 +201,43 @@ class ColumnConstraintTest {
 
         assertEquals(ColumnConstraint.Suffix("1234"), constraint)
     }
+
+    @Test
+    fun deserializeStartsWith() {
+        val constraint: ColumnConstraint = Json.Default.decodeFromString("""{"name": "startsWith", "value": "1234"}""")
+
+        assertEquals(ColumnConstraint.StartsWith("1234"), constraint)
+    }
+
+    @Test
+    fun deserializeStartsWithAndValidate() {
+        val constraint: ColumnConstraint = Json.Default.decodeFromString("""{"name": "startsWith", "value": "1234"}""")
+        assertEquals(ColumnConstraint.StartsWith("1234"), constraint)
+
+        val validValue = ColumnValue.Text("1234-5678")
+        assertEquals(ConstraintCheckResult.Ok, constraint.check(validValue))
+
+        val invalidValue = ColumnValue.Text("123-5678")
+        assertIs<ConstraintCheckResult.Error>(constraint.check(invalidValue))
+    }
+
+
+    @Test
+    fun deserializeEndsWith() {
+        val constraint: ColumnConstraint = Json.Default.decodeFromString("""{"name": "endsWith", "value": "1234"}""")
+
+        assertEquals(ColumnConstraint.EndsWith("1234"), constraint)
+    }
+
+    @Test
+    fun deserializeEndsWithAndValidate() {
+        val constraint: ColumnConstraint = Json.Default.decodeFromString("""{"name": "endsWith", "value": "4321"}""")
+        assertEquals(ColumnConstraint.EndsWith("4321"), constraint)
+
+        val validValue = ColumnValue.Text("5678-4321")
+        assertEquals(ConstraintCheckResult.Ok, constraint.check(validValue))
+
+        val invalidValue = ColumnValue.Text("5678-321")
+        assertIs<ConstraintCheckResult.Error>(constraint.check(invalidValue))
+    }
 }
