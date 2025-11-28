@@ -187,4 +187,18 @@ class ColumnConstraintTest {
         val invalidValue = ColumnValue.Numeric(123)
         assertIs<ConstraintCheckResult.Error>(constraint.check(invalidValue))
     }
+
+    @Test
+    fun deserializePrefix() {
+        val constraint: ColumnConstraint = Json.Default.decodeFromString("""{"name": "prefix", "value": "1234"}""")
+
+        assertEquals(ColumnConstraint.Prefix("1234"), constraint)
+    }
+
+    @Test
+    fun deserializeSuffix() {
+        val constraint: ColumnConstraint = Json.Default.decodeFromString("""{"name": "suffix", "value": "1234"}""")
+
+        assertEquals(ColumnConstraint.Suffix("1234"), constraint)
+    }
 }

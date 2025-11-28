@@ -85,6 +85,8 @@ private object ColumnConstraintSerializer: KSerializer<ColumnConstraint> {
                     is ColumnConstraint.Pattern       -> put("value", JsonPrimitive(value.value))
                     is ColumnConstraint.DefaultValue  -> put("value", JsonPrimitive(value.value))
                     is ColumnConstraint.ConstantValue -> put("value", JsonPrimitive(value.value))
+                    is ColumnConstraint.Prefix        -> put("value", JsonPrimitive(value.value))
+                    is ColumnConstraint.Suffix        -> put("value", JsonPrimitive(value.value))
 
                     ColumnConstraint.Email, ColumnConstraint.Required, ColumnConstraint.Unique -> {}
                 }
@@ -104,16 +106,18 @@ private object ColumnConstraintSerializer: KSerializer<ColumnConstraint> {
         val value = obj["value"]
 
         return when (name) {
-            MinLengthConstraintName -> ColumnConstraint.MinLength(value?.jsonPrimitive?.floatOrNull?.roundToInt() ?: error("Invalid value $value for name: $name"))
-            MaxLengthConstraintName -> ColumnConstraint.MaxLength(value?.jsonPrimitive?.floatOrNull?.roundToInt() ?: error("Invalid value $value for name: $name"))
-            MinValueConstraintName -> ColumnConstraint.MinValue(value?.jsonPrimitive?.floatOrNull ?: error("Invalid value $value for name: $name"))
-            MaxValueConstraintName -> ColumnConstraint.MaxValue(value?.jsonPrimitive?.floatOrNull ?: error("Invalid value $value for name: $name"))
-            PatternConstraintName -> ColumnConstraint.Pattern(value?.jsonPrimitive?.contentOrNull ?: error("Invalid value $value for name: $name"))
-            DefaultValueConstraintName -> ColumnConstraint.DefaultValue(value?.jsonPrimitive?.contentOrNull ?: error("Invalid value $value for name: $name"))
+            MinLengthConstraintName     -> ColumnConstraint.MinLength(value?.jsonPrimitive?.floatOrNull?.roundToInt() ?: error("Invalid value $value for name: $name"))
+            MaxLengthConstraintName     -> ColumnConstraint.MaxLength(value?.jsonPrimitive?.floatOrNull?.roundToInt() ?: error("Invalid value $value for name: $name"))
+            MinValueConstraintName      -> ColumnConstraint.MinValue(value?.jsonPrimitive?.floatOrNull ?: error("Invalid value $value for name: $name"))
+            MaxValueConstraintName      -> ColumnConstraint.MaxValue(value?.jsonPrimitive?.floatOrNull ?: error("Invalid value $value for name: $name"))
+            PatternConstraintName       -> ColumnConstraint.Pattern(value?.jsonPrimitive?.contentOrNull ?: error("Invalid value $value for name: $name"))
+            DefaultValueConstraintName  -> ColumnConstraint.DefaultValue(value?.jsonPrimitive?.contentOrNull ?: error("Invalid value $value for name: $name"))
             ConstantValueConstraintName -> ColumnConstraint.ConstantValue(value?.jsonPrimitive?.contentOrNull ?: error("Invalid value $value for name: $name"))
-            EmailConstraintName -> ColumnConstraint.Email
-            RequiredConstraintName -> ColumnConstraint.Required
-            UniqueConstraintName -> ColumnConstraint.Unique
+            EmailConstraintName         -> ColumnConstraint.Email
+            RequiredConstraintName      -> ColumnConstraint.Required
+            UniqueConstraintName        -> ColumnConstraint.Unique
+            PrefixConstraintName        -> ColumnConstraint.Prefix(value?.jsonPrimitive?.contentOrNull ?: error("Invalid value $value for name: $name"))
+            SuffixConstraintName        -> ColumnConstraint.Suffix(value?.jsonPrimitive?.contentOrNull ?: error("Invalid value $value for name: $name"))
             else -> unreachable("Unknown constraint name found: $name")
         }
     }
@@ -305,6 +309,18 @@ sealed class ColumnConstraint(val name: String) {
             return ConstraintCheckResult.Ok
         }
     }
+
+    data class Prefix(val value: String): ColumnConstraint(PrefixConstraintName) {
+        override fun check(value: ColumnValue): ConstraintCheckResult {
+            return ConstraintCheckResult.Ok
+        }
+    }
+
+    data class Suffix(val value: String): ColumnConstraint(SuffixConstraintName) {
+        override fun check(value: ColumnValue): ConstraintCheckResult {
+            return ConstraintCheckResult.Ok
+        }
+    }
 }
 
 const val MinLengthConstraintName     = "minLength"
@@ -317,6 +333,8 @@ const val PatternConstraintName       = "pattern"
 const val EmailConstraintName         = "email"
 const val RequiredConstraintName      = "required"
 const val UniqueConstraintName        = "unique"
+const val PrefixConstraintName        = "prefix"
+const val SuffixConstraintName        = "suffix"
 
 fun List<ColumnConstraint>.check(value: ColumnValue): List<ConstraintCheckResult> {
     return this.map { v -> v.check(value) }

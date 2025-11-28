@@ -16,6 +16,7 @@ import dk.skancode.skanmate.ui.state.MutableTableUiState
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.state.toUiState
 import dk.skancode.skanmate.ui.state.check
+import dk.skancode.skanmate.ui.state.prepare
 import dk.skancode.skanmate.util.AudioPlayerInstance
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.assert
@@ -151,13 +152,11 @@ class TableViewModel(
                 if (state.model != null) {
                     val deferred = mutableListOf<Deferred<Unit>>()
                     val columns: List<ColumnUiState> = state.columns.map { col ->
-                        when {
-                            col.value is ColumnValue.File && col.value.fileName != null && col.value.bytes != null && !col.value.isUploaded -> {
-                                val bytes = col.value.bytes
-
+                        col.prepare(
+                            uploadImage = { fileName, bytes ->
                                 val objectUrl = tableService.uploadImage(
                                     tableId = state.model.id,
-                                    filename = col.value.fileName,
+                                    filename = fileName,
                                     data = bytes,
                                 )
                                 if (objectUrl == null) {
@@ -169,43 +168,19 @@ class TableViewModel(
                                     )
                                     res = false
                                     return@launch
-                                } else {
-                                    println("Image uploaded to $objectUrl")
-                                    if (col.value.localUrl != null) {
-                                        deferred.add(
-                                            deleteLocalImage(
-                                                col.value.localUrl,
-                                                CoroutineStart.LAZY
-                                            )
-                                        )
-                                    }
                                 }
 
-                                col.copy(
-                                    value = col.value.copy(objectUrl = objectUrl, isUploaded = true)
-                                )
-                            }
-
-                            col.value is ColumnValue.File && !col.value.isUploaded -> {
-                                col.copy(
-                                    value = col.value.copy(objectUrl = "")
-                                )
-                            }
-
-                            col.value is ColumnValue.File && col.value.isUploaded -> {
-                                if (col.value.localUrl != null) {
-                                    deferred.add(
-                                        deleteLocalImage(
-                                            col.value.localUrl,
-                                            CoroutineStart.LAZY
-                                        )
+                                objectUrl
+                            },
+                            queueImageDeletion = { localFileUrl ->
+                                deferred.add(
+                                    deleteLocalImage(
+                                        path = localFileUrl,
+                                        start = CoroutineStart.LAZY
                                     )
-                                }
-                                col
-                            }
-
-                            else -> col
-                        }
+                                )
+                            },
+                        )
                     }
 
                     val submitRes = tableService.submitRow(
