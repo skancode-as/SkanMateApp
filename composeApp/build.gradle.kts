@@ -81,6 +81,7 @@ android {
         versionCode = 19
         versionName = "1.0.0-beta.19"
         multiDexEnabled = true
+        setProperty("archivesBaseName", "SkanMate-${versionName}")
     }
     packaging {
         resources {
