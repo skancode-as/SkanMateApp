@@ -48,9 +48,9 @@ class IosAudioPlayer(
 
     override fun release() {
         audioPlayerNode.stop()
+        audioEngine.stop()
         audioEngine.disconnectNodeOutput(audioPlayerNode)
         audioEngine.detachNode(audioPlayerNode)
-        audioEngine.stop()
         isReleased = true
     }
 
