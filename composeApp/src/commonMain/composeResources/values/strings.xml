@@ -55,4 +55,6 @@
     <string name="table_vm_could_not_submit_data">Data could not be submitted. %1$s</string>
     <string name="table_vm_could_not_submit_data_constraint">Data could not be submitted. Fix errors, and try again.</string>
     <string name="table_vm_scan_not_possible_for_col">Scan is not possible for %1$s column</string>
+
+    <string name="ios_camera_not_available">Could not start camera. Make sure the app has permission to access the camera.</string>
 </resources>

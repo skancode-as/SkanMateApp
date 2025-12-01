@@ -1,7 +1,9 @@
 package dk.skancode.skanmate
 
+import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.currentDateTimeUTC
 import dk.skancode.skanmate.util.format
+import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import dk.skancode.skanmate.util.unreachable
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
@@ -49,9 +51,12 @@ import platform.UIKit.UIInterfaceOrientationLandscapeLeft
 import platform.UIKit.UIInterfaceOrientationLandscapeRight
 import platform.UIKit.UIInterfaceOrientationPortraitUpsideDown
 import platform.UIKit.UIViewController
+import skanmate.composeapp.generated.resources.Res
+import skanmate.composeapp.generated.resources.ios_camera_not_available
 
 class CameraUiKitViewController(
     private val device: AVCaptureDevice,
+    private val onError: () -> Unit,
     private val externalScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
 ): UIViewController(null, null), AVCapturePhotoCaptureDelegateProtocol {
     private var cb: (TakePictureResponse) -> Unit = {}
@@ -65,39 +70,45 @@ class CameraUiKitViewController(
 
     override fun viewDidLoad() {
         super.viewDidLoad()
-        setupCamera()
+        if (!setupCamera()) {
+            UserMessageServiceImpl.displayError(
+                message = InternalStringResource(resource = Res.string.ios_camera_not_available),
+            )
+            onError()
+        }
     }
 
     @OptIn(ExperimentalForeignApi::class)
-    private fun setupCamera() {
+    private fun setupCamera(): Boolean {
         session = AVCaptureSession()
         try {
             videoInput = AVCaptureDeviceInput.deviceInputWithDevice(device, null) as AVCaptureDeviceInput
         } catch (e: Exception) {
             println("CameraUiKitViewController::setupCamera() - Could not create video input: $e")
-            return
+            return false
         }
 
-        setupCaptureSession()
+        return setupCaptureSession()
     }
 
-    private fun setupCaptureSession() {
+    private fun setupCaptureSession(): Boolean {
         session.sessionPreset = AVCaptureSessionPresetPhoto
 
         if (!session.canAddInput(videoInput)) {
             println("CameraUiKitViewController::setupCaptureCamera() - Could not add video input to session")
-            return
+            return false
         }
         session.addInput(videoInput)
 
         if (!session.canAddOutput(photoOutput)) {
             println("CameraUiKitViewController::setupCaptureCamera() - Could not add photo output to session")
-            return
+            return false
         }
         session.addOutput(photoOutput)
 
         setupPreviewLayer()
         startSession()
+        return true
     }
 
     fun takePicture(flashMode: AVCaptureFlashMode, cb: (TakePictureResponse) -> Unit) {
@@ -174,8 +185,10 @@ class CameraUiKitViewController(
     @OptIn(ExperimentalForeignApi::class)
     override fun viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        previewLayer.frame = view.layer.bounds
-        updatePreviewOrientation()
+        if (::previewLayer.isInitialized) {
+            previewLayer.frame = view.layer.bounds
+            updatePreviewOrientation()
+        }
     }
 
     @OptIn(ExperimentalForeignApi::class)
