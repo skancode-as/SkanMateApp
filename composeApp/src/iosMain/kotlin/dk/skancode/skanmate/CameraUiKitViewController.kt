@@ -22,6 +22,7 @@ import platform.AVFoundation.AVCapturePhotoOutputCaptureReadinessNotReadyWaiting
 import platform.AVFoundation.AVCapturePhotoOutputCaptureReadinessNotReadyWaitingForProcessing
 import platform.AVFoundation.AVCapturePhotoOutputCaptureReadinessReady
 import platform.AVFoundation.AVCapturePhotoOutputCaptureReadinessSessionNotRunning
+import platform.AVFoundation.AVCapturePhotoQualityPrioritizationSpeed
 import platform.AVFoundation.AVCapturePhotoSettings
 import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVCaptureSessionPresetPhoto
@@ -107,6 +108,7 @@ class CameraUiKitViewController(
                 .photoSettingsWithFormat(format = mapOf(AVVideoCodecKey to AVVideoCodecJPEG))
 
         settings.setFlashMode(flashMode)
+        settings.photoQualityPrioritization = AVCapturePhotoQualityPrioritizationSpeed
         val captureReadiness = when (photoOutput.captureReadiness) {
             AVCapturePhotoOutputCaptureReadinessReady -> "Ready"
             AVCapturePhotoOutputCaptureReadinessNotReadyMomentarily -> "Not ready momentarily"

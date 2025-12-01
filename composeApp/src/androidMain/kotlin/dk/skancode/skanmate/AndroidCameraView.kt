@@ -158,6 +158,7 @@ class AndroidCameraController(
         imageCapture = ImageCapture.Builder()
             .setTargetRotation(preview.targetRotation)
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setJpegQuality(80)
             .build()
     }
 
