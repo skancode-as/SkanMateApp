@@ -21,6 +21,12 @@ import androidx.core.net.toUri
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.ncgroup.kscan.Barcode
+import org.ncgroup.kscan.BarcodeFormat
+import org.ncgroup.kscan.BarcodeResult
+import org.ncgroup.kscan.ScannerColors
+import org.ncgroup.kscan.ScannerController
+import org.ncgroup.kscan.ScannerView
 
 @Composable
 actual fun rememberScanModule(): ScanModule {
@@ -103,4 +109,25 @@ fun Bitmap.rotate(degrees: Number): Bitmap {
 
 actual suspend fun deleteFile(path: String) {
     SkanMateApplication.deleteLocalFile(path)
+}
+
+@Composable
+actual fun SkanMateScannerView(
+    modifier: Modifier,
+    codeTypes: List<BarcodeFormat>,
+    colors: ScannerColors,
+    showUi: Boolean,
+    scannerController: ScannerController?,
+    filter: (Barcode) -> Boolean,
+    result: (BarcodeResult) -> Unit
+) {
+    ScannerView(
+        modifier = modifier,
+        codeTypes = codeTypes,
+        colors = colors,
+        showUi = showUi,
+        scannerController = scannerController,
+        filter = filter,
+        result = result,
+    )
 }

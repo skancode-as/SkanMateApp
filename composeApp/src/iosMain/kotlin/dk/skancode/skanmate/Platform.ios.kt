@@ -22,6 +22,11 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.makeFromEncoded
+import org.ncgroup.kscan.Barcode
+import org.ncgroup.kscan.BarcodeFormat
+import org.ncgroup.kscan.BarcodeResult
+import org.ncgroup.kscan.ScannerColors
+import org.ncgroup.kscan.ScannerController
 import platform.Foundation.*
 import platform.posix.memcpy
 
@@ -150,4 +155,21 @@ actual suspend fun deleteFile(path: String) {
     } else {
         println("No file at\n$filePath")
     }
+}
+
+@Composable
+actual fun SkanMateScannerView(
+    modifier: Modifier,
+    codeTypes: List<BarcodeFormat>,
+    colors: ScannerColors,
+    showUi: Boolean,
+    scannerController: ScannerController?,
+    filter: (Barcode) -> Boolean,
+    result: (BarcodeResult) -> Unit
+) {
+    IosCameraScannerView(
+        modifier = modifier,
+        codeTypes = codeTypes,
+        result = result,
+    )
 }
