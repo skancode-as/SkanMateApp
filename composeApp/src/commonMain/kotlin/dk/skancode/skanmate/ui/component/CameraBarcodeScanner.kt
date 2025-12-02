@@ -18,13 +18,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
+import dk.skancode.skanmate.SkanMateScannerView
 import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.keyboardVisibleAsState
 import org.ncgroup.kscan.Barcode
 import org.ncgroup.kscan.BarcodeFormat
 import org.ncgroup.kscan.BarcodeResult
 import org.ncgroup.kscan.ScannerController
-import org.ncgroup.kscan.ScannerView
 
 @Composable
 fun CameraBarcodeScanner(
@@ -70,7 +70,7 @@ fun CameraBarcodeScanner(
                 .background(MaterialTheme.colorScheme.background),
             propagateMinConstraints = true,
         ) {
-            ScannerView(
+            SkanMateScannerView(
                 modifier = Modifier
                     .size(
                         width = with(density) { (windowSize.width - (rightInset + leftInset)).toDp() },

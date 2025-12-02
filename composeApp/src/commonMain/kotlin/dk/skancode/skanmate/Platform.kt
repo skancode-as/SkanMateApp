@@ -1,6 +1,7 @@
 package dk.skancode.skanmate
 
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -11,6 +12,12 @@ import androidx.compose.ui.graphics.painter.Painter
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
+import org.ncgroup.kscan.Barcode
+import org.ncgroup.kscan.BarcodeFormat
+import org.ncgroup.kscan.BarcodeResult
+import org.ncgroup.kscan.ScannerColors
+import org.ncgroup.kscan.ScannerController
+import org.ncgroup.kscan.scannerColors
 
 typealias BarcodeType = String
 //typealias Gs1Object = MutableMap<String, String>
@@ -101,3 +108,14 @@ fun rememberImageResource(path: String? = null): ImageResource<Painter> {
 expect fun loadImage(imagePath: String?): ImageResource<Painter>
 
 expect suspend fun deleteFile(path: String)
+
+@Composable
+expect fun SkanMateScannerView(
+    modifier: Modifier = Modifier.fillMaxSize(),
+    codeTypes: List<BarcodeFormat>,
+    colors: ScannerColors = scannerColors(),
+    showUi: Boolean = true,
+    scannerController: ScannerController? = null,
+    filter: (Barcode) -> Boolean = { true },
+    result: (BarcodeResult) -> Unit,
+)

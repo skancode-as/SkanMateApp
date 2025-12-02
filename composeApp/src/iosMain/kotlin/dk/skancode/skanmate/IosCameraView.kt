@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.viewinterop.UIKitViewController
+import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.util.clamp
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,10 +48,14 @@ fun IosCameraView(
         println("Back camera not available")
         return
     }
+    val uiCameraController = LocalUiCameraController.current
 
     val cameraUiKitViewController = remember {
         CameraUiKitViewController(
             device = device,
+            onError = {
+                uiCameraController.stopCamera()
+            }
         )
     }
 
