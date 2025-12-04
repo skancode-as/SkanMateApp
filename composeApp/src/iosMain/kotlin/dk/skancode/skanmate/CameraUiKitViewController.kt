@@ -429,10 +429,10 @@ class CameraUiKitViewController(
             if (::session.isInitialized) {
                 if (session.isRunning()) session.stopRunning()
                 // Remove inputs/outputs to break potential retain cycles
-                (session.outputs as? List<AVCaptureOutput>)?.forEach { output ->
+                session.outputs.filterIsInstance<AVCaptureOutput>().forEach { output ->
                     runCatching { session.removeOutput(output) }
                 }
-                (session.inputs as? List<AVCaptureDeviceInput>)?.forEach { input ->
+                session.inputs.filterIsInstance<AVCaptureDeviceInput>().forEach { input ->
                     runCatching { session.removeInput(input) }
                 }
             }
