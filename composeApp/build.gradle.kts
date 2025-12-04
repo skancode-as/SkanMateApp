@@ -80,8 +80,8 @@ android {
         applicationId = "dk.skancode.skanmate"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 20
-        versionName = "1.0.0-beta.20"
+        versionCode = 21
+        versionName = "1.0.0-beta.21"
         multiDexEnabled = true
         setProperty("archivesBaseName", "SkanMate-${versionName}")
     }
