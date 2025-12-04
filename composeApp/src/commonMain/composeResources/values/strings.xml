@@ -17,6 +17,8 @@
     <string name="table_screen_retake_picture">New picture</string>
     <string name="table_screen_switch_on">True</string>
     <string name="table_screen_switch_off">False</string>
+    <string name="table_screen_multiple_barcodes">Multiple barcodes found</string>
+    <string name="table_screen_multiple_barcodes_desc">Select the barcode you wish to use</string>
 
     <string name="auth_screen_email_label">Email</string>
     <string name="auth_screen_email_placeholder">Enter Your Email...</string>
@@ -54,6 +56,7 @@
     <string name="table_vm_could_not_upload_image">Could not upload image. Please try again.</string>
     <string name="table_vm_could_not_submit_data">Data could not be submitted. %1$s</string>
     <string name="table_vm_could_not_submit_data_constraint">Data could not be submitted. Fix errors, and try again.</string>
+    <string name="table_vm_could_not_select_barcode">That barcode could not be selected</string>
     <string name="table_vm_scan_not_possible_for_col">Scan is not possible for %1$s column</string>
 
     <string name="ios_camera_not_available">Could not start camera. Make sure the app has permission to access the camera.</string>

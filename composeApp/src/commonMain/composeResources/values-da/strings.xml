@@ -17,6 +17,8 @@
     <string name="table_screen_retake_picture">Nyt billede</string>
     <string name="table_screen_switch_on">Sandt</string>
     <string name="table_screen_switch_off">Falsk</string>
+    <string name="table_screen_multiple_barcodes">Flere stregkoder fundet</string>
+    <string name="table_screen_multiple_barcodes_desc">Vælg den ønskede stregkode</string>
 
     <string name="auth_screen_email_label">Email</string>
     <string name="auth_screen_email_placeholder">Indtast din email...</string>
@@ -54,6 +56,7 @@
     <string name="table_vm_could_not_upload_image">Kunne ikke uploade billede. Prøv venligst igen.</string>
     <string name="table_vm_could_not_submit_data">Data kunne ikke indsendes. %1$s</string>
     <string name="table_vm_could_not_submit_data_constraint">Data kunne ikke indsendes. Ret fejl og prøv igen.</string>
+    <string name="table_vm_could_not_select_barcode">Den stregkode kunne ikke vælges</string>
     <string name="table_vm_scan_not_possible_for_col">Scanning er ikke muligt for %1$s kolonnen</string>
 
     <string name="ios_camera_not_available">Kunne ikke starte kameraet. Tjek at appen har adgang til kameraet.</string>

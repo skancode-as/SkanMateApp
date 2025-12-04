@@ -97,7 +97,6 @@ fun App() {
         TableViewModel(tableService, UserMessageServiceImpl)
     }
 
-    SkanMateTheme {
         val scanModule = rememberScanModule()
         val uiCameraController = remember { UiCameraController() }
         val showCamera by uiCameraController.isStarted.collectAsState()
@@ -184,5 +183,4 @@ fun App() {
                 }
             }
         }
-    }
 }

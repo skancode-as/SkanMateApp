@@ -8,7 +8,10 @@ import androidx.camera.core.impl.utils.Exif
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -18,15 +21,15 @@ import com.russhwolf.settings.Settings
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.barcodescannermodule.compose.LocalScannerModule
 import androidx.core.net.toUri
+import dk.skancode.skanmate.camera.AndroidCameraView
+import dk.skancode.skanmate.camera.CameraPermissionAlert
+import dk.skancode.skanmate.camera.barcode.AndroidScannerView
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
+import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
+import dk.skancode.skanmate.ui.component.barcode.BarcodeResult
+import dk.skancode.skanmate.util.clamp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.ncgroup.kscan.Barcode
-import org.ncgroup.kscan.BarcodeFormat
-import org.ncgroup.kscan.BarcodeResult
-import org.ncgroup.kscan.ScannerColors
-import org.ncgroup.kscan.ScannerController
-import org.ncgroup.kscan.ScannerView
 
 @Composable
 actual fun rememberScanModule(): ScanModule {
@@ -115,19 +118,47 @@ actual suspend fun deleteFile(path: String) {
 actual fun SkanMateScannerView(
     modifier: Modifier,
     codeTypes: List<BarcodeFormat>,
-    colors: ScannerColors,
-    showUi: Boolean,
     scannerController: ScannerController?,
-    filter: (Barcode) -> Boolean,
     result: (BarcodeResult) -> Unit
 ) {
-    ScannerView(
+    val scannerController = scannerController ?: remember { ScannerController() }
+
+    AndroidScannerView(
         modifier = modifier,
         codeTypes = codeTypes,
-        colors = colors,
-        showUi = showUi,
         scannerController = scannerController,
-        filter = filter,
         result = result,
     )
+}
+
+actual class ScannerController {
+    private var _torchEnabled by mutableStateOf(false)
+    actual val torchEnabled: Boolean
+        get() = _torchEnabled
+
+    private var _zoomRatio by mutableStateOf(1f)
+    actual val zoomRatio: Float
+        get() = _zoomRatio
+
+    private var _maxZoomRatio by mutableStateOf(1f)
+    actual val maxZoomRatio: Float
+        get() = _maxZoomRatio
+
+    fun setMaxZoom(ratio: Float) {
+        _maxZoomRatio = ratio
+    }
+    var onTorchChange: (Boolean) -> Unit = {}
+    var onZoomChange: (Float) -> Unit = {}
+
+    actual fun setTorch(enabled: Boolean) {
+        _torchEnabled = enabled
+        onTorchChange(enabled)
+    }
+
+    actual fun setZoom(ratio: Float) {
+        ratio.clamp(1f, maxZoomRatio).also { zoom ->
+            _zoomRatio = zoom
+            onZoomChange(zoom)
+        }
+    }
 }

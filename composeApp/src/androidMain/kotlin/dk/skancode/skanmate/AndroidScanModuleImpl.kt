@@ -20,20 +20,22 @@ class AndroidScanModuleImpl(val scanModule: IScannerModule, val cameraManager: C
                 val scanEvent = e.toScanEvent()
 
                 if (scanEvent != null) {
-                    handler.handle(scanEvent)
+                    handler.handleEvents(listOf(scanEvent))
                 }
             }
 
             listeners[handler] = typedEventHandler
             scanModule.registerTypedEventHandler(typedEventHandler)
         } else {
-            val cameraScanListener = CameraScanListener { barcode, format ->
-                handler.handle(
-                    ScanEvent.Barcode(
-                        barcode = barcode,
-                        barcodeType = format,
-                        ok = true,
-                    )
+            val cameraScanListener = CameraScanListener { events ->
+                handler.handleEvents(
+                    events.map { (barcode, format) ->
+                        ScanEvent.Barcode(
+                            barcode = barcode,
+                            barcodeType = format,
+                            ok = true,
+                        )
+                    }
                 )
             }
 

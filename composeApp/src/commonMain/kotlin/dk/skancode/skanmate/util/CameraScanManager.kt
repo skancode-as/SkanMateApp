@@ -1,9 +1,9 @@
 package dk.skancode.skanmate.util
 
-import org.ncgroup.kscan.Barcode
+import dk.skancode.skanmate.ui.component.barcode.BarcodeData
 
 fun interface CameraScanListener {
-    fun handle(barcode: String, barcodeFormat: String)
+    fun handle(barcodes: List<Pair<String, String>>)
 }
 
 fun interface CameraPowerListener {
@@ -22,8 +22,9 @@ class CameraScanManagerImpl: CameraScanManager {
     private val listeners: MutableSet<CameraScanListener> = HashSet()
     private val powerListeners: MutableSet<CameraPowerListener> = HashSet()
 
-    fun send(barcode: Barcode) {
-        this.listeners.forEach { listener -> listener.handle(barcode.data, barcode.format) }
+    fun send(barcodes: List<BarcodeData>) {
+        val events = barcodes.map { barcode -> barcode.info.value to barcode.info.format }
+        this.listeners.forEach { listener -> listener.handle(barcodes = events) }
     }
 
     override fun registerListener(listener: CameraScanListener) {

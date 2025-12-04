@@ -9,8 +9,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dk.skancode.skanmate.ui.component.CameraBarcodeScanner
+import dk.skancode.skanmate.ui.component.barcode.CameraBarcodeScanner
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
+import dk.skancode.skanmate.ui.theme.SkanMateTheme
 import dk.skancode.skanmate.ui.viewmodel.CameraScanViewModel
 import dk.skancode.skanmate.util.CameraScanManagerImpl
 import dk.skancode.skanmate.util.LocalAudioPlayer
@@ -31,21 +32,23 @@ fun MainViewController() = ComposeUIViewController {
         LocalCameraScanManager provides cameraScanManager,
         LocalAudioPlayer provides audioPlayer,
     ) {
-        Scaffold { padding ->
-            App()
+        SkanMateTheme {
+            Scaffold { padding ->
+                App()
 
-            CameraBarcodeScanner(
-                modifier = Modifier.padding(padding),
-                showScanner = showCameraScanner,
-                onSuccess = {
-                    cameraScanManager.send(it)
-                    cameraScanManager.stopScanning()
-                },
-                onFailed = {
-                    println("CameraBarcodeScanner: Could not scan barcode due to exception. $it")
-                    cameraScanManager.stopScanning()
-                },
-                onCancelled = { cameraScanManager.stopScanning() })
+                CameraBarcodeScanner(
+                    modifier = Modifier.padding(padding),
+                    showScanner = showCameraScanner,
+                    onSuccess = {
+                        cameraScanManager.send(it)
+                        cameraScanManager.stopScanning()
+                    },
+                    onFailed = {
+                        println("CameraBarcodeScanner: Could not scan barcode due to exception. $it")
+                        cameraScanManager.stopScanning()
+                    },
+                    onCancelled = { cameraScanManager.stopScanning() })
+            }
         }
     }
 }

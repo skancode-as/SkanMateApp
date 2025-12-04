@@ -1,4 +1,4 @@
-package dk.skancode.skanmate.ui.component
+package dk.skancode.skanmate.ui.component.barcode
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -9,7 +9,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.ncgroup.kscan.ScannerController
+import dk.skancode.skanmate.ScannerController
+import dk.skancode.skanmate.ui.component.StopCaptureButton
+import dk.skancode.skanmate.ui.component.ToggleFlashButton
+import dk.skancode.skanmate.ui.component.ZoomBadge
 
 @Composable
 fun BoxScope.CameraScannerUi(

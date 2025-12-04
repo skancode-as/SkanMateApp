@@ -34,6 +34,9 @@ kotlin {
             implementation(libs.barcodescannermodule)
             implementation(libs.ktor.client.okhttp)
 
+            implementation(libs.android.mlkitBarcodeScanning)
+            implementation(libs.camera.mlkit.vision)
+
             implementation(libs.androidx.camera.core)
             implementation(libs.androidx.camera.camera2)
             implementation(libs.androidx.camera.lifecycle)
@@ -49,7 +52,6 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.kscan)
             implementation(libs.navigation.compose)
             implementation(libs.moko.permissions)
             implementation(libs.moko.permissions.compose)

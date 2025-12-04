@@ -28,6 +28,7 @@ interface TableUiState {
     val hasFocusedColumn: Boolean
     val status: FetchStatus
     val constraintErrors: Map<String, List<InternalStringResource>>
+    val scannedBarcodes: List<String>
 }
 
 data class MutableTableUiState(
@@ -37,7 +38,8 @@ data class MutableTableUiState(
     override val columns: List<ColumnUiState> = emptyList(),
     override val focusedColumnId: String? = columns.firstOrNull()?.id,
     override val status: FetchStatus = FetchStatus.Undetermined,
-    override val constraintErrors: Map<String, List<InternalStringResource>> = emptyMap()
+    override val constraintErrors: Map<String, List<InternalStringResource>> = emptyMap(),
+    override val scannedBarcodes: List<String> = emptyList(),
 ) : TableUiState {
     override val hasFocusedColumn: Boolean
         get() = focusedColumnId != null && columns.any { col -> col.id == focusedColumnId }

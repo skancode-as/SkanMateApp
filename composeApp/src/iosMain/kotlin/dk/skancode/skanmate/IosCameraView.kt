@@ -26,9 +26,13 @@ import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDevicePositionBack
 import platform.AVFoundation.AVCaptureFlashModeOff
 import platform.AVFoundation.AVCaptureFlashModeOn
+import platform.AVFoundation.AVCaptureTorchModeOff
+import platform.AVFoundation.AVCaptureTorchModeOn
 import platform.AVFoundation.AVMediaTypeVideo
+import platform.AVFoundation.hasTorch
 import platform.AVFoundation.isFlashActive
 import platform.AVFoundation.position
+import platform.AVFoundation.torchMode
 import platform.AVFoundation.videoZoomFactor
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -166,7 +170,33 @@ class IosCameraController(
     }
 
     override fun setFlashState(v: Boolean): Boolean {
-        _flashState.store(v)
-        return true
+        val res = updateTorch(v)
+        if (res) {
+            _flashState.store(v)
+        }
+        return res
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private fun updateTorch(enabled: Boolean): Boolean {
+        if (device.hasTorch) {
+            var locked = false
+            try {
+                locked = device.lockForConfiguration(null)
+                if (locked) {
+                    device.torchMode =
+                        if (enabled) AVCaptureTorchModeOn else AVCaptureTorchModeOff
+                    _flashState.store(enabled)
+                }
+            } catch (_: Throwable) {
+                return false
+            } finally {
+                if (locked) {
+                    device.unlockForConfiguration()
+                }
+            }
+            return true
+        }
+        return false
     }
 }

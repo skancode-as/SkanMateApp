@@ -1,4 +1,4 @@
-package dk.skancode.skanmate
+package dk.skancode.skanmate.camera
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import dev.icerock.moko.permissions.PermissionState
+import dk.skancode.skanmate.LocalPermissionsViewModel
+import dk.skancode.skanmate.R
 import dk.skancode.skanmate.ui.component.ContentDialog
 import dk.skancode.skanmate.ui.component.TextButton
 import dk.skancode.skanmate.util.unreachable

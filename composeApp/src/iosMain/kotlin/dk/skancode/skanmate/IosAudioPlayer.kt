@@ -59,7 +59,6 @@ class IosAudioPlayer(
         val audioFile = AVAudioFile(forReading = url, error = null)
 
         audioPlayerNode.scheduleFile(audioFile, atTime = null) {
-            println("audioPlayerNode.scheduleFile::callback")
             audioFile.close()
         }
 

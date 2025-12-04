@@ -29,10 +29,12 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActionScope
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -43,6 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import dk.skancode.skanmate.ui.component.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -81,6 +84,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
@@ -107,6 +111,7 @@ import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.PanelButton
 import dk.skancode.skanmate.ui.component.AutoSizeText
+import dk.skancode.skanmate.ui.component.ContentDialog
 import dk.skancode.skanmate.ui.component.SizeValues
 import dk.skancode.skanmate.ui.component.SkanMateTopAppBar
 import dk.skancode.skanmate.ui.component.Switch
@@ -140,6 +145,8 @@ import skanmate.composeapp.generated.resources.select_placeholder
 import skanmate.composeapp.generated.resources.submit
 import skanmate.composeapp.generated.resources.table_not_found
 import skanmate.composeapp.generated.resources.table_screen_data_submitted
+import skanmate.composeapp.generated.resources.table_screen_multiple_barcodes
+import skanmate.composeapp.generated.resources.table_screen_multiple_barcodes_desc
 import skanmate.composeapp.generated.resources.table_screen_retake_picture
 import skanmate.composeapp.generated.resources.table_screen_switch_off
 import skanmate.composeapp.generated.resources.table_screen_switch_on
@@ -187,6 +194,14 @@ fun TableScreen(
                 errorHaptic.start()
             }
         }
+    }
+
+    if (tableUiState.scannedBarcodes.isNotEmpty()) {
+        SelectScannedBarcodeDialog(
+            scannedBarcodes = tableUiState.scannedBarcodes,
+            selectBarcode = { viewModel.selectBarcode(it) },
+            dismiss = { viewModel.selectBarcode(-1) }
+        )
     }
 
     KeyboardAwareScaffold(
@@ -263,6 +278,54 @@ fun TableScreen(
                     },
                 ) { columns ->
                     viewModel.updateColumns(columns)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SelectScannedBarcodeDialog(
+    scannedBarcodes: List<String>,
+    selectBarcode: (idx: Int) -> Unit,
+    dismiss: () -> Unit,
+) {
+    ContentDialog(
+        onDismissRequest = dismiss,
+        title = {
+            Text(
+                text = stringResource(Res.string.table_screen_multiple_barcodes),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        description = {
+            Text(
+                text = stringResource(Res.string.table_screen_multiple_barcodes_desc),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(state = rememberScrollState()),
+        ) {
+            repeat(times = scannedBarcodes.size) { idx ->
+                if (idx != 0) {
+                    HorizontalDivider()
+                }
+                Row(
+                    modifier = Modifier
+                        .clickable { selectBarcode(idx) }
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp, horizontal = 12.dp),
+                ) {
+                    Text(
+                        text = scannedBarcodes[idx],
+                        softWrap = false,
+                        overflow = TextOverflow.MiddleEllipsis,
+                        maxLines = 1,
+                    )
                 }
             }
         }

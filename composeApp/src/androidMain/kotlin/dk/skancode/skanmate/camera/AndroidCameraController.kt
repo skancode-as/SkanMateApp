@@ -1,124 +1,68 @@
-package dk.skancode.skanmate
+package dk.skancode.skanmate.camera
 
 import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.ImageFormat
 import android.icu.text.SimpleDateFormat
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Size
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCapture.FLASH_MODE_OFF
-import androidx.camera.core.ImageCapture.FLASH_MODE_ON
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.core.UseCaseGroup
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
-import dev.icerock.moko.permissions.PermissionState
-import dk.skancode.skanmate.util.unreachable
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import dk.skancode.skanmate.CameraController
+import dk.skancode.skanmate.ImageData
+import dk.skancode.skanmate.R
+import dk.skancode.skanmate.TakePictureResponse
+import dk.skancode.skanmate.camera.barcode.AndroidBarcodeAnalyzer
+import dk.skancode.skanmate.camera.barcode.AndroidBarcodeSettings
+import dk.skancode.skanmate.ui.theme.backgroundDark
 import dk.skancode.skanmate.util.clamp
+import dk.skancode.skanmate.util.unreachable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import java.util.Locale
 import java.util.concurrent.Executor
-import java.util.concurrent.Executors
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-@Composable
-fun AndroidCameraView(
-    modifier: Modifier,
-    cameraUi: @Composable BoxScope.(CameraController) -> Unit,
-) {
-    val permissionsViewModel = LocalPermissionsViewModel.current
-    if (permissionsViewModel?.cameraState != PermissionState.Granted) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(color = MaterialTheme.colorScheme.background),
-        )
-        return
-    }
-
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val backgroundColor = MaterialTheme.colorScheme.background.value.toInt()
-
-    val cameraExecutor = remember { Executors.newCachedThreadPool() }
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    val previewView = remember {
-        val p = PreviewView(
-            context,
-        )
-
-        p.scaleType = PreviewView.ScaleType.FIT_CENTER
-        p.setBackgroundColor(backgroundColor)
-
-        p
-    }
-
-    val controller = remember(context) {
-        AndroidCameraController(context, cameraProviderFuture, previewView, lifecycleOwner, cameraExecutor)
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize(),
-        propagateMinConstraints = true,
-    ) {
-        AndroidView(
-            factory = { previewView },
-            modifier = Modifier.align(Alignment.Center),
-            update = {
-                controller.updateView()
-            },
-            onRelease = {
-                controller.onRelease()
-            }
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize(),
-        ) {
-            cameraUi(controller)
-        }
-    }
-}
+private val imageAnalysisSize = Size(1280, 720)
 
 @OptIn(ExperimentalAtomicApi::class)
 class AndroidCameraController(
     val context: Context,
     val cameraProviderFuture: ListenableFuture<ProcessCameraProvider>,
-    previewView: PreviewView,
+    val previewView: PreviewView,
     val lifecycleOwner: LifecycleOwner,
     val cameraExecutor: Executor,
+    val barcodeSettings: AndroidBarcodeSettings = AndroidBarcodeSettings(),
 ): CameraController {
     private val preview: Preview = Preview.Builder().build()
-    private val imageCapture: ImageCapture
+    private lateinit var imageCapture: ImageCapture
     lateinit var camera: Camera
     private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    private lateinit var imageAnalysis: ImageAnalysis
 
     private val _flashState = AtomicBoolean(false)
     override val flashState: Boolean
@@ -160,16 +104,63 @@ class AndroidCameraController(
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
             .setJpegQuality(80)
             .build()
+
+        if (barcodeSettings.enabled) {
+            imageAnalysis = ImageAnalysis.Builder()
+                .setResolutionSelector(
+                    ResolutionSelector.Builder()
+                        .setResolutionStrategy(
+                            ResolutionStrategy(
+                                imageAnalysisSize,
+                                ResolutionStrategy.FALLBACK_RULE_NONE,
+                            )
+                        )
+                        .build()
+                )
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+        }
+    }
+
+    private fun imageAnalyzer(): AndroidBarcodeAnalyzer {
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(
+                AndroidBarcodeAnalyzer.getMLKitBarcodeFormats(barcodeSettings.codeTypes)
+            )
+            .build()
+
+        val barcodeScanner = BarcodeScanning.getClient(options)
+
+        return AndroidBarcodeAnalyzer(
+            scanner = barcodeScanner,
+            onSuccess = {
+                barcodeSettings.onSuccess?.invoke(it)
+            },
+            onFailed = barcodeSettings.onFailed ?: {},
+            onCanceled = barcodeSettings.onCanceled ?: {},
+        )
     }
 
     fun updateView() {
+        println("AndroidCameraController::updateView()")
         val cameraProvider = cameraProviderFuture.get()
         cameraProvider.unbindAll()
 
-        val useCaseGroup = UseCaseGroup.Builder()
+        val useCaseGroupBuilder = UseCaseGroup.Builder()
             .addUseCase(preview)
-            .addUseCase(imageCapture)
-            .build()
+
+        if (::imageAnalysis.isInitialized) {
+            imageAnalysis.setAnalyzer(
+                ContextCompat.getMainExecutor(context),
+                imageAnalyzer()
+            )
+
+            useCaseGroupBuilder.addUseCase(imageAnalysis)
+        } else {
+            useCaseGroupBuilder.addUseCase(imageCapture)
+        }
+
+        val useCaseGroup = useCaseGroupBuilder.build()
 
         camera = cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, useCaseGroup)
     }
@@ -187,7 +178,7 @@ class AndroidCameraController(
     }
 
     override fun setFlashState(v: Boolean): Boolean {
-        imageCapture.flashMode = if (v) FLASH_MODE_ON else FLASH_MODE_OFF
+        imageCapture.flashMode = if (v) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
         _flashState.store(v)
 
         return true
