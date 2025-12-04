@@ -14,7 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dk.skancode.skanmate.ui.component.CameraBarcodeScanner
+import dk.skancode.skanmate.ui.component.barcode.CameraBarcodeScanner
 import dk.skancode.skanmate.util.CameraScanManagerImpl
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dev.icerock.moko.permissions.PermissionState
@@ -22,6 +22,8 @@ import dev.icerock.moko.permissions.compose.BindEffect
 import dev.icerock.moko.permissions.compose.rememberPermissionsControllerFactory
 import dk.skancode.barcodescannermodule.ScannerActivity
 import dk.skancode.barcodescannermodule.compose.ScannerModuleProvider
+import dk.skancode.skanmate.camera.CameraPermissionAlert
+import dk.skancode.skanmate.ui.theme.SkanMateTheme
 import dk.skancode.skanmate.ui.viewmodel.CameraScanViewModel
 import dk.skancode.skanmate.util.LocalAudioPlayer
 
@@ -55,30 +57,35 @@ class MainActivity : ScannerActivity() {
                     LocalPermissionsViewModel provides permissionsViewModel,
                     LocalAudioPlayer provides audioPlayer,
                 ) {
-                    Scaffold { padding ->
-                        App()
-                        if (!scannerModule.scannerAvailable()) {
-                            CameraBarcodeScanner(
-                                modifier = Modifier.padding(padding),
-                                showScanner = showCameraScanner,
-                                onSuccess = {
-                                    cameraScanManager.send(it)
-                                    cameraScanManager.stopScanning()
-                                },
-                                onFailed = {
-                                    Log.e(
-                                        "CameraBarcodeScanner",
-                                        "Could not scan barcode",
-                                        it
-                                    )
-                                    cameraScanManager.stopScanning()
-                                },
-                                onCancelled = { cameraScanManager.stopScanning() }
-                            )
-                            if (showCameraAlert && showCameraScanner) {
-                                CameraPermissionAlert(
-                                    onDismissRequest = { showCameraAlert = false; cameraScanManager.stopScanning() },
+                    SkanMateTheme {
+                        Scaffold { padding ->
+                            App()
+                            if (!scannerModule.scannerAvailable()) {
+                                CameraBarcodeScanner(
+                                    modifier = Modifier.padding(padding),
+                                    showScanner = showCameraScanner,
+                                    onSuccess = {
+                                        cameraScanManager.send(it)
+                                        cameraScanManager.stopScanning()
+                                    },
+                                    onFailed = {
+                                        Log.e(
+                                            "CameraBarcodeScanner",
+                                            "Could not scan barcode",
+                                            it
+                                        )
+                                        cameraScanManager.stopScanning()
+                                    },
+                                    onCancelled = { cameraScanManager.stopScanning() }
                                 )
+                                if (showCameraAlert && showCameraScanner) {
+                                    CameraPermissionAlert(
+                                        onDismissRequest = {
+                                            showCameraAlert =
+                                                false; cameraScanManager.stopScanning()
+                                        },
+                                    )
+                                }
                             }
                         }
                     }

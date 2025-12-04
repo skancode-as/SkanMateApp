@@ -3,7 +3,10 @@ package dk.skancode.skanmate
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
@@ -11,22 +14,27 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import com.russhwolf.settings.NSUserDefaultsSettings
 import com.russhwolf.settings.Settings
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
+import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
+import dk.skancode.skanmate.ui.component.barcode.BarcodeResult
 import dk.skancode.skanmate.util.CameraScanListener
 import dk.skancode.skanmate.util.CameraScanManager
+import dk.skancode.skanmate.util.clamp
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.makeFromEncoded
-import org.ncgroup.kscan.Barcode
-import org.ncgroup.kscan.BarcodeFormat
-import org.ncgroup.kscan.BarcodeResult
-import org.ncgroup.kscan.ScannerColors
-import org.ncgroup.kscan.ScannerController
+import platform.AVFoundation.AVCaptureDevice
+import platform.AVFoundation.AVCaptureTorchModeOff
+import platform.AVFoundation.AVCaptureTorchModeOn
+import platform.AVFoundation.hasTorch
+import platform.AVFoundation.torchMode
+import platform.AVFoundation.videoZoomFactor
 import platform.Foundation.*
 import platform.posix.memcpy
 
@@ -38,12 +46,16 @@ class IosScanModule(val cameraScanManager: CameraScanManager): ScanModule {
     }
 
     override fun registerListener(handler: ScanEventHandler) {
-        val cameraScanListener = CameraScanListener { barcode, format ->
-            handler.handle(ScanEvent.Barcode(
-                barcode = barcode,
-                barcodeType = format,
-                ok = true,
-            ))
+        val cameraScanListener = CameraScanListener { events ->
+            handler.handleEvents(
+                events.map { (barcode, format) ->
+                    ScanEvent.Barcode(
+                        barcode = barcode,
+                        barcodeType = format,
+                        ok = true,
+                    )
+                }
+            )
         }
 
         cameraListeners[handler] = cameraScanListener
@@ -161,15 +173,76 @@ actual suspend fun deleteFile(path: String) {
 actual fun SkanMateScannerView(
     modifier: Modifier,
     codeTypes: List<BarcodeFormat>,
-    colors: ScannerColors,
-    showUi: Boolean,
     scannerController: ScannerController?,
-    filter: (Barcode) -> Boolean,
     result: (BarcodeResult) -> Unit
 ) {
+    val scannerController = scannerController ?: remember { ScannerController() }
     IosCameraScannerView(
         modifier = modifier,
         codeTypes = codeTypes,
+        scannerController = scannerController,
         result = result,
     )
+}
+
+actual class ScannerController {
+    lateinit var captureDevice: AVCaptureDevice
+
+    private var _torchEnabled by mutableStateOf(false)
+    actual val torchEnabled: Boolean
+        get() = _torchEnabled
+
+    private var _zoomRatio by mutableStateOf(1f)
+    actual val zoomRatio: Float
+        get() = _zoomRatio
+
+    private val minZoom: Float = 1f
+    actual val maxZoomRatio: Float
+        get() = captureDevice.activeFormat.videoMaxZoomFactor.toFloat()
+
+    actual fun setTorch(enabled: Boolean) {
+        _torchEnabled = enabled
+        updateTorch(enabled)
+    }
+
+    actual fun setZoom(ratio: Float) {
+        _zoomRatio = ratio
+        updateZoom(ratio)
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private fun updateTorch(enabled: Boolean) {
+        if (captureDevice.hasTorch) {
+            val prev = torchEnabled
+            var locked = false
+            try {
+                locked = captureDevice.lockForConfiguration(null)
+                if (locked) {
+                    captureDevice.torchMode =
+                        if (enabled) AVCaptureTorchModeOn else AVCaptureTorchModeOff
+                    _torchEnabled = enabled
+                }
+            } catch (_: Throwable) {
+                _torchEnabled = prev
+            } finally {
+                if (locked) {
+                    captureDevice.unlockForConfiguration()
+                }
+            }
+        }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private fun updateZoom(newZoom: Float) {
+        if (captureDevice.lockForConfiguration(null)) {
+            val actualNewZoom = newZoom.clamp(minZoom, maxZoomRatio).toDouble()
+
+            _zoomRatio = actualNewZoom.toFloat()
+            captureDevice.videoZoomFactor = actualNewZoom
+
+            captureDevice.unlockForConfiguration()
+        } else {
+            throw Exception("Could not lock device for configuration")
+        }
+    }
 }

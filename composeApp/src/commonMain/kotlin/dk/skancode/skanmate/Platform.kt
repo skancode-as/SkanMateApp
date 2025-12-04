@@ -10,14 +10,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import com.russhwolf.settings.Settings
+import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
+import dk.skancode.skanmate.ui.component.barcode.BarcodeResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import org.ncgroup.kscan.Barcode
-import org.ncgroup.kscan.BarcodeFormat
-import org.ncgroup.kscan.BarcodeResult
-import org.ncgroup.kscan.ScannerColors
-import org.ncgroup.kscan.ScannerController
-import org.ncgroup.kscan.scannerColors
 
 typealias BarcodeType = String
 //typealias Gs1Object = MutableMap<String, String>
@@ -28,7 +24,7 @@ sealed class ScanEvent {
 }
 
 fun interface ScanEventHandler {
-    fun handle(event: ScanEvent)
+    fun handleEvents(events: List<ScanEvent>)
 }
 
 interface ScanModule {
@@ -113,9 +109,16 @@ expect suspend fun deleteFile(path: String)
 expect fun SkanMateScannerView(
     modifier: Modifier = Modifier.fillMaxSize(),
     codeTypes: List<BarcodeFormat>,
-    colors: ScannerColors = scannerColors(),
-    showUi: Boolean = true,
     scannerController: ScannerController? = null,
-    filter: (Barcode) -> Boolean = { true },
     result: (BarcodeResult) -> Unit,
 )
+
+expect class ScannerController() {
+    val torchEnabled: Boolean
+    val zoomRatio: Float
+    val maxZoomRatio: Float
+
+    fun setTorch(enabled: Boolean)
+
+    fun setZoom(ratio: Float)
+}

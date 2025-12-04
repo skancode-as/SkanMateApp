@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.constraint_error_server
+import skanmate.composeapp.generated.resources.table_vm_could_not_select_barcode
 import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data
 import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data_constraint
 import skanmate.composeapp.generated.resources.table_vm_could_not_upload_image
@@ -238,6 +239,26 @@ class TableViewModel(
         }
     }
 
+    /** If [index] == -1, this will clear the scannedBarcodes, without selecting any */
+    fun selectBarcode(index: Int) {
+        if (index == -1) {
+            _uiState.update { it.copy(scannedBarcodes = emptyList()) }
+            return
+        }
+
+        val selected = _uiState.value.scannedBarcodes.getOrNull(index) ?: run {
+            UserMessageServiceImpl.displayError(
+                InternalStringResource(
+                    Res.string.table_vm_could_not_select_barcode,
+                )
+            )
+            return
+        }
+
+        insertBarcodeData(selected)
+        _uiState.update { it.copy(scannedBarcodes = emptyList()) }
+    }
+
     fun resetColumnData() {
         _uiState.update {
             assert(it.columns.size == it.model?.columns?.size)
@@ -339,9 +360,7 @@ class TableViewModel(
         return updateColumn(nextColId, v)
     }
 
-    override fun handle(event: ScanEvent) {
-        val barcode = extractBarcode(event) ?: return
-
+    private fun insertBarcodeData(barcode: String) {
         val idx = if (_uiState.value.hasFocusedColumn) {
             updateFocusedColumnValue(v = barcode)
         } else {
@@ -365,6 +384,25 @@ class TableViewModel(
             println("submitting data after event handled")
             submitData()
         }
-        println("Handle event done: $event")
+    }
+
+    private fun displayFoundBarcodes(barcodes: List<String>) {
+        _uiState.update {
+            it.copy(
+                scannedBarcodes = barcodes,
+            )
+        }
+    }
+
+    override fun handleEvents(events: List<ScanEvent>) {
+        val barcodes = events.mapNotNull { event -> extractBarcode(event) }
+
+        when {
+            barcodes.isEmpty() -> {}
+            barcodes.size == 1 -> insertBarcodeData(barcodes[0])
+            else -> displayFoundBarcodes(barcodes)
+        }
+
+        println("Handle event done: $events")
     }
 }

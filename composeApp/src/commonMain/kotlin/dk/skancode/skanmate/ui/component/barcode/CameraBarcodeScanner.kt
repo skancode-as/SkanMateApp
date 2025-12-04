@@ -1,4 +1,4 @@
-package dk.skancode.skanmate.ui.component
+package dk.skancode.skanmate.ui.component.barcode
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -18,19 +18,18 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
+import dk.skancode.skanmate.ScannerController
 import dk.skancode.skanmate.SkanMateScannerView
+import dk.skancode.skanmate.util.HapticKind
 import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.keyboardVisibleAsState
-import org.ncgroup.kscan.Barcode
-import org.ncgroup.kscan.BarcodeFormat
-import org.ncgroup.kscan.BarcodeResult
-import org.ncgroup.kscan.ScannerController
+import dk.skancode.skanmate.util.rememberHaptic
 
 @Composable
 fun CameraBarcodeScanner(
     modifier: Modifier = Modifier,
     showScanner: Boolean,
-    onSuccess: (Barcode) -> Unit = {},
+    onSuccess: (List<BarcodeData>) -> Unit = {},
     onFailed: (Exception) -> Unit = {},
     onCancelled: () -> Unit = {},
 ) {
@@ -42,6 +41,7 @@ fun CameraBarcodeScanner(
                 localSoftwareKeyboardController?.hide()
             }
         }
+        val successHaptic = rememberHaptic(kind = HapticKind.Success)
 
         val density = LocalDensity.current
         val layoutDirection = LocalLayoutDirection.current
@@ -61,7 +61,6 @@ fun CameraBarcodeScanner(
         val scannerController = remember { ScannerController() }
         val transformableState = rememberTransformableState { zoomChange, _, _ ->
             val zoom = (scannerController.zoomRatio * zoomChange)
-                .clamp(1f, scannerController.maxZoomRatio)
 
             scannerController.setZoom(zoom)
         }
@@ -79,13 +78,15 @@ fun CameraBarcodeScanner(
                     .align(Alignment.Center)
                     .transformable(transformableState),
                 scannerController = scannerController,
-                showUi = false,
                 codeTypes = listOf(BarcodeFormat.FORMAT_ALL_FORMATS),
             ) { result ->
                 when (result) {
                     BarcodeResult.OnCanceled -> onCancelled()
                     is BarcodeResult.OnFailed -> onFailed(result.exception)
-                    is BarcodeResult.OnSuccess -> onSuccess(result.barcode)
+                    is BarcodeResult.OnSuccess -> {
+                        successHaptic.start()
+                        onSuccess(result.barcodes)
+                    }
                 }
             }
             Box(

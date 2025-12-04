@@ -24,28 +24,23 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.viewinterop.UIKitViewController
+import dk.skancode.skanmate.ui.component.barcode.BarcodeBoundingBox
+import dk.skancode.skanmate.ui.component.barcode.BarcodeData
+import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
+import dk.skancode.skanmate.ui.component.barcode.BarcodeInfo
+import dk.skancode.skanmate.ui.component.barcode.BarcodeResult
 import dk.skancode.skanmate.util.Success
-import org.ncgroup.kscan.Barcode
-import org.ncgroup.kscan.BarcodeFormat
-import org.ncgroup.kscan.BarcodeResult
 import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDevicePositionBack
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.position
 import kotlin.collections.emptyList
 
-data class BarcodeData(
-    val barcode: Barcode,
-    val topLeft: Offset,
-    val topRight: Offset,
-    val botLeft: Offset,
-    val botRight: Offset,
-)
-
 @Composable
 fun IosCameraScannerView(
     modifier: Modifier,
     codeTypes: List<BarcodeFormat>,
+    scannerController: ScannerController,
     result: (BarcodeResult) -> Unit
 ) {
     val device: AVCaptureDevice? = AVCaptureDevice
@@ -58,41 +53,22 @@ fun IosCameraScannerView(
         return
     }
 
-    var barcodeData: List<BarcodeData> by remember { mutableStateOf(emptyList()) }
-
     val cameraUiKitViewController = remember {
         CameraUiKitViewController(
             device = device,
             codeTypes = codeTypes,
             onBarcodes = {
-                barcodeData = it
-                    .filter { result -> result.corners.size == 4 }
-                    .map { res ->
-                        val corners = res.corners.toMutableList().sortedBy { corner -> corner.y }
-                        val topCorners = corners.slice(0..1).sortedBy { corner -> corner.x}
-                        val botCorners = corners.slice(2..3).sortedBy { corner -> corner.x}
-                        BarcodeData(
-                            barcode = Barcode(data = res.value, format = res.type, rawBytes = res.rawBytes),
-                            topLeft = topCorners[0].let { corner ->
-                                    Offset(corner.x.toFloat(), corner.y.toFloat())
-                                },
-                            topRight = topCorners[1].let { corner ->
-                                    Offset(corner.x.toFloat(), corner.y.toFloat())
-                                },
-                            botLeft = botCorners[0].let { corner ->
-                                    Offset(corner.x.toFloat(), corner.y.toFloat())
-                                },
-                            botRight = botCorners[1].let { corner ->
-                                    Offset(corner.x.toFloat(), corner.y.toFloat())
-                                },
-                        )
-                    }
+                if (it.isNotEmpty()) {
+                    result(BarcodeResult.OnSuccess(barcodes = it))
+                }
             },
             onError = {
                 result(BarcodeResult.OnFailed(Exception("Unknown")))
             }
         )
     }
+
+    scannerController.captureDevice = device
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -129,58 +105,6 @@ fun IosCameraScannerView(
                     )
                     .fillMaxSize(),
             )
-        }
-
-        var clickedOffset by remember { mutableStateOf<Offset?>(null) }
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures { offset ->
-                    clickedOffset = offset
-                }
-            },
-        ) {
-            fun Offset.toCanvasSpace(): Offset {
-                return Offset(
-                    x = (this.x/cameraViewWidthDp.value) * size.width,
-                    y = (this.y/cameraViewHeightDp.value) * size.height,
-                )
-            }
-
-            repeat(barcodeData.size) { i ->
-                val data = barcodeData[i]
-
-                val topLeft = data.topLeft.toCanvasSpace()
-                val rectSize = Size(
-                    width = ((data .botRight.x - data.topLeft.x) / cameraViewWidthDp.value) * size.width,
-                    height = ((data.botRight.y - data.topLeft.y) / cameraViewHeightDp.value) * size.height,
-                )
-                val clickedOffset = clickedOffset
-                if (clickedOffset != null) {
-                    if ((topLeft.x <= clickedOffset.x && clickedOffset.x <= topLeft.x + rectSize.width) &&
-                        (topLeft.y <= clickedOffset.y && clickedOffset.y <= topLeft.y + rectSize.height)) {
-                        result(
-                            BarcodeResult.OnSuccess(data.barcode)
-                        )
-                    }
-                }
-
-                val points = listOf(
-                    data.topLeft.toCanvasSpace(), data.topRight.toCanvasSpace(),
-                    data.topRight.toCanvasSpace(), data.botRight.toCanvasSpace(),
-                    data.botRight.toCanvasSpace(), data.botLeft.toCanvasSpace(),
-                    data.botLeft.toCanvasSpace(), data.topLeft.toCanvasSpace(),
-                )
-
-                drawPoints(
-                    points = points,
-                    pointMode = PointMode.Lines,
-                    color = Color.Success,
-                    strokeWidth = 15f,
-                    cap = StrokeCap.Round,
-                    alpha = 0.5f,
-                )
-            }
         }
     }
 }

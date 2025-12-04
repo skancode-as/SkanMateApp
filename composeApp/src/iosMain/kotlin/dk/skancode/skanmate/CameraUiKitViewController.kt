@@ -1,5 +1,10 @@
 package dk.skancode.skanmate
 
+import androidx.compose.ui.geometry.Offset
+import dk.skancode.skanmate.ui.component.barcode.BarcodeBoundingBox
+import dk.skancode.skanmate.ui.component.barcode.BarcodeData
+import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
+import dk.skancode.skanmate.ui.component.barcode.BarcodeInfo
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.currentDateTimeUTC
 import dk.skancode.skanmate.util.format
@@ -10,7 +15,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
-import org.ncgroup.kscan.BarcodeFormat
 import platform.AVFoundation.AVCaptureConnection
 import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceInput
@@ -77,7 +81,7 @@ class CameraUiKitViewController(
     private val device: AVCaptureDevice,
     private val onError: () -> Unit,
     private val codeTypes: List<BarcodeFormat> = emptyList(),
-    private val onBarcodes: ((List<BarcodeResult>) -> Unit)? = null,
+    private val onBarcodes: ((List<BarcodeData>) -> Unit)? = null,
     private val scanningEnabled: Boolean = codeTypes.isNotEmpty() && onBarcodes != null,
     private val externalScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
 ): UIViewController(null, null), AVCapturePhotoCaptureDelegateProtocol,
@@ -254,30 +258,6 @@ class CameraUiKitViewController(
         updatePreviewOrientation()
     }
 
-    data class BarcodeResult(val value: String, val type: String, val rawBytes: ByteArray, val corners: List<BarcodeCorner>) {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || this::class != other::class) return false
-
-            other as BarcodeResult
-
-            if (value != other.value) return false
-            if (type != other.type) return false
-            if (!rawBytes.contentEquals(other.rawBytes)) return false
-            if (corners != other.corners) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = value.hashCode()
-            result = 31 * result + type.hashCode()
-            result = 31 * result + rawBytes.contentHashCode()
-            result = 31 * result + corners.hashCode()
-            return result
-        }
-    }
-
     data class BarcodeCorner(val x: Double, val y: Double)
 
     override fun captureOutput(
@@ -296,19 +276,21 @@ class CameraUiKitViewController(
                 }
                 .mapNotNull { barcode ->
                     if (barcode.stringValue != null) {
-                        BarcodeResult(
-                            value = barcode.stringValue!!,
-                            type = barcode.type.toFormat().toString(),
-                            rawBytes = barcode.stringValue!!.encodeToByteArray(),
-                            corners = barcode.corners
+                        BarcodeData(
+                            info = BarcodeInfo(
+                                value = barcode.stringValue!!,
+                                format = barcode.type.toFormat().toString(),
+                                rawBytes = barcode.stringValue!!.encodeToByteArray(),
+                            ),
+                            box = barcode.corners
                                 .filterIsInstance<NSDictionary>()
                                 .map { pointDict ->
-
                                     BarcodeCorner(
                                         x = pointDict.objectForKey("X") as? CGFloat ?: 0.0,
                                         y = pointDict.objectForKey("Y") as? CGFloat ?: 0.0,
                                     )
-                                },
+                                }
+                                .toBoundingBox(),
                         )
                     } else {
                         null
@@ -412,7 +394,7 @@ class CameraUiKitViewController(
     }
 
     private fun AVMetadataObjectType.toFormat(): BarcodeFormat {
-        return AV_TO_APP_FORMAT_MAP[this] ?: BarcodeFormat.TYPE_UNKNOWN
+        return AV_TO_APP_FORMAT_MAP[this] ?: BarcodeFormat.FORMAT_UNKNOWN
     }
 
     private val AV_TO_APP_FORMAT_MAP: Map<AVMetadataObjectType, BarcodeFormat> =
@@ -447,10 +429,10 @@ class CameraUiKitViewController(
             if (::session.isInitialized) {
                 if (session.isRunning()) session.stopRunning()
                 // Remove inputs/outputs to break potential retain cycles
-                (session.outputs as? List<AVCaptureOutput>)?.forEach { output ->
+                session.outputs.filterIsInstance<AVCaptureOutput>().forEach { output ->
                     runCatching { session.removeOutput(output) }
                 }
-                (session.inputs as? List<AVCaptureDeviceInput>)?.forEach { input ->
+                session.inputs.filterIsInstance<AVCaptureDeviceInput>().forEach { input ->
                     runCatching { session.removeInput(input) }
                 }
             }
@@ -461,4 +443,25 @@ class CameraUiKitViewController(
             }
         }
     }
+}
+
+fun List<CameraUiKitViewController.BarcodeCorner>.toBoundingBox(): BarcodeBoundingBox {
+    val corners = toMutableList().sortedBy { corner -> corner.y }
+    val topCorners = corners.slice(0..1).sortedBy { corner -> corner.x }
+    val botCorners = corners.slice(2..3).sortedBy { corner -> corner.x }
+
+    return BarcodeBoundingBox(
+        topLeft = topCorners[0].let { corner ->
+            Offset(corner.x.toFloat(), corner.y.toFloat())
+        },
+        topRight = topCorners[1].let { corner ->
+            Offset(corner.x.toFloat(), corner.y.toFloat())
+        },
+        botLeft = botCorners[0].let { corner ->
+            Offset(corner.x.toFloat(), corner.y.toFloat())
+        },
+        botRight = botCorners[1].let { corner ->
+            Offset(corner.x.toFloat(), corner.y.toFloat())
+        },
+    )
 }
