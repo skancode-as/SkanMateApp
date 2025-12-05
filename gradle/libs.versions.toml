@@ -25,6 +25,8 @@ navigationCompose = "2.9.1"
 media3 = "1.8.0"
 mlkitBarcodeScanning-android = "17.3.0"
 cameraMlkitVision = "1.4.1"
+connectivity = "2.2.1"
+
 
 [libraries]
 barcodescannermodule = { module = "com.github.TobiasTheDanish:BarcodeScannerModule", version.ref = "barcodeModuleVersion" }
@@ -58,6 +60,9 @@ navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-co
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 android-mlkitBarcodeScanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkitBarcodeScanning-android" }
 camera-mlkit-vision = { group = "androidx.camera", name = "camera-mlkit-vision", version.ref = "cameraMlkitVision" }
+connectivity-core = { module = "dev.jordond.connectivity:connectivity-core", version.ref = "connectivity" }
+connectivity-device = { module = "dev.jordond.connectivity:connectivity-device", version.ref = "connectivity" }
+connectivity-compose-device = { module = "dev.jordond.connectivity:connectivity-compose-device", version.ref = "connectivity" }
 
 
 [plugins]

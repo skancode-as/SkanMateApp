@@ -62,6 +62,9 @@ kotlin {
             implementation(libs.multiplatform.settings)
             implementation(libs.kotlinx.datetime)
             implementation(libs.material.icons.core)
+            implementation(libs.connectivity.core)
+            implementation(libs.connectivity.device)
+            implementation(libs.connectivity.compose.device)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
