@@ -25,7 +25,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +42,7 @@ import dk.skancode.skanmate.ui.component.InputField
 import dk.skancode.skanmate.ui.component.KeyboardAwareScaffold
 import dk.skancode.skanmate.ui.component.TextTransformation
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
-import dk.skancode.skanmate.ui.viewmodel.ConnectivityViewModel
+import dk.skancode.skanmate.ui.viewmodel.LocalConnectionState
 import dk.skancode.skanmate.util.HapticKind
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.LocalAudioPlayer
@@ -68,10 +67,9 @@ import skanmate.composeapp.generated.resources.scan_barcode
 @Composable
 fun AuthScreen(
     viewModel: AuthViewModel,
-    connectivityViewModel: ConnectivityViewModel,
     navigate: () -> Unit,
 ) {
-    val hasConnection by connectivityViewModel.connectionFlow.collectAsState()
+    val hasConnection by LocalConnectionState.current
     var isLoading by remember { mutableStateOf(false) }
     val audioPlayer = LocalAudioPlayer.current
     val successHaptic = rememberHaptic(HapticKind.Success)

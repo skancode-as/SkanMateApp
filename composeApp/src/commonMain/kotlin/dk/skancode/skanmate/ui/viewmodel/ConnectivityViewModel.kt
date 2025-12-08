@@ -1,5 +1,9 @@
 package dk.skancode.skanmate.ui.viewmodel
 
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.State
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dk.skancode.skanmate.data.service.ConnectivityService
@@ -23,3 +27,5 @@ class ConnectivityViewModel(
         }
     }
 }
+
+val LocalConnectionState: ProvidableCompositionLocal<State<Boolean>> = compositionLocalOf { mutableStateOf(true) }

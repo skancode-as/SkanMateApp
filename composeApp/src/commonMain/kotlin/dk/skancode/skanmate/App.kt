@@ -33,6 +33,7 @@ import dk.skancode.skanmate.ui.component.UiCameraController
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.ui.viewmodel.ConnectivityViewModel
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
+import dk.skancode.skanmate.ui.viewmodel.LocalConnectionState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.jsonSerializer
@@ -114,6 +115,7 @@ fun App() {
         LocalScanModule provides scanModule,
         LocalUiCameraController provides uiCameraController,
         LocalLabelTextStyle provides MaterialTheme.typography.labelLarge,
+        LocalConnectionState provides connectivityViewModel.connectionFlow.collectAsState()
     ) {
         Box(
             modifier = Modifier
@@ -129,7 +131,6 @@ fun App() {
                         authViewModel = authViewModel,
                         initializerViewModel = initializerViewModel,
                         tableViewModel = tableViewModel,
-                        connectivityViewModel = connectivityViewModel,
                     )
                 }
             }
