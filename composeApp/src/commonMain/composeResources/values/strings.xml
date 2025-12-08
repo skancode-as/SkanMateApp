@@ -31,6 +31,8 @@
     <string name="auth_screen_fill_email">Fill email before signing in.</string>
     <string name="auth_screen_invalid_email">Email is not valid.</string>
     <string name="auth_screen_fill_pin">Fill pin before signing in.</string>
+    <string name="auth_screen_no_connection_title">No internet connection</string>
+    <string name="auth_screen_no_connection_desc">Your device is not connected to the internet. In order to sign in, you have to reconnect to the internet.</string>
 
     <string name="column_type_text">Text</string>
     <string name="column_type_numeric">Number</string>

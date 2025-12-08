@@ -13,6 +13,7 @@ import dk.skancode.skanmate.ui.screen.InitializerScreen
 import dk.skancode.skanmate.ui.screen.MainScreen
 import dk.skancode.skanmate.ui.screen.TableScreen
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
+import dk.skancode.skanmate.ui.viewmodel.ConnectivityViewModel
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 
@@ -23,6 +24,7 @@ fun AppNavHost(
     authViewModel: AuthViewModel,
     initializerViewModel: InitializerViewModel,
     tableViewModel: TableViewModel,
+    connectivityViewModel: ConnectivityViewModel,
 ) {
     val onUnauthorized = {
         navController.navigate(NavRoute.AuthScreen) {
@@ -52,6 +54,7 @@ fun AppNavHost(
         composable<NavRoute.AuthScreen> {
             AuthScreen(
                 viewModel = authViewModel,
+                connectivityViewModel = connectivityViewModel,
             ) {
                 navController.navigate(NavRoute.App.MainScreen) {
                     popUpTo<NavRoute.AuthScreen> {

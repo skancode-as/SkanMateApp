@@ -31,6 +31,8 @@
     <string name="auth_screen_fill_email">Udfyld email før log ind.</string>
     <string name="auth_screen_invalid_email">Email er ikke gyldig.</string>
     <string name="auth_screen_fill_pin">Udfyld pinkode før log ind.</string>
+    <string name="auth_screen_no_connection_title">Ingen internet forbindelse</string>
+    <string name="auth_screen_no_connection_desc">Din enhed er ikke forbundet til internettet. For at logge ind, skal du forbinde til internettet igen.</string>
 
     <string name="column_type_text">Tekst</string>
     <string name="column_type_numeric">Tal</string>
