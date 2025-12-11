@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.ButtonDefaults
@@ -35,6 +35,7 @@ import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.nav.NavRoute
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
 import dk.skancode.skanmate.ui.component.IconButton
+import dk.skancode.skanmate.ui.component.SkanMateBottomAppBar
 import dk.skancode.skanmate.ui.component.SkanMateTopAppBar
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.HapticKind
@@ -52,6 +53,7 @@ import skanmate.composeapp.generated.resources.table_no_description
 fun MainScreen(
     tableViewModel: TableViewModel,
     navigateTable: (NavRoute.App.TableScreen) -> Unit,
+    navigateSyncPage: () -> Unit,
     signOut: () -> Unit,
 ) {
     val errorHaptic = rememberHaptic(HapticKind.Error)
@@ -78,6 +80,12 @@ fun MainScreen(
                         )
                     }
                 },
+            )
+        },
+        bottomBar = {
+            SkanMateBottomAppBar(
+                tableViewModel = tableViewModel,
+                onClick = navigateSyncPage,
             )
         }
     ) { padding ->
@@ -107,7 +115,7 @@ fun MainScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
 
                 ) {
-                itemsIndexed(tables) { i, table ->
+                items(tables) { table ->
                     TableCard(table = table) {
                         navigateTable(
                             NavRoute.App.TableScreen(tableId = table.id),

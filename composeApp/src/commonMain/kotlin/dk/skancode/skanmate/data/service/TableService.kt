@@ -1,6 +1,9 @@
 package dk.skancode.skanmate.data.service
 
+import dk.skancode.skanmate.data.model.LocalRowData
+import dk.skancode.skanmate.data.model.LocalTableData
 import dk.skancode.skanmate.data.model.RowData
+import dk.skancode.skanmate.data.model.StoreRowResponse
 import dk.skancode.skanmate.data.model.SubmitRowResponse
 import dk.skancode.skanmate.data.model.TableModel
 import dk.skancode.skanmate.data.model.TableRowErrors
@@ -20,10 +23,15 @@ import skanmate.composeapp.generated.resources.signed_out
 
 interface TableService {
     val tableFlow: SharedFlow<List<TableSummaryModel>>
+    val localDataFlow: SharedFlow<List<LocalTableData>>
     suspend fun fetchTable(id: String): TableModel?
     suspend fun updateTableFlow(): Boolean
     suspend fun uploadImage(tableId: String, filename: String, data: ByteArray): String?
     suspend fun submitRow(tableId: String, row: RowData): SubmitRowResponse
+    suspend fun storeRow(tableId: String, row: LocalRowData): StoreRowResponse
+    suspend fun deleteLocalRow(rowId: Long): Boolean
+    suspend fun deleteLocalTableRows(tableId: String): Boolean
+    suspend fun updateLocalDataFlow()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -37,10 +45,18 @@ class TableServiceImpl(
     private val _tableFlow = MutableSharedFlow<List<TableSummaryModel>>(1)
     override val tableFlow: SharedFlow<List<TableSummaryModel>>
         get() = _tableFlow
+
+    private val _localDataFlow = MutableSharedFlow<List<LocalTableData>>(1)
+    override val localDataFlow: SharedFlow<List<LocalTableData>>
+        get() = _localDataFlow
+
     private var _token: String? = null
     private suspend fun hasConnection(): Boolean = connectivityService.isConnected()
 
     init {
+        externalScope.launch {
+            updateLocalDataFlow()
+        }
         externalScope.launch {
             tokenFlow.collect { token ->
                 _token = token
@@ -131,6 +147,49 @@ class TableServiceImpl(
         )
     }
 
+    override suspend fun storeRow(
+        tableId: String,
+        row: LocalRowData
+    ): StoreRowResponse {
+        try {
+            localTableStore.storeRowData(tableId = tableId, rowData = row)
+        } catch (e: Exception) {
+            return StoreRowResponse(
+                ok = false,
+                exception = e,
+            )
+        }
+
+        externalScope.launch { updateLocalDataFlow() }
+
+        return StoreRowResponse(
+            ok = true,
+            exception = null,
+        )
+    }
+
+    override suspend fun deleteLocalRow(rowId: Long): Boolean {
+        try {
+            val rowsDeleted = localTableStore.deleteRowData(rowId)
+            return rowsDeleted > 0
+        } catch (_: Exception) {
+            return false
+        }
+    }
+
+    override suspend fun deleteLocalTableRows(tableId: String): Boolean {
+        try {
+            val rowsDeleted = localTableStore.deleteTableRows(tableId = tableId)
+            return rowsDeleted > 0
+        } catch (_: Exception) {
+            return false
+        }
+    }
+
+    override suspend fun updateLocalDataFlow() {
+        val localData = localTableStore.loadRowData()
+        _localDataFlow.emit(localData)
+    }
 
     private suspend fun fetchTables(token: String): List<TableSummaryModel> {
         if (!hasConnection()) {

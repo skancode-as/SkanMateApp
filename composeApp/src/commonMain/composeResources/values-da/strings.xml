@@ -61,5 +61,27 @@
     <string name="table_vm_could_not_select_barcode">Den stregkode kunne ikke vælges</string>
     <string name="table_vm_scan_not_possible_for_col">Scanning er ikke muligt for %1$s kolonnen</string>
 
+    <string name="sync_screen_title">Synkronisering</string>
+    <plurals name="sync_screen_table_description">
+        <item quantity="one">%1$d række ikke synkroniseret</item>
+        <item quantity="other">%1$d rækker ikke synkroniseret</item>
+    </plurals>
+    <string name="sync_screen_fab_text">Synkroniser</string>
+    <string name="sync_screen_delete_row_alert_title">Slet række</string>
+    <string name="sync_screen_delete_row_alert_desc">Slet række fra enhed</string>
+    <string name="sync_screen_delete_row_alert_content_text">Du er ved at slette denne række fra enheden.\nDen vil IKKE blive synkroniseret med serveren!</string>
+    <string name="sync_screen_delete_row_alert_dismiss_btn">Afvis</string>
+    <string name="sync_screen_delete_row_alert_accept_btn">Acceptér</string>
+    <string name="sync_screen_could_not_delete_local_row">Kunne ikke slette række fra enhed</string>
+    <string name="sync_screen_delete_table_alert_title">Slet tabeldata</string>
+    <string name="sync_screen_delete_table_alert_desc">Slet tabeldata fra enhed</string>
+    <string name="sync_screen_delete_table_alert_content_text">Du er ved at slette dataen fra denne tabel fra enheden.\nDen vil IKKE blive synkroniseret med serveren!</string>
+    <string name="sync_screen_could_not_delete_local_table_rows">Kunne ikke slette rækker fra enhed</string>
+    <string name="sync_screen_dropdown_item_delete">Slet</string>
+    <string name="sync_screen_dropdown_item_edit">Rediger</string>
+
+    <string name="sync_vm_could_not_sync_row">Kunne ikke synkronisere række #%2$d. %1$s</string>
+    <string name="sync_vm_synchronisation_already_running">Synkronisering er allerede i gang. Vent på at den nuværende proces stopper.</string>
+
     <string name="ios_camera_not_available">Kunne ikke starte kameraet. Tjek at appen har adgang til kameraet.</string>
 </resources>

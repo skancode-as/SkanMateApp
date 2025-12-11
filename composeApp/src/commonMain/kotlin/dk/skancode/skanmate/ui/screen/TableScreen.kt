@@ -112,6 +112,7 @@ import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.PanelButton
 import dk.skancode.skanmate.ui.component.AutoSizeText
 import dk.skancode.skanmate.ui.component.ContentDialog
+import dk.skancode.skanmate.ui.component.LocalAuthUser
 import dk.skancode.skanmate.ui.component.SizeValues
 import dk.skancode.skanmate.ui.component.SkanMateTopAppBar
 import dk.skancode.skanmate.ui.component.Switch
@@ -172,6 +173,11 @@ fun TableScreen(
     val audioPlayer = LocalAudioPlayer.current
     val successHaptic = rememberHaptic(HapticKind.Success)
     val errorHaptic = rememberHaptic(HapticKind.Error)
+    val user = LocalAuthUser.current
+
+    LaunchedEffect(user) {
+        viewModel.currentUsername = user.name
+    }
 
     val submitData = {
         focusManager.clearFocus(true)

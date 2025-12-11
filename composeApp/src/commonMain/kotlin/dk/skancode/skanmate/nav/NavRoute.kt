@@ -14,5 +14,8 @@ sealed class NavRoute {
         data object MainScreen: App()
         @Serializable
         data class TableScreen(val tableId: String): App()
+
+        @Serializable
+        data object SyncScreen: App()
     }
 }

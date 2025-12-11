@@ -11,7 +11,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 @OptIn(SealedSerializationApi::class)
-private class ColumnValueSerialDescriptor() : SerialDescriptor {
+internal class ColumnValueSerialDescriptor() : SerialDescriptor {
     override val serialName: String
         get() = ColumnValue::class.qualifiedName ?: "dk.skancode.ColumnValue"
     override val kind: SerialKind
@@ -28,7 +28,7 @@ private class ColumnValueSerialDescriptor() : SerialDescriptor {
         throw IllegalStateException("ColumnValueDescriptor does not have elements")
 }
 
-private object ColumnValueSerializer : KSerializer<ColumnValue> {
+internal object ColumnValueSerializer : KSerializer<ColumnValue> {
     @OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
     override val descriptor: SerialDescriptor = ColumnValueSerialDescriptor()
 
@@ -42,7 +42,7 @@ private object ColumnValueSerializer : KSerializer<ColumnValue> {
             ColumnValue.Null -> encoder.encodeNull()
             is ColumnValue.Numeric -> if (value.num != null) encoder.encodeDouble(value.num.toDouble()) else encoder.encodeNull()
             is ColumnValue.Text -> encoder.encodeString(value.text)
-            is ColumnValue.File -> if (value.objectUrl != null) encoder.encodeString(value.objectUrl) else encoder.encodeNull()
+            is ColumnValue.File -> if (value.objectUrl != null) encoder.encodeString(value.objectUrl) else if (value.localUrl != null) encoder.encodeString(value.localUrl) else encoder.encodeNull()
             is ColumnValue.OptionList -> if (value.selected != null) encoder.encodeString(value.selected) else encoder.encodeNull()
         }
     }

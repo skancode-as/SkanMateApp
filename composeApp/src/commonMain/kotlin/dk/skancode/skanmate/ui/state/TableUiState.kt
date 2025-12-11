@@ -216,3 +216,24 @@ inline fun ColumnUiState.prepare(
 
         else -> this
     }
+
+fun ColumnUiState.prepareLocal(username: String): ColumnUiState =
+    when {
+        value is ColumnValue.Text && hasPrefix -> {
+            copy(
+                value = value.copy(text = this.prefix + value.text)
+            )
+        }
+        value is ColumnValue.Text && hasSuffix -> {
+            copy(
+                value = value.copy(text = value.text + this.suffix)
+            )
+        }
+        type is ColumnType.User -> {
+            copy(
+                value = ColumnValue.Text(text = username)
+            )
+        }
+
+        else -> this
+    }

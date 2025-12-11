@@ -61,5 +61,27 @@
     <string name="table_vm_could_not_select_barcode">That barcode could not be selected</string>
     <string name="table_vm_scan_not_possible_for_col">Scan is not possible for %1$s column</string>
 
+    <string name="sync_screen_title">Synchronisation</string>
+    <plurals name="sync_screen_table_description">
+        <item quantity="one">%1$d row not synchronised</item>
+        <item quantity="other">%1$d rows not synchronised</item>
+    </plurals>
+    <string name="sync_screen_fab_text">Synchronise</string>
+    <string name="sync_screen_delete_row_alert_title">Delete row</string>
+    <string name="sync_screen_delete_row_alert_desc">Delete row from device</string>
+    <string name="sync_screen_delete_row_alert_content_text">You are about to delete this row from the device.\nIt will NOT be synchronized with the server!</string>
+    <string name="sync_screen_delete_row_alert_dismiss_btn">Dismiss</string>
+    <string name="sync_screen_delete_row_alert_accept_btn">Accept</string>
+    <string name="sync_screen_could_not_delete_local_row">Could not delete row from device</string>
+    <string name="sync_screen_delete_table_alert_title">Delete table data</string>
+    <string name="sync_screen_delete_table_alert_desc">Delete table data from device</string>
+    <string name="sync_screen_delete_table_alert_content_text">You are about to delete the data of this table from the device.\nIt will NOT be synchronized with the server!</string>
+    <string name="sync_screen_could_not_delete_local_table_rows">Could not delete rows from device</string>
+    <string name="sync_screen_dropdown_item_delete">Delete</string>
+    <string name="sync_screen_dropdown_item_edit">Edit</string>
+
+    <string name="sync_vm_could_not_sync_row">Could not sync row #%2$d. %1$s</string>
+    <string name="sync_vm_synchronisation_already_running">Synchronisation is already in progress. Wait for the current process to stop.</string>
+
     <string name="ios_camera_not_available">Could not start camera. Make sure the app has permission to access the camera.</string>
 </resources>

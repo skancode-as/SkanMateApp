@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "22e5d7cfb39ed98e2a8defe6d159b014",
+    "identityHash": "c55fef6d3dccc0325ec14459df4b9287",
     "entities": [
       {
         "tableName": "__table_meta",
@@ -44,6 +44,47 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "__table_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tableId` TEXT NOT NULL, `serializedData` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tableId",
+            "columnName": "tableId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serializedData",
+            "columnName": "serializedData",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index___table_data_tableId",
+            "unique": false,
+            "columnNames": [
+              "tableId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index___table_data_tableId` ON `${TABLE_NAME}` (`tableId`)"
+          }
+        ]
       },
       {
         "tableName": "__auth_user",
@@ -196,7 +237,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '22e5d7cfb39ed98e2a8defe6d159b014')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c55fef6d3dccc0325ec14459df4b9287')"
     ]
   }
 }

@@ -8,7 +8,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-private class ColumnTypeSerializer(): KSerializer<ColumnType> {
+object ColumnTypeSerializer: KSerializer<ColumnType> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(
         "dk.skancode.skanmate.ColumnType",
         PrimitiveKind.STRING,

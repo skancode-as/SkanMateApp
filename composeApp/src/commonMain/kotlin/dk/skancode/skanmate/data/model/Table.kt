@@ -53,6 +53,10 @@ data class SubmitRowResponse(
     val msg: String,
     val errors: TableRowErrors? = null,
 )
+data class StoreRowResponse(
+    val ok: Boolean,
+    val exception: Exception?,
+)
 
 @Serializable
 data class FullTableResponseDTO(

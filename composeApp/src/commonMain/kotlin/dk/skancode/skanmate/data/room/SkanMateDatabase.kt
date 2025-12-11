@@ -5,7 +5,16 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 
-@Database(entities = [TableEntity::class, UserEntity::class, TenantEntity::class, SessionEntity::class], version = 1)
+@Database(
+    entities = [
+        TableEntity::class,
+        TableDataEntity::class,
+        UserEntity::class,
+        TenantEntity::class,
+        SessionEntity::class
+    ],
+    version = 1,
+)
 @ConstructedBy(SkanMateDatabaseConstructor::class)
 abstract class SkanMateDatabase: RoomDatabase() {
     abstract fun getTableDao(): TableDao

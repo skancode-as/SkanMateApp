@@ -34,6 +34,7 @@ import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.ui.viewmodel.ConnectivityViewModel
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
 import dk.skancode.skanmate.ui.viewmodel.LocalConnectionState
+import dk.skancode.skanmate.ui.viewmodel.SyncViewModel
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.jsonSerializer
@@ -52,9 +53,11 @@ import kotlinx.coroutines.IO
 
 // TODO: Find less temporary way of initializing stores and services
 // TODO: Haptic feedback (IOS)
+// TODO: Store local data with tenant id, and filter out data not visible for current user
+// TODO: Lock screen orientation
 
 private const val BASE_URL =
-    "https://skanmate.vercel.app/api/v1"
+    "https://skanmate-git-fix-api-tables-post-skan-code-team.vercel.app/api/v1"
 private val httpClient = HttpClient {
     install(ContentNegotiation) {
         json(jsonSerializer)
@@ -104,6 +107,9 @@ fun App() {
     val connectivityViewModel = viewModel {
         ConnectivityViewModel()
     }
+    val syncViewModel = viewModel {
+        SyncViewModel(tableService)
+    }
 
     val scanModule = rememberScanModule()
     val uiCameraController = remember { UiCameraController() }
@@ -131,6 +137,7 @@ fun App() {
                         authViewModel = authViewModel,
                         initializerViewModel = initializerViewModel,
                         tableViewModel = tableViewModel,
+                        syncViewModel = syncViewModel,
                     )
                 }
             }
