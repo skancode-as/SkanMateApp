@@ -145,6 +145,7 @@ import skanmate.composeapp.generated.resources.save
 import skanmate.composeapp.generated.resources.select_placeholder
 import skanmate.composeapp.generated.resources.submit
 import skanmate.composeapp.generated.resources.table_not_found
+import skanmate.composeapp.generated.resources.table_screen_data_remembered_tooltip
 import skanmate.composeapp.generated.resources.table_screen_data_submitted
 import skanmate.composeapp.generated.resources.table_screen_multiple_barcodes
 import skanmate.composeapp.generated.resources.table_screen_multiple_barcodes_desc
@@ -717,7 +718,7 @@ fun TableRememberValueBadge() {
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shadowElevation = 4.dp,
             ) {
-                Text(text = "Feltet huskes efter indsendelse")
+                Text(text = stringResource(Res.string.table_screen_data_remembered_tooltip))
             }
         },
         state = tooltipState,

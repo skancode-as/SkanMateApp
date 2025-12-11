@@ -10,8 +10,9 @@
 
     <string name="main_screen_title">Tables</string>
     <string name="main_screen_could_not_update_tables">Could not refresh tables. Try again.</string>
+    <string name="main_screen_not_available_offline_tooltip">This table is not available without internet connection</string>
 
-    <string name="table_screen_data_remembered">Saved</string>
+    <string name="table_screen_data_remembered_tooltip">Data is remembered after submitting</string>
     <string name="table_screen_data_submitted">Data was submitted successfully</string>
     <string name="table_screen_take_picture">Take picture</string>
     <string name="table_screen_retake_picture">New picture</string>

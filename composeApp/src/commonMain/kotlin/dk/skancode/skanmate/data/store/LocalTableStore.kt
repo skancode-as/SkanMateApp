@@ -1,10 +1,13 @@
 package dk.skancode.skanmate.data.store
 
+import dk.skancode.skanmate.data.model.ColumnModel
 import dk.skancode.skanmate.data.model.LocalRowData
 import dk.skancode.skanmate.data.model.LocalTableData
 import dk.skancode.skanmate.data.model.MutableLocalRowData
+import dk.skancode.skanmate.data.model.OfflineTableSummaryModel
 import dk.skancode.skanmate.data.model.TableModel
 import dk.skancode.skanmate.data.model.TableSummaryModel
+import dk.skancode.skanmate.data.model.UniqueConstraintName
 import dk.skancode.skanmate.data.room.TableDao
 import dk.skancode.skanmate.data.room.TableDataEntity
 import dk.skancode.skanmate.data.room.TableEntity
@@ -22,10 +25,17 @@ class LocalTableStore(
 
     suspend fun loadTableSummaries(): List<TableSummaryModel> {
         return dao.getTables().map { entity ->
-            TableSummaryModel(
+            val columns: List<ColumnModel> = jsonSerializer.decodeFromString(entity.serializedColumns)
+
+            OfflineTableSummaryModel(
                 id = entity.id,
                 name = entity.name,
                 description = entity.description,
+                isAvailableOffline = columns.none { c ->
+                    c.constraints.any { cc ->
+                        cc.name == UniqueConstraintName
+                    }
+                }
             )
         }
     }

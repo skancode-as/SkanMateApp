@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
@@ -30,7 +31,8 @@ fun Badge(
     val contentStyle = contentStyle.merge(textAlign = contentAlign)
 
     val boxModifier = Modifier
-        .background(color, shape)
+        .clip(shape)
+        .background(color)
         .padding(contentPadding)
     Box(
         modifier = boxModifier
