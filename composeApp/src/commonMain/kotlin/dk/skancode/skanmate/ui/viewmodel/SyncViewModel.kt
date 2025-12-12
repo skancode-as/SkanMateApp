@@ -2,13 +2,22 @@ package dk.skancode.skanmate.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dk.skancode.skanmate.ImageData
+import dk.skancode.skanmate.data.model.ColumnValue
+import dk.skancode.skanmate.data.model.LocalColumnValue
 import dk.skancode.skanmate.data.model.LocalTableData
 import dk.skancode.skanmate.data.model.RowData
+import dk.skancode.skanmate.data.service.FileService
 import dk.skancode.skanmate.data.service.TableService
 import dk.skancode.skanmate.ui.state.MutableSyncUiState
 import dk.skancode.skanmate.ui.state.SyncUiState
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -22,6 +31,7 @@ import skanmate.composeapp.generated.resources.sync_vm_synchronisation_already_r
 
 class SyncViewModel(
     private val tableService: TableService,
+    private val fileService: FileService = FileService.instance,
 ): ViewModel() {
     private val _localDataFlow = MutableStateFlow<List<LocalTableData>>(emptyList())
     val localDataFlow: StateFlow<List<LocalTableData>>
@@ -81,44 +91,88 @@ class SyncViewModel(
     private suspend fun syncDataWithServer(data: List<LocalTableData>) {
         val errorMap = mutableMapOf<Long, Map<String, List<InternalStringResource>>>()
 
-        data.forEach { tableData ->
-            val tableId = tableData.model.id
+        val deferred = data.map { tableData ->
+            viewModelScope.async {
+                val tableId = tableData.model.id
 
-            tableData.rows.forEach { localRow ->
-                val columns = localRow.values.toList()
-                val row: RowData = mapOf(
-                    *localRow.entries.map { (key, value) -> key to value.value }.toTypedArray()
-                )
-                val res = tableService.submitRow(
-                    tableId = tableId,
-                    row = row,
-                )
-                if (res.ok) {
-                    if (!tableService.deleteLocalRow(localRow.localRowId)) {
-                        println("Local data was uploaded but not deleted from local db. Row: $localRow")
-                    }
-                } else if (res.errors != null) {
-                    val errors = res.errors.columnErrors.mapNotNull { (k, v) ->
-                        columns.find { col -> col.dbName == k }?.let { col ->
-                            println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}")
-                            col.name to v.map { serverError ->
-                                InternalStringResource(
-                                    Res.string.constraint_error_server,
-                                    listOf(serverError)
-                                )
-                            }
-                        }
-                    }.toTypedArray()
-                    errorMap[localRow.localRowId] = mapOf(*errors)
-                } else {
-                    UserMessageServiceImpl.displayError(
-                        message = InternalStringResource(
-                            resource = Res.string.sync_vm_could_not_sync_row,
-                            args = listOf(res.msg, localRow.localRowId)
+                val deferredRows = tableData.rows.map { localRow ->
+                    viewModelScope.async(Dispatchers.IO) {
+                        val deferred = mutableListOf<Deferred<Unit>>()
+                        val columns = localRow.values.toList()
+                        val row: RowData = mapOf(
+                            *localRow.entries
+                                .map { (key, value) ->
+                                    key to value.prepare(
+                                        fetchAndUploadFile = { localUrl ->
+                                            val imageData = fileService.loadLocalFile(localFilePath = localUrl)
+                                            if (imageData.data == null || imageData.name == null) return@prepare null
+
+                                            val objectUrl = tableService.uploadImage(tableId = tableId, filename = imageData.name, data = imageData.data)
+                                            if (objectUrl == null) null
+                                            else FetchAndUploadFileResponse(imageData, objectUrl)
+                                        },
+                                        queueImageDeletion = { localFileUrl ->
+                                            deferred.add(
+                                                fileService.deleteLocalFileDeferred(
+                                                    localFilePath = localFileUrl,
+                                                    start = CoroutineStart.LAZY,
+                                                    scope = viewModelScope,
+                                                )
+                                            )
+                                        }
+                                    )
+                                }.map { (key, value) ->
+                                    key to value.value
+                                }.toTypedArray()
                         )
-                    )
+
+                        val res = tableService.submitRow(
+                            tableId = tableId,
+                            row = row,
+                        )
+                        if (res.ok) {
+                            if (!tableService.deleteLocalRow(localRow.localRowId)) {
+                                println("Local data was uploaded but not deleted from local db. Row: $localRow")
+                            }
+
+                            if (deferred.isNotEmpty()) {
+                                deferred.forEach { d ->
+                                    d.await()
+                                }
+                            }
+
+                        } else if (res.errors != null) {
+                            val errors = res.errors.columnErrors.mapNotNull { (k, v) ->
+                                columns.find { col -> col.dbName == k }?.let { col ->
+                                    println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}")
+                                    col.name to v.map { serverError ->
+                                        InternalStringResource(
+                                            Res.string.constraint_error_server,
+                                            listOf(serverError)
+                                        )
+                                    }
+                                }
+                            }.toTypedArray()
+                            errorMap[localRow.localRowId] = mapOf(*errors)
+                        } else {
+                            UserMessageServiceImpl.displayError(
+                                message = InternalStringResource(
+                                    resource = Res.string.sync_vm_could_not_sync_row,
+                                    args = listOf(res.msg, localRow.localRowId)
+                                )
+                            )
+                        }
+                    }
+                }
+
+                if (deferredRows.isNotEmpty()) {
+                    deferredRows.forEach { it.await() }
                 }
             }
+        }
+
+        if (deferred.isNotEmpty()) {
+            deferred.forEach { it.await() }
         }
 
         tableService.updateLocalDataFlow()
@@ -128,5 +182,48 @@ class SyncViewModel(
                 synchronisationErrors = errorMap,
             )
         }
+    }
+}
+
+private data class FetchAndUploadFileResponse(val imageData: ImageData, val objectUrl: String)
+private inline fun LocalColumnValue.prepare(
+    fetchAndUploadFile: (localUrl: String) -> FetchAndUploadFileResponse?,
+    queueImageDeletion: (localFileUrl: String) -> Unit,
+): LocalColumnValue {
+    return when(value) {
+        is ColumnValue.File if value.localUrl != null && !value.isUploaded -> {
+            val res = fetchAndUploadFile(value.localUrl)
+
+            println("fetchAndUploadFile res: $res")
+
+            val isUploaded = res != null
+            if (isUploaded) {
+                println("Queueing image deletion")
+                queueImageDeletion(value.localUrl)
+            }
+
+            this.copy(
+                value = value.copy(
+                    fileName = res?.imageData?.name,
+                    bytes = res?.imageData?.data,
+                    objectUrl = res?.objectUrl,
+                    isUploaded = isUploaded,
+                )
+            )
+        }
+
+        is ColumnValue.File if value.localUrl != null && value.isUploaded -> {
+            queueImageDeletion(value.localUrl)
+
+            this
+        }
+
+        is ColumnValue.File if !value.isUploaded -> {
+            this.copy(
+                value = value.copy(objectUrl = "")
+            )
+        }
+
+        else -> this
     }
 }

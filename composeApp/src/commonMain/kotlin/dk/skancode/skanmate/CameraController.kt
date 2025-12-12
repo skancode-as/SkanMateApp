@@ -28,6 +28,10 @@ data class ImageData(
     val name: String?,
     val data: ByteArray?,
 ) {
+    override fun toString(): String {
+        return "ImageData(path: $path, name: $name, dataSize: ${data?.size})"
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

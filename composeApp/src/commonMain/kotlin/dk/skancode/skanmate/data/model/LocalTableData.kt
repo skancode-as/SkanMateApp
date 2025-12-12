@@ -173,10 +173,10 @@ private object LocalColumnValueSerializer: KSerializer<LocalColumnValue> {
 
                 val columnValue = when(type) {
                     ColumnType.Boolean -> ColumnValue.Boolean(checked = value.boolean)
-                    ColumnType.File -> ColumnValue.File(localUrl = value.content)
+                    ColumnType.File -> ColumnValue.File(localUrl = value.contentOrNull)
                     ColumnType.Numeric -> ColumnValue.Numeric(num = value.intOrNull ?: value.doubleOrNull)
-                    ColumnType.Text -> ColumnValue.Text(value.content)
-                    ColumnType.Timestamp -> ColumnValue.Text(value.content)
+                    ColumnType.Text -> ColumnValue.Text(value.contentOrNull ?: "")
+                    ColumnType.Timestamp -> ColumnValue.Text(value.contentOrNull ?: currentDateTimeUTC().formatISO())
                     ColumnType.User -> {
                         val content = value.contentOrNull
                         if (content != null) ColumnValue.Text(content) else ColumnValue.Null

@@ -98,8 +98,10 @@ class TableServiceImpl(
         filename: String,
         data: ByteArray,
     ): String? {
+        println("TableServiceImpl::uploadImage($tableId, $filename, byteCount: ${data.size})")
         val token = _token ?: return null
 
+        println("TableServiceImpl::uploadImage() - Getting presignedURL")
         val urlRes = tableStore.getPresignedURL(
             tableId,
             filename,
@@ -108,6 +110,7 @@ class TableServiceImpl(
 
         if (!urlRes.ok || urlRes.data == null) return null
 
+        println("TableServiceImpl::uploadImage() - uploading to presignedURL: ${urlRes.data.presignedUrl}")
         val uploadRes = tableStore.uploadImage(
             presignedUrl = urlRes.data.presignedUrl,
             data = data,
@@ -116,6 +119,7 @@ class TableServiceImpl(
 
         return when {
             uploadRes.ok -> {
+                println("TableServiceImpl::uploadImage() - image uploaded! ObjectUrl: ${urlRes.data.objectUrl}")
                 urlRes.data.objectUrl
             }
             else -> {

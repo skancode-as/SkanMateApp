@@ -15,8 +15,8 @@ import dk.skancode.skanmate.data.model.rowDataOf
 import dk.skancode.skanmate.data.model.check
 import dk.skancode.skanmate.data.model.localRowDataOf
 import dk.skancode.skanmate.data.service.ConnectivityService
+import dk.skancode.skanmate.data.service.FileService
 import dk.skancode.skanmate.data.service.TableService
-import dk.skancode.skanmate.deleteFile
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.ui.state.MutableTableUiState
 import dk.skancode.skanmate.ui.state.TableUiState
@@ -32,7 +32,6 @@ import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +51,7 @@ class TableViewModel(
     val tableService: TableService,
     val userMessageService: UserMessageService,
     val connectivityService: ConnectivityService = ConnectivityService.instance,
+    val fileService: FileService = FileService.instance,
 ) : ViewModel(), ScanEventHandler {
     private val _tableFlow = MutableStateFlow<List<TableSummaryModel>>(emptyList())
     val tableFlow: StateFlow<List<TableSummaryModel>>
@@ -117,12 +117,11 @@ class TableViewModel(
         println("TableViewModel::setFocusedColumn($id) - new focused column id: ${newState.focusedColumnId}, name: ${newState.columns.find { it.id == newState.focusedColumnId }?.name}")
     }
 
-    fun deleteLocalImage(
-        path: String,
-        start: CoroutineStart = CoroutineStart.DEFAULT
-    ): Deferred<Unit> = viewModelScope.async(start = start) {
+    fun deleteLocalImage(path: String) {
         println("TableViewModel::deleteLocalImage")
-        deleteFile(path)
+        viewModelScope.launch {
+            fileService.deleteLocalFile(localFilePath = path)
+        }
     }
 
     fun validateColumn(column: ColumnUiState, value: ColumnValue): Boolean {
@@ -236,9 +235,10 @@ class TableViewModel(
                         },
                         queueImageDeletion = { localFileUrl ->
                             deferred.add(
-                                deleteLocalImage(
-                                    path = localFileUrl,
-                                    start = CoroutineStart.LAZY
+                                fileService.deleteLocalFileDeferred(
+                                    localFilePath = localFileUrl,
+                                    start = CoroutineStart.LAZY,
+                                    scope = viewModelScope,
                                 )
                             )
                         },
