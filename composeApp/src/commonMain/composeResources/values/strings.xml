@@ -20,6 +20,11 @@
     <string name="table_screen_switch_off">False</string>
     <string name="table_screen_multiple_barcodes">Multiple barcodes found</string>
     <string name="table_screen_multiple_barcodes_desc">Select the barcode you wish to use</string>
+    <string name="table_screen_connection_lost_title">Connection lost</string>
+    <string name="table_screen_connection_lost_content_text_1">Internet connection was lost, and this table is not available without internet connection.</string>
+    <string name="table_screen_connection_lost_content_text_2">You must reconnect in order to finish this data submission.\nIf you are not available to reconnect now, or do not wish to finish this data submission, you can exit to the table menu with the button below.</string>
+    <string name="table_screen_connection_lost_content_text_3">Beware, unsubmitted data will not be saved.</string>
+    <string name="table_screen_connection_lost_exit_btn">Exit</string>
 
     <string name="auth_screen_email_label">Email</string>
     <string name="auth_screen_email_placeholder">Enter Your Email...</string>

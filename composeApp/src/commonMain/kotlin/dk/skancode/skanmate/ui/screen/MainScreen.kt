@@ -2,6 +2,7 @@ package dk.skancode.skanmate.ui.screen
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -112,7 +113,8 @@ fun MainScreen(
     ) { padding ->
         val tables by tableViewModel.tableFlow.collectAsState()
         var isRefreshing by remember { mutableStateOf(false) }
-        PullToRefreshBox(
+        TableCardColumnBox(
+            allowPullToRefresh = LocalConnectionState.current.value,
             isRefreshing = isRefreshing,
             onRefresh = {
                 isRefreshing = true
@@ -144,6 +146,29 @@ fun MainScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun TableCardColumnBox(
+    modifier: Modifier = Modifier,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    allowPullToRefresh: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    if (allowPullToRefresh) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            modifier = modifier,
+        ) {
+            content()
+        }
+    } else {
+        Box(modifier = modifier) {
+            content()
         }
     }
 }

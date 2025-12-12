@@ -70,14 +70,14 @@ data class TableModel(
 @Serializable
 data class ColumnModel(
     val id: String,
-    val dbName: String,
-    val name: String,
-    val width: Float,
-    val type: ColumnType,
-    val constraints: List<ColumnConstraint>,
+    override val dbName: String,
+    override val name: String,
+    override val width: Float,
+    override val type: ColumnType,
+    override val constraints: List<ColumnConstraint>,
     val listOptions: List<String>,
-    val rememberValue: Boolean,
-)
+    override val rememberValue: Boolean,
+): ColumnLike
 
 data class SubmitRowResponse(
     val ok: Boolean,

@@ -83,8 +83,6 @@ class TableServiceImpl(
     }
 
     override suspend fun updateTableFlow(): Boolean {
-        if (!hasConnection()) return false
-
         val token = _token ?: return false
 
         val res = fetchTables(token)

@@ -9,13 +9,16 @@ import androidx.room.Query
 @Dao
 interface TableDao {
     @Insert(onConflict = REPLACE)
-    suspend fun insert(item: TableEntity)
+    suspend fun insertTableEntity(item: TableEntity)
 
     @Query("SELECT * FROM __table_meta WHERE id = :id LIMIT 1")
     suspend fun getTableById(id: String): TableEntity?
 
     @Query("SELECT * FROM __table_meta")
     suspend fun getTables(): List<TableEntity>
+
+    @Query("DELETE FROM __table_meta")
+    suspend fun deleteTableEntities()
 
     @Insert
     suspend fun insertDataRow(data: TableDataEntity)

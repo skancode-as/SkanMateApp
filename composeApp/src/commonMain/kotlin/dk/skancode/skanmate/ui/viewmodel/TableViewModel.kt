@@ -83,6 +83,11 @@ class TableViewModel(
                 _localDataFlow.update { data }
             }
         }
+        viewModelScope.launch {
+            connectivityService.connectionFlow.collect {
+                tableService.updateTableFlow()
+            }
+        }
     }
 
     fun updateTableFlow(cb: (Boolean) -> Unit = {}) {

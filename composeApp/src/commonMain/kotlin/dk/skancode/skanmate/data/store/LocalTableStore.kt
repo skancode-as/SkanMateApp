@@ -7,7 +7,7 @@ import dk.skancode.skanmate.data.model.MutableLocalRowData
 import dk.skancode.skanmate.data.model.OfflineTableSummaryModel
 import dk.skancode.skanmate.data.model.TableModel
 import dk.skancode.skanmate.data.model.TableSummaryModel
-import dk.skancode.skanmate.data.model.UniqueConstraintName
+import dk.skancode.skanmate.data.model.isAvailableOffline
 import dk.skancode.skanmate.data.room.TableDao
 import dk.skancode.skanmate.data.room.TableDataEntity
 import dk.skancode.skanmate.data.room.TableEntity
@@ -18,8 +18,10 @@ class LocalTableStore(
     val dao: TableDao = LocalDbStore.tableDao,
 ) {
     suspend fun storeTableModels(models: List<TableModel>) {
+        dao.deleteTableEntities()
+
         models.forEach { model ->
-            dao.insert(TableEntity.fromModel(model))
+            dao.insertTableEntity(TableEntity.fromModel(model))
         }
     }
 
@@ -31,11 +33,7 @@ class LocalTableStore(
                 id = entity.id,
                 name = entity.name,
                 description = entity.description,
-                isAvailableOffline = columns.none { c ->
-                    c.constraints.any { cc ->
-                        cc.name == UniqueConstraintName
-                    }
-                }
+                isAvailableOffline = columns.isAvailableOffline()
             )
         }
     }

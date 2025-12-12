@@ -20,6 +20,11 @@
     <string name="table_screen_switch_off">Falsk</string>
     <string name="table_screen_multiple_barcodes">Flere stregkoder fundet</string>
     <string name="table_screen_multiple_barcodes_desc">Vælg den ønskede stregkode</string>
+    <string name="table_screen_connection_lost_title">Forbindelse mistet</string>
+    <string name="table_screen_connection_lost_content_text_1">Internet forbindelsen blev mistet, og denne tabel er ikke tilgængelig uden internet forbindelse.</string>
+    <string name="table_screen_connection_lost_content_text_2">Du skal genoprette forbindelsen for at færdiggøre denne dataindsendelse.\nHvis du ikke har mulighed for at genoprette forbindelsen nu, eller ikke ønsker at færdiggøre denne dataindsendelse, kan du gå tilbage til tabelmenuen med knappen nedenfor.</string>
+    <string name="table_screen_connection_lost_content_text_3">Bemærk, at data der ikke er indsendt, ikke vil blive gemt.</string>
+    <string name="table_screen_connection_lost_exit_btn">Gå tilbage</string>
 
     <string name="auth_screen_email_label">Email</string>
     <string name="auth_screen_email_placeholder">Indtast din email...</string>
