@@ -85,8 +85,11 @@
     <string name="sync_screen_could_not_delete_local_table_rows">Could not delete rows from device</string>
     <string name="sync_screen_dropdown_item_delete">Delete</string>
     <string name="sync_screen_dropdown_item_edit">Edit</string>
+    <string name="sync_screen_data_synchronised">Data synchronisation successful</string>
+    <string name="sync_screen_could_not_sync_data">An error occurred during data synchronisation</string>
+    <string name="sync_screen_no_local_data_title">No local data found</string>
+    <string name="sync_screen_no_local_data_content">There is no local data to synchronise with the server.</string>
 
-    <string name="sync_vm_could_not_sync_row">Could not sync row #%2$d. %1$s</string>
     <string name="sync_vm_synchronisation_already_running">Synchronisation is already in progress. Wait for the current process to stop.</string>
 
     <string name="ios_camera_not_available">Could not start camera. Make sure the app has permission to access the camera.</string>

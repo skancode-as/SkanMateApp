@@ -9,27 +9,40 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,16 +70,25 @@ import dk.skancode.skanmate.ui.component.TableColors
 import dk.skancode.skanmate.ui.component.TableDefaults
 import dk.skancode.skanmate.ui.component.TextButton
 import dk.skancode.skanmate.ui.component.fab.FloatingActionButton
+import dk.skancode.skanmate.ui.viewmodel.GENERAL_ROW_ERROR_NAME
 import dk.skancode.skanmate.ui.viewmodel.LocalConnectionState
 import dk.skancode.skanmate.ui.viewmodel.SyncViewModel
 import dk.skancode.skanmate.util.BorderSide
+import dk.skancode.skanmate.util.HapticKind
 import dk.skancode.skanmate.util.InternalStringResource
+import dk.skancode.skanmate.util.LocalAudioPlayer
 import dk.skancode.skanmate.util.animator
+import dk.skancode.skanmate.util.composeString
 import dk.skancode.skanmate.util.darken
+import dk.skancode.skanmate.util.rememberHaptic
 import dk.skancode.skanmate.util.rememberMutableStateOf
 import dk.skancode.skanmate.util.singleSideBorder
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import dk.skancode.skanmate.util.titleTextStyle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
@@ -74,6 +96,8 @@ import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.cloud_upload
 import skanmate.composeapp.generated.resources.sync_screen_could_not_delete_local_row
 import skanmate.composeapp.generated.resources.sync_screen_could_not_delete_local_table_rows
+import skanmate.composeapp.generated.resources.sync_screen_could_not_sync_data
+import skanmate.composeapp.generated.resources.sync_screen_data_synchronised
 import skanmate.composeapp.generated.resources.sync_screen_delete_row_alert_accept_btn
 import skanmate.composeapp.generated.resources.sync_screen_delete_row_alert_desc
 import skanmate.composeapp.generated.resources.sync_screen_delete_row_alert_content_text
@@ -83,6 +107,8 @@ import skanmate.composeapp.generated.resources.sync_screen_delete_table_alert_co
 import skanmate.composeapp.generated.resources.sync_screen_delete_table_alert_desc
 import skanmate.composeapp.generated.resources.sync_screen_delete_table_alert_title
 import skanmate.composeapp.generated.resources.sync_screen_fab_text
+import skanmate.composeapp.generated.resources.sync_screen_no_local_data_content
+import skanmate.composeapp.generated.resources.sync_screen_no_local_data_title
 import skanmate.composeapp.generated.resources.sync_screen_table_description
 import skanmate.composeapp.generated.resources.sync_screen_title
 
@@ -94,6 +120,9 @@ fun SyncScreen(
     val hasConnection by LocalConnectionState.current
     val data by viewModel.localDataFlow.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val audioPlayer = LocalAudioPlayer.current
+    val successHaptic = rememberHaptic(HapticKind.Success)
+    val errorHaptic = rememberHaptic(HapticKind.Error)
 
     KeyboardAwareScaffold(
         topBar = {
@@ -115,8 +144,28 @@ fun SyncScreen(
         },
         floatingActionButton = {
             SyncFloatingActionButton(
-                onClick = { viewModel.synchroniseLocalData(data) },
-                isVisible = hasConnection,
+                onClick = {
+                    viewModel.synchroniseLocalData(data) { ok ->
+                        if (ok) {
+                            UserMessageServiceImpl.displayMessage(
+                                message = InternalStringResource(
+                                    Res.string.sync_screen_data_synchronised,
+                                ),
+                            )
+                            audioPlayer.playSuccess()
+                            successHaptic.start()
+                        } else {
+                            UserMessageServiceImpl.displayError(
+                                message = InternalStringResource(
+                                    resource = Res.string.sync_screen_could_not_sync_data
+                                )
+                            )
+                            audioPlayer.playError()
+                            errorHaptic.start()
+                        }
+                    }
+                },
+                isVisible = hasConnection && data.isNotEmpty(),
                 isLoading = uiState.isLoading
             )
         },
@@ -126,14 +175,51 @@ fun SyncScreen(
                 .padding(paddingValues = padding)
                 .padding(all = 16.dp),
         ) {
-            LocalDataTables(
-                data = data,
-                onDeleteRow = { localRowId, cb ->
-                    viewModel.deleteLocalRow(localRowId, cb)
-                },
-                onDeleteTableData = { tableId, cb ->
-                    viewModel.deleteLocalTableRows(tableId, cb)
+            when {
+                data.isEmpty() -> {
+                    NoLocalDataFound()
                 }
+                data.isNotEmpty() -> {
+                    LocalDataTables(
+                        data = data,
+                        onDeleteRow = { localRowId, cb ->
+                            viewModel.deleteLocalRow(localRowId, cb)
+                        },
+                        onDeleteTableData = { tableId, cb ->
+                            viewModel.deleteLocalTableRows(tableId, cb)
+                        },
+                        errorMap = uiState.synchronisationErrors
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NoLocalDataFound(
+    modifier: Modifier = Modifier,
+) {
+    ElevatedCard(
+        modifier = modifier,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.sync_screen_no_local_data_title),
+                style = titleTextStyle(),
+            )
+
+            Text(
+                text = stringResource(Res.string.sync_screen_no_local_data_content),
+                style = LocalLabelTextStyle.current,
             )
         }
     }
@@ -179,21 +265,37 @@ fun SyncFloatingActionButton(
 
 @Composable
 fun LocalDataTables(
+    modifier: Modifier = Modifier,
     data: List<LocalTableData>,
     onDeleteRow: (localRowId: Long, cb: (Boolean) -> Unit) -> Unit,
     onDeleteTableData: (tableId: String, cb: (Boolean) -> Unit) -> Unit,
-    modifier: Modifier = Modifier,
+    errorMap: Map<Long, Map<String, List<InternalStringResource>>>,
 ) {
+    val expandedStates = remember { mutableStateListOf(*data.map { false }.toTypedArray()) }
+
+    LaunchedEffect(errorMap) {
+        if (errorMap.isNotEmpty()) {
+            for (i in 0..<expandedStates.size) {
+                expandedStates[i] = true
+            }
+        }
+    }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        data.forEach {
+        data.forEachIndexed { i, it ->
             LocalTableDataItem(
                 item = it,
                 onDeleteRow = onDeleteRow,
                 onDeleteTableData = onDeleteTableData,
+                expanded = expandedStates[i],
+                setExpanded = {
+                    expandedStates[i] = it
+                },
+                errorMap = errorMap,
             )
         }
     }
@@ -205,10 +307,17 @@ fun LocalTableDataItem(
     item: LocalTableData,
     onDeleteRow: (localRowId: Long, cb: (Boolean) -> Unit) -> Unit,
     onDeleteTableData: (tableId: String, cb: (Boolean) -> Unit) -> Unit,
+    expanded: Boolean,
+    setExpanded: (Boolean) -> Unit,
+    errorMap: Map<Long, Map<String, List<InternalStringResource>>>
 ) {
-    var expanded                 by rememberMutableStateOf(false)
-    var rowIdToDelete: Long?     by rememberMutableStateOf(null)
+    var rowIdToDelete: Long? by rememberMutableStateOf(null)
     var tableIdToDelete: String? by rememberMutableStateOf(null)
+    val expandedIconAnimator = animator(0f, -90f)
+
+    LaunchedEffect(expanded) {
+        expandedIconAnimator.animateTo(if (expanded) -90f else 0f)
+    }
 
     if (rowIdToDelete != null) {
         var isDeleting by rememberMutableStateOf(false)
@@ -293,17 +402,14 @@ fun LocalTableDataItem(
                         style = LocalLabelTextStyle.current,
                     )
                 }
-
-                val animator = animator(0f, -90f)
                 IconButton(
                     onClick = {
-                        expanded = !expanded
-                        animator.animateTo(if (expanded) -90f else 0f)
+                        setExpanded(!expanded)
                     },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = LocalContentColor.current),
                     elevation = CustomButtonElevation.None,
                 ) {
-                    val rotation by animator.value
+                    val rotation by expandedIconAnimator.value
                     Icon(
                         modifier = Modifier.rotate(degrees = rotation),
                         imageVector = Icons.AutoMirrored.Default.KeyboardArrowLeft,
@@ -321,6 +427,11 @@ fun LocalTableDataItem(
                 val actionPadding = PaddingValues(12.dp)
                 val cellPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
 
+                val hasGeneralError =
+                    errorMap.isNotEmpty() && errorMap.values.none { rowErrorMap ->
+                        rowErrorMap[GENERAL_ROW_ERROR_NAME] == null
+                    }
+
                 Table(
                     columnCount = item.model.columns.size + 1,
                     rowCount = item.rows.size,
@@ -333,12 +444,24 @@ fun LocalTableDataItem(
                                     arrangement = Arrangement.Center,
                                     contentPadding = PaddingValues(0.dp),
                                 ) {
+                                    if (hasGeneralError) {
+                                        ErrorIconButton(
+                                            onClick = {},
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = Color.Transparent,
+                                                contentColor = Color.Transparent,
+                                                disabledContainerColor = Color.Transparent,
+                                                disabledContentColor = Color.Transparent,
+                                            ),
+                                            enabled = false,
+                                        )
+                                    }
+
                                     IconButton(
                                         onClick = { tableIdToDelete = item.model.id },
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                         elevation = CustomButtonElevation.None,
                                         contentPadding = actionPadding,
-                                        //sizeValues = SizeValues(minHeight = DefaultBaseCellHeight, maxHeight = DefaultBaseCellHeight),
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Delete,
@@ -347,16 +470,18 @@ fun LocalTableDataItem(
                                     }
                                 }
                             }
+
                             else -> {
                                 val columns = item.model.columns
-                                val column = columns[colIdx-1]
+                                val column = columns[colIdx - 1]
                                 val containerColor = headerColors.containerColor()
 
                                 HeaderCell(
                                     modifier = Modifier
                                         .singleSideBorder(
                                             width = Dp.Hairline,
-                                            color = MaterialTheme.colorScheme.outline.copy(alpha = .8f).compositeOver(containerColor),
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = .8f)
+                                                .compositeOver(containerColor),
                                             side = BorderSide.Left,
                                         ),
                                     name = column.name,
@@ -368,13 +493,33 @@ fun LocalTableDataItem(
                     },
                     rowColors = rowColors,
                 ) { colIdx, rowIndex ->
+                    val row = item.rows[rowIndex]
+                    val rowErrors = errorMap[row.localRowId] ?: emptyMap()
+
                     when (colIdx) {
                         0 -> {
+                            val errors = rowErrors[GENERAL_ROW_ERROR_NAME] ?: emptyList()
+
                             BaseCell(
                                 containerColor = rowColors.containerColor(),
                                 arrangement = Arrangement.Center,
                                 contentPadding = PaddingValues(0.dp),
                             ) {
+                                if (errors.isNotEmpty()) {
+                                    CellErrorIcon(errors = errors)
+                                } else if (hasGeneralError) {
+                                    ErrorIconButton(
+                                        onClick = {},
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = Color.Transparent,
+                                            contentColor = Color.Transparent,
+                                            disabledContainerColor = Color.Transparent,
+                                            disabledContentColor = Color.Transparent,
+                                        ),
+                                        enabled = false,
+                                    )
+                                }
+
                                 TableActions(
                                     onEdit = {},
                                     onDelete = {
@@ -384,25 +529,29 @@ fun LocalTableDataItem(
                                 )
                             }
                         }
+
                         else -> {
-                            val columnDef = item.model.columns[colIdx-1]
-                            val cell = item.rows[rowIndex][columnDef.dbName]
+                            val columnDef = item.model.columns[colIdx - 1]
+                            val cell = row[columnDef.dbName]
                                 ?: error("Could not find element at col: $colIdx, row: $rowIndex")
                             val containerColor = rowColors.containerColor()
+                            val errors = rowErrors[columnDef.dbName] ?: emptyList()
 
                             BaseCell(
                                 modifier = Modifier
                                     .singleSideBorder(
                                         width = Dp.Hairline,
-                                        color = MaterialTheme.colorScheme.outline.copy(alpha = .8f).compositeOver(containerColor),
+                                        color = MaterialTheme.colorScheme.outline.copy(alpha = .8f)
+                                            .compositeOver(containerColor),
                                         side = BorderSide.Left,
                                     ),
                                 containerColor = containerColor,
                                 contentPadding = cellPadding,
                             ) {
                                 DataRowContent(
-                                    cell.type,
-                                    cell.value,
+                                    type = cell.type,
+                                    value = cell.value,
+                                    errors = errors,
                                 )
                             }
                         }
@@ -479,7 +628,10 @@ fun DeleteAlert(
 
     ContentDialog(
         closable = enabled,
-        properties = DialogProperties(dismissOnBackPress = enabled, dismissOnClickOutside = enabled),
+        properties = DialogProperties(
+            dismissOnBackPress = enabled,
+            dismissOnClickOutside = enabled
+        ),
         onDismissRequest = onDismiss,
         contentPadding = padding,
         title = {
@@ -501,7 +653,10 @@ fun TableActions(
     enabled: Boolean = true,
 ) {
     SkanMateDropdown(
-        buttonSizeValues = SizeValues(minHeight = DefaultBaseCellHeight, maxHeight = DefaultBaseCellHeight),
+        buttonSizeValues = SizeValues(
+            minHeight = DefaultBaseCellHeight,
+            maxHeight = DefaultBaseCellHeight
+        ),
         enabled = enabled,
         contentPadding = padding,
         aspectRatio = 1f,
@@ -536,20 +691,88 @@ fun TableActions(
 fun DataRowContent(
     type: ColumnType,
     value: ColumnValue,
+    errors: List<InternalStringResource>,
 ) {
-    val text = when(value) {
-        is ColumnValue.Boolean ->    value.checked.toString()
-        is ColumnValue.File ->       if(value.localUrl != null) "Image" else "No image stored"
-        is ColumnValue.Numeric ->    value.num?.toString() ?: "No numeric value"
+    val text = when (value) {
+        is ColumnValue.Boolean -> value.checked.toString()
+        is ColumnValue.File -> if (value.localUrl != null) "Image" else "No image stored"
+        is ColumnValue.Numeric -> value.num?.toString() ?: "No numeric value"
         is ColumnValue.OptionList -> value.selected ?: "No value selected"
-        is ColumnValue.Text ->       value.text
-        ColumnValue.Null ->          "No value"
+        is ColumnValue.Text -> value.text
+        ColumnValue.Null -> "No value"
     }
 
     Text(
         text = text,
         style = LocalLabelTextStyle.current,
     )
+
+    if (errors.isNotEmpty()) {
+        Spacer(modifier = Modifier.width(8.dp))
+        CellErrorIcon(errors = errors)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CellErrorIcon(
+    errors: List<InternalStringResource>,
+) {
+    val tooltipState = rememberTooltipState(
+        isPersistent = true,
+    )
+    val scope = CoroutineScope(Dispatchers.IO)
+
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            TooltipAnchorPosition.Above
+        ),
+        tooltip = {
+            PlainTooltip(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
+                shadowElevation = 4.dp,
+            ) {
+                errors.forEach { res ->
+                    Text(
+                        text = res.composeString()
+                    )
+                }
+            }
+        },
+        state = tooltipState,
+    ) {
+        ErrorIconButton(
+            onClick = {
+                scope.launch { tooltipState.show() }
+            },
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error,
+            ),
+        )
+    }
+}
+
+@Composable
+fun ErrorIconButton(
+    onClick: () -> Unit,
+    colors: ButtonColors = ButtonDefaults.outlinedButtonColors(
+        contentColor = MaterialTheme.colorScheme.error,
+    ),
+    enabled: Boolean = true,
+) {
+
+    IconButton(
+        onClick = onClick,
+        colors = colors,
+        elevation = CustomButtonElevation.None,
+        enabled = enabled,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = "CellErrorIcon"
+        )
+    }
 }
 
 @Composable
@@ -586,8 +809,7 @@ fun BaseCell(
         modifier = modifier
             .background(color = containerColor, shape = shape)
             .padding(paddingValues = contentPadding)
-            .requiredHeight(height = height)
-        ,
+            .requiredHeight(height = height),
         horizontalArrangement = arrangement,
         verticalAlignment = Alignment.CenterVertically,
     ) {

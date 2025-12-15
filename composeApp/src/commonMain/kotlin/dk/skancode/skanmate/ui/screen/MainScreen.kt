@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.TooltipState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
@@ -226,46 +227,57 @@ fun TableCard(
             }
 
             if (!enabled) {
-                TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                        TooltipAnchorPosition.Above
-                    ),
-                    tooltip = {
-                        PlainTooltip(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            shadowElevation = 4.dp,
-                        ) {
-                            Text(text = stringResource(Res.string.main_screen_not_available_offline_tooltip))
-                        }
-                    },
-                    state = tooltipState,
-                ) {
-                    Badge(
-                        modifier = Modifier
-                            .clickable(
-                                interactionSource = null,
-                                indication = null,
-                            ) {
-                                scope.launch {
-                                    tooltipState.show()
-                                }
-                            },
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.background,
-                        contentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.8f).compositeOver(Color.White),
-                        contentStyle = MaterialTheme.typography.labelMedium,
-                        contentPadding = PaddingValues(6.dp),
-                    ) {
-                        Icon(
-                            modifier = Modifier.size(18.dp),
-                            imageVector = vectorResource(Res.drawable.wifi_off),
-                            contentDescription = "ColumnSavedIcon",
-                        )
-                    }
-                }
+                TableNotAvailableIcon(
+                    tooltipState = tooltipState,
+                    scope = scope,
+                )
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TableNotAvailableIcon(
+    tooltipState: TooltipState,
+    scope: CoroutineScope,
+) {
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            TooltipAnchorPosition.Above
+        ),
+        tooltip = {
+            PlainTooltip(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shadowElevation = 4.dp,
+            ) {
+                Text(text = stringResource(Res.string.main_screen_not_available_offline_tooltip))
+            }
+        },
+        state = tooltipState,
+    ) {
+        Badge(
+            modifier = Modifier
+                .clickable(
+                    interactionSource = null,
+                    indication = null,
+                ) {
+                    scope.launch {
+                        tooltipState.show()
+                    }
+                },
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.8f).compositeOver(Color.White),
+            contentStyle = MaterialTheme.typography.labelMedium,
+            contentPadding = PaddingValues(6.dp),
+        ) {
+            Icon(
+                modifier = Modifier.size(18.dp),
+                imageVector = vectorResource(Res.drawable.wifi_off),
+                contentDescription = "TableNotAvailableIcon",
+            )
+        }
+    }
+}

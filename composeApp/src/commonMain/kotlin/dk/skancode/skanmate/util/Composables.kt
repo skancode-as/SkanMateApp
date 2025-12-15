@@ -79,6 +79,11 @@ inline fun <reified T> rememberMutableStateOf(value: T): MutableState<T> {
 }
 
 @Composable
+inline fun <reified T> rememberMutableStateOf(key1: Any?, value: T): MutableState<T> {
+    return remember(key1 = key1) { mutableStateOf(value) }
+}
+
+@Composable
 inline fun <reified T> rememberStateOf(value: T): State<T> {
     return remember { mutableStateOf(value) }
 }

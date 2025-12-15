@@ -26,8 +26,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.constraint_error_server
-import skanmate.composeapp.generated.resources.sync_vm_could_not_sync_row
 import skanmate.composeapp.generated.resources.sync_vm_synchronisation_already_running
+
+const val GENERAL_ROW_ERROR_NAME = "general_error"
 
 class SyncViewModel(
     private val tableService: TableService,
@@ -69,26 +70,33 @@ class SyncViewModel(
         }
     }
 
-    fun synchroniseLocalData(data: List<LocalTableData>) {
+    fun synchroniseLocalData(data: List<LocalTableData>, cb: (Boolean) -> Unit = {}) {
         if (mutex.isLocked) {
             UserMessageServiceImpl.displayError(
                 message = InternalStringResource(
                     resource = Res.string.sync_vm_synchronisation_already_running,
                 )
             )
+            cb(false)
             return
         }
 
         _uiState.update { it.copy(isLoading = true, synchronisationErrors = emptyMap()) }
         viewModelScope.launch {
-            mutex.withLock {
+            val synchronisationErrors = mutex.withLock {
                 syncDataWithServer(data)
             }
-            _uiState.update { it.copy(isLoading = false) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    synchronisationErrors = synchronisationErrors,
+                )
+            }
+            cb(synchronisationErrors.isEmpty())
         }
     }
 
-    private suspend fun syncDataWithServer(data: List<LocalTableData>) {
+    private suspend fun syncDataWithServer(data: List<LocalTableData>): Map<Long, Map<String, List<InternalStringResource>>> {
         val errorMap = mutableMapOf<Long, Map<String, List<InternalStringResource>>>()
 
         val deferred = data.map { tableData ->
@@ -98,7 +106,6 @@ class SyncViewModel(
                 val deferredRows = tableData.rows.map { localRow ->
                     viewModelScope.async(Dispatchers.IO) {
                         val deferred = mutableListOf<Deferred<Unit>>()
-                        val columns = localRow.values.toList()
                         val row: RowData = mapOf(
                             *localRow.entries
                                 .map { (key, value) ->
@@ -143,24 +150,27 @@ class SyncViewModel(
 
                         } else if (res.errors != null) {
                             val errors = res.errors.columnErrors.mapNotNull { (k, v) ->
-                                columns.find { col -> col.dbName == k }?.let { col ->
-                                    println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}")
-                                    col.name to v.map { serverError ->
-                                        InternalStringResource(
-                                            Res.string.constraint_error_server,
-                                            listOf(serverError)
-                                        )
-                                    }
+                                k to v.map { serverError ->
+                                    InternalStringResource(
+                                        Res.string.constraint_error_server,
+                                        listOf(serverError)
+                                    )
                                 }
                             }.toTypedArray()
                             errorMap[localRow.localRowId] = mapOf(*errors)
                         } else {
-                            UserMessageServiceImpl.displayError(
-                                message = InternalStringResource(
-                                    resource = Res.string.sync_vm_could_not_sync_row,
-                                    args = listOf(res.msg, localRow.localRowId)
+                            errorMap[localRow.localRowId] = mapOf(GENERAL_ROW_ERROR_NAME to listOf(
+                                InternalStringResource(
+                                    Res.string.constraint_error_server,
+                                    listOf(res.msg)
                                 )
-                            )
+                            ))
+//                            UserMessageServiceImpl.displayError(
+//                                message = InternalStringResource(
+//                                    resource = Res.string.sync_vm_could_not_sync_row,
+//                                    args = listOf(res.msg, localRow.localRowId)
+//                                )
+//                            )
                         }
                     }
                 }
@@ -176,12 +186,7 @@ class SyncViewModel(
         }
 
         tableService.updateLocalDataFlow()
-
-        _uiState.update {
-            it.copy(
-                synchronisationErrors = errorMap,
-            )
-        }
+        return errorMap
     }
 }
 

@@ -57,7 +57,7 @@ import kotlinx.coroutines.IO
 // TODO: Lock screen orientation
 
 private const val BASE_URL =
-    "https://skanmate-git-fix-api-tables-post-skan-code-team.vercel.app/api/v1"
+    "https://skanmate.vercel.app/api/v1"
 private val httpClient = HttpClient {
     install(ContentNegotiation) {
         json(jsonSerializer)

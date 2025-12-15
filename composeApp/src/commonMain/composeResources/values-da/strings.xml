@@ -85,8 +85,11 @@
     <string name="sync_screen_could_not_delete_local_table_rows">Kunne ikke slette rækker fra enhed</string>
     <string name="sync_screen_dropdown_item_delete">Slet</string>
     <string name="sync_screen_dropdown_item_edit">Rediger</string>
+    <string name="sync_screen_data_synchronised">Data synkronisering succesfuld</string>
+    <string name="sync_screen_could_not_sync_data">Der skete en fejl ved data synkronisering</string>
+    <string name="sync_screen_no_local_data_title">Ingen data fundet på enheden</string>
+    <string name="sync_screen_no_local_data_content">Der er ingen data som mangler at blive synkroniseret med serveren.</string>
 
-    <string name="sync_vm_could_not_sync_row">Kunne ikke synkronisere række #%2$d. %1$s</string>
     <string name="sync_vm_synchronisation_already_running">Synkronisering er allerede i gang. Vent på at den nuværende proces stopper.</string>
 
     <string name="ios_camera_not_available">Kunne ikke starte kameraet. Tjek at appen har adgang til kameraet.</string>
