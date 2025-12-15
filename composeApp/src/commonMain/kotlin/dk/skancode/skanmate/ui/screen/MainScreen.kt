@@ -81,8 +81,14 @@ fun MainScreen(
 ) {
     val errorHaptic = rememberHaptic(HapticKind.Error)
 
+    val tables by tableViewModel.tableFlow.collectAsState()
+    var isRefreshing by remember { mutableStateOf(tables.isEmpty()) }
+
     LaunchedEffect(tableViewModel) {
         tableViewModel.resetUiState()
+        tableViewModel.updateTableFlow {
+            isRefreshing = false
+        }
     }
 
     Scaffold(
@@ -112,8 +118,6 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        val tables by tableViewModel.tableFlow.collectAsState()
-        var isRefreshing by remember { mutableStateOf(false) }
         TableCardColumnBox(
             allowPullToRefresh = LocalConnectionState.current.value,
             isRefreshing = isRefreshing,
@@ -137,10 +141,12 @@ fun MainScreen(
                     .fillMaxSize()
                     .padding(vertical = 20.dp, horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
-
-                ) {
-                items(tables) { table ->
-                    TableCard(table = table) {
+            ) {
+                items(items = tables) { table ->
+                    TableCard(
+                        modifier = Modifier.animateItem(),
+                        table = table,
+                    ) {
                         navigateTable(
                             NavRoute.App.TableScreen(tableId = table.id),
                         )

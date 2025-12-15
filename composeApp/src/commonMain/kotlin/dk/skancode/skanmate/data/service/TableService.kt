@@ -2,6 +2,7 @@ package dk.skancode.skanmate.data.service
 
 import dk.skancode.skanmate.data.model.LocalRowData
 import dk.skancode.skanmate.data.model.LocalTableData
+import dk.skancode.skanmate.data.model.OfflineTableSummaryModel
 import dk.skancode.skanmate.data.model.RowData
 import dk.skancode.skanmate.data.model.StoreRowResponse
 import dk.skancode.skanmate.data.model.SubmitRowResponse
@@ -9,6 +10,7 @@ import dk.skancode.skanmate.data.model.TableModel
 import dk.skancode.skanmate.data.model.TableRowErrors
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.data.model.TenantModel
+import dk.skancode.skanmate.data.model.isAvailableOffline
 import dk.skancode.skanmate.data.store.LocalTableStore
 import dk.skancode.skanmate.data.store.TableStore
 import dk.skancode.skanmate.util.InternalStringResource
@@ -80,9 +82,12 @@ class TableServiceImpl(
         }
     }
 
-    private fun resetDataFlows() {
+    private suspend fun resetDataFlows() {
         _tableFlow.resetReplayCache()
+        _tableFlow.emit(emptyList())
+
         _localDataFlow.resetReplayCache()
+        _localDataFlow.emit(emptyList())
     }
 
     private suspend fun updateDataFlows() {
@@ -227,25 +232,23 @@ class TableServiceImpl(
         }
 
         val res = tableStore.fetchTableSummaries(token)
-
         if (!res.ok || res.data == null){
             return emptyList()
         }
 
         val summaries = res.data.map { it.toModel() }
-
-        externalScope.launch {
-            println("Storing table data locally for offline use")
-
-            println("fetching table info for each table id")
-            val models = summaries.mapNotNull { summary ->
-                fetchTable(summary.id)
-            }
-            println("[DONE]: fetching table info for each table id: $models")
-            localTableStore.storeTableModels(models = models, tenantId = tenantId)
-            println("table info has been saved")
+        val models = summaries.mapNotNull { summary ->
+            fetchTable(summary.id)
         }
+        localTableStore.storeTableModels(models = models, tenantId = tenantId)
 
-        return summaries
+        return models.map { model ->
+            OfflineTableSummaryModel(
+                id = model.id,
+                name = model.name,
+                description = model.description,
+                isAvailableOffline = model.columns.isAvailableOffline()
+            )
+        }
     }
 }
