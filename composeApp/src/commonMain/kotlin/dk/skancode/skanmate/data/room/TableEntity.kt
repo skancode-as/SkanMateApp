@@ -13,10 +13,12 @@ data class TableEntity(
     val name: String,
     val description: String?,
     val serializedColumns: String,
+    val tenantId: String,
 ) {
     companion object {
         fun fromModel(
             model: TableModel,
+            tenantId: String,
             serializer: Json = jsonSerializer
         ): TableEntity {
             return TableEntity(
@@ -25,6 +27,7 @@ data class TableEntity(
                 name = model.name,
                 description = model.description,
                 serializedColumns = serializer.encodeToString(model.columns),
+                tenantId = tenantId
             )
         }
     }

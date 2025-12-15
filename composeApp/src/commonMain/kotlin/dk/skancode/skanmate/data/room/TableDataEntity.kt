@@ -8,5 +8,6 @@ import androidx.room.PrimaryKey
 data class TableDataEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(index = true) val tableId: String,
+    @ColumnInfo(index = true) val tenantId: String,
     val serializedData: String,
 )

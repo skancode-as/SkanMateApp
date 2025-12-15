@@ -17,16 +17,16 @@ import dk.skancode.skanmate.util.reduceDefault
 class LocalTableStore(
     val dao: TableDao = LocalDbStore.tableDao,
 ) {
-    suspend fun storeTableModels(models: List<TableModel>) {
-        dao.deleteTableEntities()
+    suspend fun storeTableModels(models: List<TableModel>, tenantId: String) {
+        dao.deleteTableEntities(tenantId)
 
         models.forEach { model ->
-            dao.insertTableEntity(TableEntity.fromModel(model))
+            dao.insertTableEntity(TableEntity.fromModel(model = model, tenantId = tenantId))
         }
     }
 
-    suspend fun loadTableSummaries(): List<TableSummaryModel> {
-        return dao.getTables().map { entity ->
+    suspend fun loadTableSummaries(tenantId: String): List<TableSummaryModel> {
+        return dao.getTables(tenantId = tenantId).map { entity ->
             val columns: List<ColumnModel> = jsonSerializer.decodeFromString(entity.serializedColumns)
 
             OfflineTableSummaryModel(
@@ -50,17 +50,18 @@ class LocalTableStore(
         }
     }
 
-    suspend fun storeRowData(tableId: String, rowData: LocalRowData) {
+    suspend fun storeRowData(tableId: String, tenantId: String, rowData: LocalRowData) {
         dao.insertDataRow(
             data = TableDataEntity(
                 tableId = tableId,
+                tenantId = tenantId,
                 serializedData = jsonSerializer.encodeToString(rowData)
             )
         )
     }
 
-    suspend fun loadRowData(): List<LocalTableData> {
-        val entities = dao.getDataRows()
+    suspend fun loadRowData(tenantId: String): List<LocalTableData> {
+        val entities = dao.getDataRows(tenantId = tenantId)
 
         val map: Map<String, List<LocalRowData>> = entities.reduceDefault(mutableMapOf()) { acc, cur ->
             val rowData: MutableLocalRowData = try {
@@ -89,7 +90,14 @@ class LocalTableStore(
     }
 
     suspend fun deleteRowData(rowId: Long): Int {
-        return dao.deleteDataRow(TableDataEntity(rowId, "", ""))
+        return dao.deleteDataRow(
+            TableDataEntity(
+                id = rowId,
+                tableId = "",
+                tenantId = "",
+                serializedData = ""
+            )
+        )
     }
 
     suspend fun deleteTableRows(tableId: String): Int {

@@ -14,11 +14,11 @@ interface TableDao {
     @Query("SELECT * FROM __table_meta WHERE id = :id LIMIT 1")
     suspend fun getTableById(id: String): TableEntity?
 
-    @Query("SELECT * FROM __table_meta")
-    suspend fun getTables(): List<TableEntity>
+    @Query("SELECT * FROM __table_meta WHERE tenantId = :tenantId")
+    suspend fun getTables(tenantId: String): List<TableEntity>
 
-    @Query("DELETE FROM __table_meta")
-    suspend fun deleteTableEntities()
+    @Query("DELETE FROM __table_meta WHERE tenantId = :tenantId")
+    suspend fun deleteTableEntities(tenantId: String)
 
     @Insert
     suspend fun insertDataRow(data: TableDataEntity)
@@ -28,8 +28,8 @@ interface TableDao {
     @Query("DELETE FROM __table_data WHERE tableId = :tableId")
     suspend fun deleteTableDataRows(tableId: String): Int
 
-    @Query("SELECT * FROM __table_data")
-    suspend fun getDataRows(): List<TableDataEntity>
+    @Query("SELECT * FROM __table_data WHERE tenantId = :tenantId")
+    suspend fun getDataRows(tenantId: String): List<TableDataEntity>
 
     @Query("SELECT * FROM __table_data WHERE tableId = :tableId")
     suspend fun getDataRowsForTable(tableId: String): List<TableDataEntity>

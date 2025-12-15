@@ -81,6 +81,7 @@ private val authService = AuthServiceImpl(
 private val tableService = TableServiceImpl(
     tableStore = tableStore,
     tokenFlow = authService.tokenFlow,
+    tenantFlow = authService.tenantFlow,
     localTableStore = LocalTableStore(),
     externalScope = CoroutineScope(Dispatchers.IO)
 )

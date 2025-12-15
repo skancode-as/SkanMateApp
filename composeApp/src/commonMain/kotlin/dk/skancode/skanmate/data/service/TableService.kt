@@ -8,6 +8,7 @@ import dk.skancode.skanmate.data.model.SubmitRowResponse
 import dk.skancode.skanmate.data.model.TableModel
 import dk.skancode.skanmate.data.model.TableRowErrors
 import dk.skancode.skanmate.data.model.TableSummaryModel
+import dk.skancode.skanmate.data.model.TenantModel
 import dk.skancode.skanmate.data.store.LocalTableStore
 import dk.skancode.skanmate.data.store.TableStore
 import dk.skancode.skanmate.util.InternalStringResource
@@ -39,6 +40,7 @@ class TableServiceImpl(
     val tableStore: TableStore,
     val localTableStore: LocalTableStore,
     tokenFlow: SharedFlow<String?>,
+    tenantFlow: SharedFlow<TenantModel?>,
     val externalScope: CoroutineScope,
     val connectivityService: ConnectivityService = ConnectivityService.instance,
 ) : TableService {
@@ -51,6 +53,7 @@ class TableServiceImpl(
         get() = _localDataFlow
 
     private var _token: String? = null
+    private var _tenant: TenantModel? = null
     private suspend fun hasConnection(): Boolean = connectivityService.isConnected()
 
     init {
@@ -58,15 +61,33 @@ class TableServiceImpl(
             updateLocalDataFlow()
         }
         externalScope.launch {
-            tokenFlow.collect { token ->
-                _token = token
-                if (token == null) {
-                    _tableFlow.resetReplayCache()
-                } else {
-                    _tableFlow.emit(fetchTables(token))
+            tenantFlow.collect { tenantModel ->
+                _tenant = tenantModel
+                if (tenantModel != null) {
+                    updateDataFlows()
                 }
             }
         }
+        externalScope.launch {
+            tokenFlow.collect { token ->
+                _token = token
+                if (token == null) {
+                    resetDataFlows()
+                } else {
+                    updateDataFlows()
+                }
+            }
+        }
+    }
+
+    private fun resetDataFlows() {
+        _tableFlow.resetReplayCache()
+        _localDataFlow.resetReplayCache()
+    }
+
+    private suspend fun updateDataFlows() {
+        updateTableFlow()
+        updateLocalDataFlow()
     }
 
     override suspend fun fetchTable(id: String): TableModel? {
@@ -84,8 +105,9 @@ class TableServiceImpl(
 
     override suspend fun updateTableFlow(): Boolean {
         val token = _token ?: return false
+        val tenantId: String = _tenant?.id ?: return false
 
-        val res = fetchTables(token)
+        val res = fetchTables(token = token, tenantId = tenantId)
         _tableFlow.emit(res)
 
         return res.isNotEmpty()
@@ -154,7 +176,11 @@ class TableServiceImpl(
         row: LocalRowData
     ): StoreRowResponse {
         try {
-            localTableStore.storeRowData(tableId = tableId, rowData = row)
+            val tenantId: String = _tenant?.id ?: return StoreRowResponse(ok = false,
+                exception = Exception("No tenant available")
+            )
+
+            localTableStore.storeRowData(tableId = tableId, tenantId = tenantId, rowData = row)
         } catch (e: Exception) {
             return StoreRowResponse(
                 ok = false,
@@ -189,13 +215,15 @@ class TableServiceImpl(
     }
 
     override suspend fun updateLocalDataFlow() {
-        val localData = localTableStore.loadRowData()
+        val tenantId: String = _tenant?.id ?: return
+
+        val localData = localTableStore.loadRowData(tenantId = tenantId)
         _localDataFlow.emit(localData)
     }
 
-    private suspend fun fetchTables(token: String): List<TableSummaryModel> {
+    private suspend fun fetchTables(token: String, tenantId: String): List<TableSummaryModel> {
         if (!hasConnection()) {
-            return localTableStore.loadTableSummaries()
+            return localTableStore.loadTableSummaries(tenantId = tenantId)
         }
 
         val res = tableStore.fetchTableSummaries(token)
@@ -214,7 +242,7 @@ class TableServiceImpl(
                 fetchTable(summary.id)
             }
             println("[DONE]: fetching table info for each table id: $models")
-            localTableStore.storeTableModels(models)
+            localTableStore.storeTableModels(models = models, tenantId = tenantId)
             println("table info has been saved")
         }
 

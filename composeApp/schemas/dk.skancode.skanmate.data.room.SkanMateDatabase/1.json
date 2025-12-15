@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "c55fef6d3dccc0325ec14459df4b9287",
+    "identityHash": "90759f0eecdf8f1ec98249b450e9a0bd",
     "entities": [
       {
         "tableName": "__table_meta",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `databaseName` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `serializedColumns` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `databaseName` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `serializedColumns` TEXT NOT NULL, `tenantId` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -36,6 +36,12 @@
             "columnName": "serializedColumns",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "tenantId",
+            "columnName": "tenantId",
+            "affinity": "TEXT",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -47,7 +53,7 @@
       },
       {
         "tableName": "__table_data",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tableId` TEXT NOT NULL, `serializedData` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tableId` TEXT NOT NULL, `tenantId` TEXT NOT NULL, `serializedData` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -58,6 +64,12 @@
           {
             "fieldPath": "tableId",
             "columnName": "tableId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tenantId",
+            "columnName": "tenantId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -83,6 +95,15 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index___table_data_tableId` ON `${TABLE_NAME}` (`tableId`)"
+          },
+          {
+            "name": "index___table_data_tenantId",
+            "unique": false,
+            "columnNames": [
+              "tenantId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index___table_data_tenantId` ON `${TABLE_NAME}` (`tenantId`)"
           }
         ]
       },
@@ -237,7 +258,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c55fef6d3dccc0325ec14459df4b9287')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '90759f0eecdf8f1ec98249b450e9a0bd')"
     ]
   }
 }
