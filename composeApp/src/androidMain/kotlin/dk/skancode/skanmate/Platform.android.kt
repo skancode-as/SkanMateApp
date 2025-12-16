@@ -85,7 +85,13 @@ actual suspend fun loadLocalImage(imagePath: String): ImageData {
     val name: String? = uri.scheme?.let { scheme ->
         when (scheme) {
             "content" -> {
-                context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null)?.use { cursor ->
+                context.contentResolver.query(
+                    uri,
+                    arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                )?.use { cursor ->
                     println("RowCount: ${cursor.count}, ColumnCount: ${cursor.columnCount}, ColumnNames: ${cursor.columnNames.joinToString()}")
                     if (cursor.moveToFirst()) {
                         val index = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
