@@ -92,5 +92,10 @@
 
     <string name="sync_vm_synchronisation_already_running">Synkronisering er allerede i gang. Vent på at den nuværende proces stopper.</string>
 
+    <plurals name="bottom_app_bar_title">
+        <item quantity="one">%1$d række gemt på enheden</item>
+        <item quantity="other">%1$d rækker gemt på enheden</item>
+    </plurals>
+
     <string name="ios_camera_not_available">Kunne ikke starte kameraet. Tjek at appen har adgang til kameraet.</string>
 </resources>

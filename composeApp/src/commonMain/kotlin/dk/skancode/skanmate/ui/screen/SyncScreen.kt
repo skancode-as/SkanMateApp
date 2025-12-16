@@ -123,6 +123,8 @@ import skanmate.composeapp.generated.resources.sync_screen_delete_row_alert_titl
 import skanmate.composeapp.generated.resources.sync_screen_delete_table_alert_content_text
 import skanmate.composeapp.generated.resources.sync_screen_delete_table_alert_desc
 import skanmate.composeapp.generated.resources.sync_screen_delete_table_alert_title
+import skanmate.composeapp.generated.resources.sync_screen_dropdown_item_delete
+import skanmate.composeapp.generated.resources.sync_screen_dropdown_item_edit
 import skanmate.composeapp.generated.resources.sync_screen_fab_text
 import skanmate.composeapp.generated.resources.sync_screen_no_local_data_content
 import skanmate.composeapp.generated.resources.sync_screen_no_local_data_title
@@ -707,7 +709,7 @@ fun TableActions(
         DropdownMenuItem(
             text = {
                 Text(
-                    text = "Edit",
+                    text = stringResource(Res.string.sync_screen_dropdown_item_edit),
                 )
             },
             onClick = {
@@ -718,7 +720,7 @@ fun TableActions(
         DropdownMenuItem(
             text = {
                 Text(
-                    text = "Delete",
+                    text = stringResource(Res.string.sync_screen_dropdown_item_delete),
                     color = MaterialTheme.colorScheme.error,
                 )
             },

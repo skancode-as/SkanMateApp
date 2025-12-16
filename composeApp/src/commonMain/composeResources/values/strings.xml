@@ -92,5 +92,10 @@
 
     <string name="sync_vm_synchronisation_already_running">Synchronisation is already in progress. Wait for the current process to stop.</string>
 
+    <plurals name="bottom_app_bar_title">
+        <item quantity="one">%1$d row stored locally</item>
+        <item quantity="other">%1$d rows stored locally</item>
+    </plurals>
+
     <string name="ios_camera_not_available">Could not start camera. Make sure the app has permission to access the camera.</string>
 </resources>
