@@ -81,7 +81,12 @@ class SyncViewModel(
             return
         }
 
-        _uiState.update { it.copy(isLoading = true, synchronisationErrors = emptyMap()) }
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                synchronisationErrors = emptyMap(),
+            )
+        }
         viewModelScope.launch {
             val synchronisationErrors = mutex.withLock {
                 syncDataWithServer(data)
