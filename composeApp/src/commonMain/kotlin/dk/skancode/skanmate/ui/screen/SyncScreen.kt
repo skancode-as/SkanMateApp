@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
-import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -64,7 +63,6 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import androidx.compose.ui.window.DialogProperties
 import dk.skancode.skanmate.ImageResource
 import dk.skancode.skanmate.ImageResourceState
@@ -97,7 +95,6 @@ import dk.skancode.skanmate.util.LocalAudioPlayer
 import dk.skancode.skanmate.util.animator
 import dk.skancode.skanmate.util.composeString
 import dk.skancode.skanmate.util.darken
-import dk.skancode.skanmate.util.measureText
 import dk.skancode.skanmate.util.rememberHaptic
 import dk.skancode.skanmate.util.rememberMutableStateOf
 import dk.skancode.skanmate.util.singleSideBorder
