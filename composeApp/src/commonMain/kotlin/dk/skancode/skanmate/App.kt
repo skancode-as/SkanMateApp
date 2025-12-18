@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dk.skancode.skanmate.data.service.AuthServiceImpl
+import dk.skancode.skanmate.data.service.ConnectivityService
 import dk.skancode.skanmate.data.service.TableServiceImpl
 import dk.skancode.skanmate.data.store.AuthStore
 import dk.skancode.skanmate.data.store.LocalAuthStore
@@ -25,6 +26,7 @@ import dk.skancode.skanmate.data.store.LocalTableStore
 import dk.skancode.skanmate.data.store.TableStore
 import dk.skancode.skanmate.nav.AppNavHost
 import dk.skancode.skanmate.ui.component.CameraOverlay
+import dk.skancode.skanmate.ui.component.ConnectivityDialog
 import dk.skancode.skanmate.ui.component.ImagePreview
 import dk.skancode.skanmate.ui.component.LocalLabelTextStyle
 import dk.skancode.skanmate.ui.component.LocalScanModule
@@ -34,6 +36,7 @@ import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.ui.viewmodel.ConnectivityViewModel
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
 import dk.skancode.skanmate.ui.viewmodel.LocalConnectionState
+import dk.skancode.skanmate.ui.viewmodel.LocalConnectivityViewModel
 import dk.skancode.skanmate.ui.viewmodel.SyncViewModel
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.clamp
@@ -53,11 +56,11 @@ import kotlinx.coroutines.IO
 
 // TODO: Find less temporary way of initializing stores and services
 // TODO: Haptic feedback (IOS)
-// TODO: Store local data with tenant id, and filter out data not visible for current user
 // TODO: Lock screen orientation
+// TODO: Display reason for table not being available offline
 
 private const val BASE_URL =
-    "https://skanmate.vercel.app/api/v1"
+    "https://skanmate-git-stage-skan-code-team.vercel.app/api/v1"
 private val httpClient = HttpClient {
     install(ContentNegotiation) {
         json(jsonSerializer)
@@ -122,8 +125,11 @@ fun App() {
         LocalScanModule provides scanModule,
         LocalUiCameraController provides uiCameraController,
         LocalLabelTextStyle provides MaterialTheme.typography.labelLarge,
-        LocalConnectionState provides connectivityViewModel.connectionFlow.collectAsState()
+        LocalConnectionState provides connectivityViewModel.connectionFlow.collectAsState(),
+        LocalConnectivityViewModel provides connectivityViewModel,
     ) {
+        ConnectivityDialog(ConnectivityService.instance.connectivityMessageChannel)
+
         Box(
             modifier = Modifier
                 .fillMaxSize(),

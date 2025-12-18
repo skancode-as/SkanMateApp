@@ -64,6 +64,7 @@
     <string name="table_vm_could_not_upload_image">Kunne ikke uploade billede. Prøv venligst igen.</string>
     <string name="table_vm_could_not_submit_data">Data kunne ikke indsendes. %1$s</string>
     <string name="table_vm_could_not_submit_data_constraint">Data kunne ikke indsendes. Ret fejl og prøv igen.</string>
+    <string name="table_vm_could_not_store_data">Data kunne ikke gemmes på enheden.</string>
     <string name="table_vm_could_not_select_barcode">Den stregkode kunne ikke vælges</string>
     <string name="table_vm_scan_not_possible_for_col">Scanning er ikke muligt for %1$s kolonnen</string>
 
@@ -96,6 +97,14 @@
         <item quantity="one">%1$d række gemt på enheden</item>
         <item quantity="other">%1$d rækker gemt på enheden</item>
     </plurals>
+
+    <string name="connectivity_dialog_offline_mode_dialog_title">Offline mode</string>
+    <string name="connectivity_dialog_enable_offline_mode">Vil du slå offline mode til?</string>
+    <string name="connectivity_dialog_disable_offline_mode">Vil du slå offline mode fra?</string>
+    <string name="connectivity_dialog_slow_internet_dialog_title">Langsom internet forbindelse</string>
+    <string name="connectivity_dialog_slow_internet_dialog_desc">Det ligner at der er langsom internet forbindelse.\nVil du slå offline mode til?</string>
+    <string name="connectivity_dialog_btn_yes">Ja</string>
+    <string name="connectivity_dialog_btn_no">Nej</string>
 
     <string name="ios_camera_not_available">Kunne ikke starte kameraet. Tjek at appen har adgang til kameraet.</string>
 </resources>

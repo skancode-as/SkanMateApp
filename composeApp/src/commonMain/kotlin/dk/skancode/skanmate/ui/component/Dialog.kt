@@ -22,7 +22,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -139,24 +138,29 @@ fun ContentDialog(
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f).wrapContentHeight(),
-                        ) {
-                            CompositionLocalProvider(LocalContentColor provides dialogColors.titleTextColor) {
-                                title()
-                            }
-                            CompositionLocalProvider(LocalContentColor provides dialogColors.descriptionTextColor) {
-                                description()
-                            }
-                        }
-                        if (closable) {
-                            IconButton(
-                                onClick = onDismissRequest
+                        CompositionLocalProvider(LocalContentColor provides dialogColors.titleTextColor) {
+                            Column(
+                                modifier = Modifier.weight(1f).wrapContentHeight(),
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "CloseDialogButton"
-                                )
+                                title()
+                                CompositionLocalProvider(LocalContentColor provides dialogColors.descriptionTextColor) {
+                                    description()
+                                }
+                            }
+                            if (closable) {
+                                IconButton(
+                                    onClick = onDismissRequest,
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = LocalContentColor.current,
+                                    ),
+                                    elevation = CustomButtonElevation.None,
+                                    enabledWhenSnackbarActive = true,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "CloseDialogButton"
+                                    )
+                                }
                             }
                         }
                     }

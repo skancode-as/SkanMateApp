@@ -64,6 +64,7 @@
     <string name="table_vm_could_not_upload_image">Could not upload image. Please try again.</string>
     <string name="table_vm_could_not_submit_data">Data could not be submitted. %1$s</string>
     <string name="table_vm_could_not_submit_data_constraint">Data could not be submitted. Fix errors, and try again.</string>
+    <string name="table_vm_could_not_store_data">Data could not be stored locally.</string>
     <string name="table_vm_could_not_select_barcode">That barcode could not be selected</string>
     <string name="table_vm_scan_not_possible_for_col">Scan is not possible for %1$s column</string>
 
@@ -96,6 +97,14 @@
         <item quantity="one">%1$d row stored locally</item>
         <item quantity="other">%1$d rows stored locally</item>
     </plurals>
+
+    <string name="connectivity_dialog_offline_mode_dialog_title">Offline mode</string>
+    <string name="connectivity_dialog_enable_offline_mode">Do you want to enable offline mode?</string>
+    <string name="connectivity_dialog_disable_offline_mode">Do you want to disable offline mode?</string>
+    <string name="connectivity_dialog_slow_internet_dialog_title">Slow internet connection</string>
+    <string name="connectivity_dialog_slow_internet_dialog_desc">It looks like the internet connection is slow.\nDo you want to enable offline mode?</string>
+    <string name="connectivity_dialog_btn_yes">Yes</string>
+    <string name="connectivity_dialog_btn_no">No</string>
 
     <string name="ios_camera_not_available">Could not start camera. Make sure the app has permission to access the camera.</string>
 </resources>

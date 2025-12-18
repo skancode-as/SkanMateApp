@@ -25,10 +25,12 @@ import dk.skancode.skanmate.ui.state.check
 import dk.skancode.skanmate.ui.state.prepare
 import dk.skancode.skanmate.ui.state.prepareLocal
 import dk.skancode.skanmate.util.AudioPlayerInstance
+import dk.skancode.skanmate.util.DefaultTimeouts
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.assert
 import dk.skancode.skanmate.util.snackbar.UserMessageService
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
+import dk.skancode.skanmate.util.withConnectivityTimeout
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.FlowPreview
@@ -42,6 +44,7 @@ import kotlinx.coroutines.launch
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.constraint_error_server
 import skanmate.composeapp.generated.resources.table_vm_could_not_select_barcode
+import skanmate.composeapp.generated.resources.table_vm_could_not_store_data
 import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data
 import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data_constraint
 import skanmate.composeapp.generated.resources.table_vm_could_not_upload_image
@@ -195,7 +198,7 @@ class TableViewModel(
                         submitRes.exception?.printStackTrace()
                         userMessageService.displayError(
                             message = InternalStringResource(
-                                resource = Res.string.table_vm_could_not_submit_data,
+                                resource = Res.string.table_vm_could_not_store_data,
                             )
                         )
                     }
@@ -211,7 +214,9 @@ class TableViewModel(
         }
     }
 
-    private suspend fun sendDataToServer(state: MutableTableUiState) {
+    private suspend fun sendDataToServer(state: MutableTableUiState) = withConnectivityTimeout(
+        timeout = DefaultTimeouts.tableRowSubmit
+    ) {
         var res = false
         var constraintErrors: Map<String, List<InternalStringResource>> = emptyMap()
         try {
@@ -233,7 +238,7 @@ class TableViewModel(
                                     )
                                 )
                                 res = false
-                                return
+                                return@withConnectivityTimeout
                             }
 
                             objectUrl

@@ -379,14 +379,14 @@ fun Button(
 
         propagateMinConstraints = true,
     ) {
-        Row(
-            modifier = Modifier
-                .padding(contentPadding),
-            horizontalArrangement = horizontalArrangement,
-            verticalAlignment = verticalAlignment,
-        ) {
-            CompositionLocalProvider(LocalContentColor provides contentColor) {
-                this@Row.content()
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            Row(
+                modifier = Modifier
+                    .padding(contentPadding),
+                horizontalArrangement = horizontalArrangement,
+                verticalAlignment = verticalAlignment,
+            ) {
+                content()
             }
         }
     }
