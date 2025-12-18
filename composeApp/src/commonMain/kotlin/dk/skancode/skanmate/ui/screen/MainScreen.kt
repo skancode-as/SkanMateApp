@@ -188,16 +188,25 @@ fun TableCard(
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     onClick: () -> Unit,
 ) {
+    val disabledAlpha = 0.48f
     val hasConnection by LocalConnectionState.current
     val enabled = hasConnection || table.availableOffline()
+    val disabledContainerColor = containerColor.copy(alpha = disabledAlpha).compositeOver(MaterialTheme.colorScheme.background)
 
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(containerColor = containerColor),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = containerColor,
+            disabledContainerColor = disabledContainerColor,
+        ),
         enabled = enabled,
         onClick = onClick,
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp, disabledElevation = 0.dp)
     ) {
+        val textColor = when {
+            enabled -> LocalContentColor.current
+            else -> LocalContentColor.current.copy(alpha = disabledAlpha).compositeOver(disabledContainerColor)
+        }
         val scope = CoroutineScope(Dispatchers.IO)
         val tooltipState = rememberTooltipState(isPersistent = false)
         Row(
@@ -216,7 +225,9 @@ fun TableCard(
             ) {
                 Text(
                     text = table.name,
-                    style = MaterialTheme.typography.titleMedium.merge(color = LocalContentColor.current),
+                    style = MaterialTheme.typography.titleMedium.merge(
+                        color = textColor,
+                    ),
                     fontWeight = FontWeight.SemiBold,
                 )
                 val description: String = table.description.let { desc ->
@@ -225,7 +236,7 @@ fun TableCard(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall.merge(
-                        color = LocalContentColor.current.copy(alpha = .8f)
+                        color = textColor.copy(alpha = .8f)
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
