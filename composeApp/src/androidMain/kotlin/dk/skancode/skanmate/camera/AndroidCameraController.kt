@@ -4,23 +4,17 @@ import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
-import android.graphics.ImageFormat
 import android.icu.text.SimpleDateFormat
 import android.os.Build
 import android.provider.MediaStore
-import android.util.Size
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.core.UseCaseGroup
-import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
@@ -29,15 +23,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.barcode.BarcodeScanning
 import dk.skancode.skanmate.CameraController
 import dk.skancode.skanmate.ImageData
 import dk.skancode.skanmate.R
 import dk.skancode.skanmate.TakePictureResponse
-import dk.skancode.skanmate.camera.barcode.AndroidBarcodeAnalyzer
-import dk.skancode.skanmate.camera.barcode.AndroidBarcodeSettings
-import dk.skancode.skanmate.ui.theme.backgroundDark
 import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.unreachable
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,22 +36,20 @@ import java.util.concurrent.Executor
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-private val imageAnalysisSize = Size(1280, 720)
-
 @OptIn(ExperimentalAtomicApi::class)
 class AndroidCameraController(
     val context: Context,
     val cameraProviderFuture: ListenableFuture<ProcessCameraProvider>,
-    val previewView: PreviewView,
+    previewView: PreviewView,
     val lifecycleOwner: LifecycleOwner,
     val cameraExecutor: Executor,
-    val barcodeSettings: AndroidBarcodeSettings = AndroidBarcodeSettings(),
+    //val barcodeSettings: AndroidBarcodeSettings = AndroidBarcodeSettings(),
 ): CameraController {
     private val preview: Preview = Preview.Builder().build()
-    private lateinit var imageCapture: ImageCapture
+    private var imageCapture: ImageCapture
     lateinit var camera: Camera
     private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-    private lateinit var imageAnalysis: ImageAnalysis
+    //private lateinit var imageAnalysis: ImageAnalysis
 
     private val _flashState = AtomicBoolean(false)
     override val flashState: Boolean
@@ -105,41 +92,42 @@ class AndroidCameraController(
             .setJpegQuality(80)
             .build()
 
-        if (barcodeSettings.enabled) {
-            imageAnalysis = ImageAnalysis.Builder()
-                .setResolutionSelector(
-                    ResolutionSelector.Builder()
-                        .setResolutionStrategy(
-                            ResolutionStrategy(
-                                imageAnalysisSize,
-                                ResolutionStrategy.FALLBACK_RULE_NONE,
-                            )
-                        )
-                        .build()
-                )
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-        }
+//        if (barcodeSettings.enabled) {
+//            imageAnalysis = ImageAnalysis.Builder()
+//                .setResolutionSelector(
+//                    ResolutionSelector.Builder()
+//                        .setResolutionStrategy(
+//                            ResolutionStrategy(
+//                                imageAnalysisSize,
+//                                ResolutionStrategy.FALLBACK_RULE_NONE,
+//                            )
+//                        )
+//                        .build()
+//                )
+//                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+//                .build()
+//        }
     }
 
-    private fun imageAnalyzer(): AndroidBarcodeAnalyzer {
-        val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(
-                AndroidBarcodeAnalyzer.getMLKitBarcodeFormats(barcodeSettings.codeTypes)
-            )
-            .build()
-
-        val barcodeScanner = BarcodeScanning.getClient(options)
-
-        return AndroidBarcodeAnalyzer(
-            scanner = barcodeScanner,
-            onSuccess = {
-                barcodeSettings.onSuccess?.invoke(it)
-            },
-            onFailed = barcodeSettings.onFailed ?: {},
-            onCanceled = barcodeSettings.onCanceled ?: {},
-        )
-    }
+//    private fun imageAnalyzer(barcodeGraphicOverlay: BarcodeGraphicOverlay): AndroidBarcodeAnalyzer {
+//        val options = BarcodeScannerOptions.Builder()
+//            .setBarcodeFormats(
+//                AndroidBarcodeAnalyzer.getMLKitBarcodeFormats(barcodeSettings.codeTypes)
+//            )
+//            .build()
+//
+//        val barcodeScanner = BarcodeScanning.getClient(options)
+//
+//        return AndroidBarcodeAnalyzer(
+//            scanner = barcodeScanner,
+//            onSuccess = {
+//                barcodeSettings.onSuccess?.invoke(it)
+//            },
+//            onFailed = barcodeSettings.onFailed ?: {},
+//            onCanceled = barcodeSettings.onCanceled ?: {},
+//            graphicOverlay = barcodeGraphicOverlay,
+//        )
+//    }
 
     fun updateView() {
         println("AndroidCameraController::updateView()")
@@ -149,16 +137,19 @@ class AndroidCameraController(
         val useCaseGroupBuilder = UseCaseGroup.Builder()
             .addUseCase(preview)
 
-        if (::imageAnalysis.isInitialized) {
-            imageAnalysis.setAnalyzer(
-                ContextCompat.getMainExecutor(context),
-                imageAnalyzer()
-            )
-
-            useCaseGroupBuilder.addUseCase(imageAnalysis)
-        } else {
+//        if (::imageAnalysis.isInitialized) {
+//            val barcodeGraphicOverlay = BarcodeGraphicOverlay(context = context, attrs = null)
+//            previewView.addView(barcodeGraphicOverlay)
+//
+//            imageAnalysis.setAnalyzer(
+//                ContextCompat.getMainExecutor(context),
+//                imageAnalyzer(barcodeGraphicOverlay)
+//            )
+//
+//            useCaseGroupBuilder.addUseCase(imageAnalysis)
+//        } else {
             useCaseGroupBuilder.addUseCase(imageCapture)
-        }
+        //}
 
         val useCaseGroup = useCaseGroupBuilder.build()
 

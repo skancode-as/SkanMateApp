@@ -1,47 +1,46 @@
 package dk.skancode.skanmate.camera.barcode
 
 import android.content.Context
-import android.graphics.Point
+import android.graphics.Rect
 import android.util.Size
-import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.view.LifecycleCameraController
-import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import dev.icerock.moko.permissions.PermissionState
 import dk.skancode.skanmate.LocalPermissionsViewModel
 import dk.skancode.skanmate.ScannerController
-import dk.skancode.skanmate.ui.component.barcode.BarcodeBoundingBox
+import dk.skancode.skanmate.barcode.BarcodeProcessorBase
+import dk.skancode.skanmate.barcode.BaseGraphicOverlay
+import dk.skancode.skanmate.barcode.GraphicOverlay
 import dk.skancode.skanmate.ui.component.barcode.BarcodeData
 import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
-import dk.skancode.skanmate.ui.component.barcode.BarcodeInfo
-import dk.skancode.skanmate.ui.component.barcode.BarcodeResult
-import kotlin.collections.emptyList
+import dk.skancode.skanmate.util.rememberCameraViewSize
 
 @Composable
 fun AndroidScannerView(
     modifier: Modifier,
     scannerController: ScannerController,
     codeTypes: List<BarcodeFormat>,
-    result: (BarcodeResult) -> Unit
+    processor: BarcodeProcessorBase<List<BarcodeData>>,
+    barcodeOverlay: BaseGraphicOverlay,
 ) {
     val permissionsViewModel = LocalPermissionsViewModel.current
     if (permissionsViewModel?.cameraState != PermissionState.Granted) {
@@ -74,7 +73,9 @@ fun AndroidScannerView(
             backgroundColor = backgroundColor,
             cameraController = cameraController,
             codeTypes = codeTypes,
-            onResult = result,
+            onPreviewLayoutChange = {},
+            barcodeOverlay = barcodeOverlay,
+            processor = processor,
         )
     }
 
@@ -83,10 +84,28 @@ fun AndroidScannerView(
             .fillMaxSize(),
         propagateMinConstraints = true,
     ) {
+        val cameraViewSize by rememberCameraViewSize()
+
         AndroidView(
-            modifier = Modifier.align(Alignment.Center),
-            factory = { ctx -> previewViewFactory(ctx) },
+            modifier = Modifier
+                .size(cameraViewSize)
+                .align(Alignment.Center),
+            factory = { ctx ->
+                previewViewFactory(ctx)
+            },
         )
+        GraphicOverlay(
+            modifier = Modifier
+                .size(cameraViewSize)
+                .align(Alignment.Center),
+            overlay = barcodeOverlay,
+        )
+//        AndroidView(
+//            modifier = Modifier
+//                .size(cameraViewSize)
+//                .align(Alignment.Center),
+//            factory = { barcodeOverlay },
+//        )
     }
 }
 
@@ -95,12 +114,28 @@ fun barcodePreviewFactory(
     backgroundColor: Int,
     cameraController: LifecycleCameraController,
     codeTypes: List<BarcodeFormat>,
-    onResult: (BarcodeResult) -> Unit,
+    onPreviewLayoutChange: (newRect: Rect) -> Unit,
+    barcodeOverlay: GraphicOverlay,
+    processor: BarcodeProcessorBase<List<BarcodeData>>
 ): (Context) -> PreviewView {
     return { ctx ->
         PreviewView(ctx).apply {
-            scaleType = PreviewView.ScaleType.FIT_CENTER
             setBackgroundColor(backgroundColor)
+
+            addOnLayoutChangeListener { v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+                println("AndroidScannerView::barcodePreviewFactory.addOnLayoutChangeListener() - view: ${v.id}, left: $left, top: $top, right: $right, bottom: $bottom, oldLeft: $oldLeft, oldTop: $oldTop, oldRight: $oldRight, oldBottom: $oldBottom")
+
+                if (left == oldLeft && top == oldTop && right == oldRight && bottom == oldBottom) return@addOnLayoutChangeListener
+
+                onPreviewLayoutChange(
+                    Rect(
+                        left,
+                        top,
+                        right,
+                        bottom,
+                    )
+                )
+            }
 
             val options = BarcodeScannerOptions.Builder()
                 .setBarcodeFormats(
@@ -124,9 +159,8 @@ fun barcodePreviewFactory(
                 ContextCompat.getMainExecutor(ctx),
                 AndroidBarcodeAnalyzer(
                     scanner = barcodeScanner,
-                    onSuccess = { if (it.isNotEmpty()) onResult(BarcodeResult.OnSuccess(it)) },
-                    onFailed = { onResult(BarcodeResult.OnFailed(it)) },
-                    onCanceled = { onResult(BarcodeResult.OnCanceled) },
+                    graphicOverlay = barcodeOverlay,
+                    processor = processor,
                 )
             )
 
@@ -134,51 +168,5 @@ fun barcodePreviewFactory(
 
             this.controller = cameraController
         }
-    }
-}
-
-fun barcodeAnalyzer(
-    ctx: Context,
-    barcodeScanner: BarcodeScanner,
-    onBarcodeData: (List<BarcodeData>) -> Unit,
-): MlKitAnalyzer = MlKitAnalyzer(
-    listOf(barcodeScanner),
-    ImageAnalysis.COORDINATE_SYSTEM_ORIGINAL,
-    ContextCompat.getMainExecutor(ctx)
-) { result ->
-    val barcodeResults = result.getValue(barcodeScanner)
-    if (!barcodeResults.isNullOrEmpty()) {
-        onBarcodeData(barcodeResults.mapNotNull { mlKitBarcode ->
-            val displayValue = mlKitBarcode.displayValue ?: return@mapNotNull null
-            val corners =
-                mlKitBarcode.cornerPoints?.toMutableList()
-                    ?: return@mapNotNull null
-            val rawBytes = mlKitBarcode.rawBytes ?: displayValue.encodeToByteArray()
-
-            val appSpecificFormat =
-                AndroidBarcodeAnalyzer.mlKitFormatToAppFormat(mlKitBarcode.format)
-
-            println("AndroidBarcodeAnalyzer::processFoundBarcodes - barcode: $displayValue, format: $appSpecificFormat, corners: $corners")
-
-            fun Point.toOffset(): Offset {
-                return Offset((x.toFloat() / 1280f), (y.toFloat() / 720f))
-            }
-
-            BarcodeData(
-                info = BarcodeInfo(
-                    value = displayValue,
-                    format = appSpecificFormat.toString(),
-                    rawBytes = rawBytes,
-                ),
-                box = BarcodeBoundingBox(
-                    topLeft = corners[0].toOffset(),
-                    topRight = corners[1].toOffset(),
-                    botRight = corners[2].toOffset(),
-                    botLeft = corners[3].toOffset(),
-                )
-            )
-        })
-    } else {
-        onBarcodeData(emptyList())
     }
 }
