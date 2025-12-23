@@ -9,6 +9,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -28,13 +29,17 @@ suspend inline fun <reified T> withConnectivityTimeout(timeout: Duration, noinli
     }
     val timeoutChannel = produce {
         delay(duration = timeout)
-        val result = ConnectivityService.sendConnectivityMessage(msg = ConnectivityMessage.RequestTimeout())
-        when(result) {
-            is ConnectivityMessageResult.Accepted -> {
-                ConnectivityService.enableOfflineMode()
-                send(null)
+        launch {
+            val result = ConnectivityService
+                .sendConnectivityMessage(msg = ConnectivityMessage.RequestTimeout())
+                .await()
+            when(result) {
+                is ConnectivityMessageResult.Accepted -> {
+                    ConnectivityService.enableOfflineMode()
+                    send(null)
+                }
+                is ConnectivityMessageResult.Dismissed -> {}
             }
-            is ConnectivityMessageResult.Dismissed -> {}
         }
     }
 
@@ -53,6 +58,6 @@ suspend inline fun <reified T> withConnectivityTimeout(timeout: Duration, noinli
 
 sealed class DefaultTimeouts {
     companion object {
-        val tableRowSubmit: Duration = 1.seconds
+        val tableRowSubmit: Duration = 5.seconds
     }
 }

@@ -128,7 +128,12 @@ fun App() {
         LocalConnectionState provides connectivityViewModel.connectionFlow.collectAsState(),
         LocalConnectivityViewModel provides connectivityViewModel,
     ) {
-        ConnectivityDialog(ConnectivityService.instance.connectivityMessageChannel)
+        ConnectivityDialog(
+            messageFlow = connectivityViewModel.dialogMessageFlow,
+            sendMessageResult = {
+                ConnectivityService.instance.connectivityMessageResultChannel.send(it)
+            }
+        )
 
         Box(
             modifier = Modifier

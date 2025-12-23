@@ -12,10 +12,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -23,13 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import dk.skancode.skanmate.data.service.ConnectivityMessage
 import dk.skancode.skanmate.data.service.ConnectivityMessageResult
-import dk.skancode.skanmate.data.service.ConnectivityService
-import dk.skancode.skanmate.util.rememberMutableStateOf
 import dk.skancode.skanmate.util.titleTextStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import skanmate.composeapp.generated.resources.Res
@@ -40,28 +37,19 @@ import skanmate.composeapp.generated.resources.connectivity_dialog_enable_offlin
 import skanmate.composeapp.generated.resources.connectivity_dialog_offline_mode_dialog_title
 import skanmate.composeapp.generated.resources.connectivity_dialog_slow_internet_dialog_desc
 import skanmate.composeapp.generated.resources.connectivity_dialog_slow_internet_dialog_title
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun ConnectivityDialog(
-    messageChannel: ReceiveChannel<ConnectivityMessage>,
+    messageFlow: MutableStateFlow<ConnectivityMessage?>,
+    sendMessageResult: suspend (ConnectivityMessageResult) -> Unit,
 ) {
-    var message: ConnectivityMessage? by rememberMutableStateOf(null)
-
-    LaunchedEffect(messageChannel, message) {
-        for (msg in messageChannel) {
-            while (message != null) {
-                delay(100.milliseconds)
-            }
-
-            message = msg
-        }
-    }
+    val message: ConnectivityMessage? by messageFlow.collectAsState()
 
     if (message != null) {
         MessageDialog(
             message = message!!,
-            setMessage = { message = it }
+            setMessage = { messageFlow.update { null } },
+            sendMessageResult = sendMessageResult,
         )
     }
 }
@@ -70,6 +58,7 @@ fun ConnectivityDialog(
 fun MessageDialog(
     message: ConnectivityMessage,
     setMessage: (ConnectivityMessage?) -> Unit,
+    sendMessageResult: suspend (ConnectivityMessageResult) -> Unit,
 ) {
     val contentSpacing = 16.dp
     val contentPadding = PaddingValues(contentSpacing)
@@ -79,25 +68,13 @@ fun MessageDialog(
     }
     val onDismiss: () -> Unit = {
         scope.launch {
-            ConnectivityService
-                .instance
-                .connectivityMessageResultChannel
-                .send(
-                    element = ConnectivityMessageResult
-                        .Dismissed(message)
-                )
+            sendMessageResult(ConnectivityMessageResult.Dismissed(message))
             hideDialog()
         }
     }
     val onAccept: () -> Unit = {
         scope.launch {
-            ConnectivityService
-                .instance
-                .connectivityMessageResultChannel
-                .send(
-                    element = ConnectivityMessageResult
-                        .Accepted(message)
-                )
+            sendMessageResult(ConnectivityMessageResult.Accepted(message))
             hideDialog()
         }
     }

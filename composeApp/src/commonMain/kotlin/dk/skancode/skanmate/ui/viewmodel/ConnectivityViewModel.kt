@@ -12,6 +12,7 @@ import dk.skancode.skanmate.data.service.ConnectivityService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class ConnectivityViewModel(
@@ -23,17 +24,34 @@ class ConnectivityViewModel(
     val offlineModeFlow: StateFlow<Boolean>
         get() = connectivityService.offlineMode
 
+    val dialogMessageFlow = MutableStateFlow<ConnectivityMessage?>(null)
+
     init {
         viewModelScope.launch {
             connectivityService.connectionFlow.collect { connection ->
                 _connectionFlow.update { connection }
             }
         }
+        viewModelScope.launch {
+            var channelIsOpen = true
+            while (channelIsOpen && this.isActive) {
+                val result = connectivityService.connectivityMessageChannel.receiveCatching()
+                if (result.isClosed) {
+                    channelIsOpen = false
+                } else {
+                    dialogMessageFlow.update {
+                        result.getOrNull()
+                    }
+                }
+            }
+        }
     }
 
     fun enableOfflineMode() {
         viewModelScope.launch {
-            val res = connectivityService.sendConnectivityMessage(ConnectivityMessage.OfflineModeRequested(true))
+            val res = connectivityService
+                .sendConnectivityMessage(ConnectivityMessage.OfflineModeRequested(true))
+                .await()
             if (res is ConnectivityMessageResult.Accepted) {
                 connectivityService.enableOfflineMode()
             }
@@ -41,7 +59,9 @@ class ConnectivityViewModel(
     }
     fun disableOfflineMode() {
         viewModelScope.launch {
-            val res = connectivityService.sendConnectivityMessage(ConnectivityMessage.OfflineModeRequested(false))
+            val res = connectivityService
+                .sendConnectivityMessage(ConnectivityMessage.OfflineModeRequested(false))
+                .await()
             if (res is ConnectivityMessageResult.Accepted) {
                 connectivityService.disableOfflineMode()
             }

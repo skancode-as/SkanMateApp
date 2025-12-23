@@ -2,8 +2,10 @@ package dk.skancode.skanmate.data.service
 
 import dev.jordond.connectivity.Connectivity
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
@@ -24,14 +26,14 @@ interface ConnectivityService {
     suspend fun isConnected(): Boolean
     suspend fun enableOfflineMode()
     suspend fun disableOfflineMode()
-    suspend fun sendConnectivityMessage(msg: ConnectivityMessage): ConnectivityMessageResult
+    suspend fun sendConnectivityMessage(msg: ConnectivityMessage): Deferred<ConnectivityMessageResult>
 
     companion object {
         val instance: ConnectivityService = ConnectivityServiceInstance
         suspend fun isConnected(): Boolean = instance.isConnected()
         suspend fun enableOfflineMode() = instance.enableOfflineMode()
         suspend fun disableOfflineMode() = instance.disableOfflineMode()
-        suspend fun sendConnectivityMessage(msg: ConnectivityMessage): ConnectivityMessageResult = instance.sendConnectivityMessage(msg)
+        suspend fun sendConnectivityMessage(msg: ConnectivityMessage): Deferred<ConnectivityMessageResult> = instance.sendConnectivityMessage(msg)
     }
 }
 
@@ -85,17 +87,22 @@ private object ConnectivityServiceInstance: ConnectivityService {
         _connectionFlow.emit(connectivity.status().isConnected)
     }
 
-    override suspend fun sendConnectivityMessage(msg: ConnectivityMessage): ConnectivityMessageResult {
+    override suspend fun sendConnectivityMessage(msg: ConnectivityMessage): Deferred<ConnectivityMessageResult> {
         _connectivityMessageChannel.send(msg)
-        for (result in _connectivityMessageResultChannel) {
-            when(result.message) {
-                msg -> {
-                    return result
-                }
-                else -> _connectivityMessageResultChannel.send(result)
-            }
-        }
+        return scope.async {
+            while (true) {
+                val result = _connectivityMessageResultChannel.receiveCatching().getOrNull() ?: break
 
-        throw IllegalStateException("ConnectivityService::sendConnectivityMessage() - connectivity message result channel was closed unexpectedly")
+                when (result.message) {
+                    msg -> {
+                        return@async result
+                    }
+
+                    else -> _connectivityMessageResultChannel.send(result)
+                }
+            }
+
+            throw IllegalStateException("ConnectivityService::sendConnectivityMessage() - connectivity message result channel was closed unexpectedly")
+        }
     }
 }
