@@ -1,14 +1,19 @@
 package dk.skancode.skanmate.camera.barcode
 
+import android.graphics.Matrix
 import android.graphics.Point
 import androidx.annotation.OptIn
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import dk.skancode.skanmate.barcode.BarcodeProcessorBase
+import dk.skancode.skanmate.barcode.GraphicOverlay
 import dk.skancode.skanmate.ui.component.barcode.BarcodeBoundingBox
 import dk.skancode.skanmate.ui.component.barcode.BarcodeData
 import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
@@ -16,10 +21,10 @@ import dk.skancode.skanmate.ui.component.barcode.BarcodeInfo
 
 class AndroidBarcodeAnalyzer(
     private val scanner: BarcodeScanner,
-    private val onSuccess: (List<BarcodeData>) -> Unit,
-    private val onFailed: (Exception) -> Unit,
-    private val onCanceled: () -> Unit,
+    private val graphicOverlay: GraphicOverlay,
+    private val processor: BarcodeProcessorBase<List<BarcodeData>>,
     private val coordinateSystem: Int = ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED,
+    private val lensFacing: Int = CameraSelector.LENS_FACING_BACK,
 ): ImageAnalysis.Analyzer {
     override fun getTargetCoordinateSystem(): Int {
         return coordinateSystem
@@ -27,48 +32,58 @@ class AndroidBarcodeAnalyzer(
 
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
-        //println("AndroidBarcodeAnalyzer::analyze($imageProxy)")
+        updateGraphicOverlay(imageProxy)
 
-
-        val mediaImage = imageProxy.image
-        if (mediaImage != null) {
+        imageProxy.image?.let { mediaImage ->
             val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
             scanner.process(inputImage)
-                .addOnSuccessListener {
-                    if (it.isNotEmpty()) {
-                        println("AndroidBarcodeAnalyzer::process() - onSuccessListener: ${it.size} barcodes found!")
-                        processFoundBarcodes(it, mediaImage.width.toFloat(), inputImage.height.toFloat())
-                        imageProxy.close()
-                    } else {
-                        onSuccess(emptyList())
-                    }
+                .addOnSuccessListener { mlKitBarcodes ->
+                    //println("AndroidBarcodeAnalyzer::process() - onSuccessListener: ${mlKitBarcodes.size} barcodes found!")
+                    graphicOverlay.clear()
+                    val result = processFoundBarcodes(
+                        mlKitBarcodes = mlKitBarcodes,
+                        imageWidth = mediaImage.width.toFloat(),
+                        imageHeight = inputImage.height.toFloat(),
+                    )
+                    processor.onSuccess(result, graphicOverlay)
                 }
                 .addOnFailureListener {
                     println("AndroidBarcodeAnalyzer::process() - onFailureListener: $it exception thrown")
                     it.printStackTrace()
-                    onFailed(it)
-                    imageProxy.close()
+                    processor.onFailure(it)
                 }
                 .addOnCanceledListener {
                     println("AndroidBarcodeAnalyzer::process() - onCanceledListener: image processing cancelled")
-                    onCanceled()
-                    imageProxy.close()
+                    processor.onCancellation()
                 }
                 .addOnCompleteListener { imageProxy.close() }
-        } else {
-            imageProxy.close()
-        }
+        } ?: imageProxy.close()
+    }
+
+    private fun updateGraphicOverlay(imageProxy: ImageProxy) {
+        val isImageFlipped = lensFacing == CameraSelector.LENS_FACING_FRONT
+        graphicOverlay.setImageSourceInfo(
+            imageProxy.height, imageProxy.width, isImageFlipped
+        )
+//        val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+//        if (rotationDegrees == 0 || rotationDegrees == 180) {
+//        graphicOverlay.setImageSourceInfo(
+//            imageProxy.width, imageProxy.height, !isImageFlipped
+//        )
+//        } else {
+//        }
     }
 
     private fun processFoundBarcodes(
         mlKitBarcodes: List<Barcode>,
         imageWidth: Float,
         imageHeight: Float,
-    ) {
-        val processedBarcodes = mlKitBarcodes.mapNotNull { mlKitBarcode ->
+    ): List<BarcodeData> {
+        return mlKitBarcodes.mapNotNull { mlKitBarcode ->
             val displayValue = mlKitBarcode.displayValue ?: return@mapNotNull null
             val corners = mlKitBarcode.cornerPoints?.toMutableList() ?: return@mapNotNull null
+            val rect = mlKitBarcode.boundingBox ?: return@mapNotNull null
             val rawBytes = mlKitBarcode.rawBytes ?: displayValue.encodeToByteArray()
 
             val appSpecificFormat = mlKitFormatToAppFormat(mlKitBarcode.format)
@@ -76,10 +91,10 @@ class AndroidBarcodeAnalyzer(
             println("AndroidBarcodeAnalyzer::processFoundBarcodes - barcode: $displayValue, format: $appSpecificFormat, corners: $corners, imageSize: (x: $imageWidth, y: $imageHeight)")
 
             fun Point.toOffset(): Offset {
-                return Offset((x.toFloat() / imageWidth), (y.toFloat() / imageHeight))
+                return Offset(x.toFloat(), y.toFloat())
             }
 
-            BarcodeData(
+            val data = BarcodeData(
                 info = BarcodeInfo(
                     value = displayValue,
                     format = appSpecificFormat.toString(),
@@ -90,10 +105,17 @@ class AndroidBarcodeAnalyzer(
                     topRight = corners[1].toOffset(),
                     botRight = corners[2].toOffset(),
                     botLeft = corners[3].toOffset(),
-                )
+                ),
+                rect = Rect(
+                    left = rect.left.toFloat(),
+                    right = rect.right.toFloat(),
+                    top = rect.top.toFloat(),
+                    bottom = rect.bottom.toFloat(),
+                ),
+                corners = corners.map { it.toOffset() }
             )
+            data
         }
-        onSuccess(processedBarcodes)
     }
 
     companion object {

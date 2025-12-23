@@ -1,6 +1,9 @@
 package dk.skancode.skanmate
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import dk.skancode.skanmate.barcode.GraphicOverlay
 import dk.skancode.skanmate.ui.component.barcode.BarcodeBoundingBox
 import dk.skancode.skanmate.ui.component.barcode.BarcodeData
 import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
@@ -11,6 +14,7 @@ import dk.skancode.skanmate.util.format
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import dk.skancode.skanmate.util.unreachable
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -76,15 +80,17 @@ import platform.UIKit.UIViewController
 import platform.darwin.dispatch_get_main_queue
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.ios_camera_not_available
+import kotlin.math.roundToInt
 
 class CameraUiKitViewController(
     private val device: AVCaptureDevice,
     private val onError: () -> Unit,
     private val codeTypes: List<BarcodeFormat> = emptyList(),
     private val onBarcodes: ((List<BarcodeData>) -> Unit)? = null,
+    private val graphicOverlay: GraphicOverlay? = null,
     private val scanningEnabled: Boolean = codeTypes.isNotEmpty() && onBarcodes != null,
     private val externalScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-): UIViewController(null, null), AVCapturePhotoCaptureDelegateProtocol,
+) : UIViewController(null, null), AVCapturePhotoCaptureDelegateProtocol,
     AVCaptureMetadataOutputObjectsDelegateProtocol {
 
     private var cb: (TakePictureResponse) -> Unit = {}
@@ -110,7 +116,8 @@ class CameraUiKitViewController(
     private fun setupCamera(): Boolean {
         session = AVCaptureSession()
         try {
-            videoInput = AVCaptureDeviceInput.deviceInputWithDevice(device, null) as AVCaptureDeviceInput
+            videoInput =
+                AVCaptureDeviceInput.deviceInputWithDevice(device, null) as AVCaptureDeviceInput
         } catch (e: Exception) {
             println("CameraUiKitViewController::setupCamera() - Could not create video input: $e")
             return false
@@ -134,13 +141,15 @@ class CameraUiKitViewController(
         }
         session.addOutput(photoOutput)
 
+        setupPreviewLayer()
+        // NOTE(tobias): setupScanOutput relies on the previewLayer being initialized
+        // therefore this must happen after setupPreviewLayer!
         if (scanningEnabled) {
-            if(!setupScanOutput()) {
+            if (!setupScanOutput()) {
                 return false
             }
         }
 
-        setupPreviewLayer()
         startSession()
         return true
     }
@@ -156,6 +165,7 @@ class CameraUiKitViewController(
         return setupMetadataOutput(metadataOutput)
     }
 
+    @OptIn(ExperimentalForeignApi::class)
     private fun setupMetadataOutput(output: AVCaptureMetadataOutput): Boolean {
         output.setMetadataObjectsDelegate(this, dispatch_get_main_queue())
 
@@ -165,6 +175,10 @@ class CameraUiKitViewController(
             return false
         }
         output.metadataObjectTypes = supportedTypes
+
+        if (::previewLayer.isInitialized) {
+            updateGraphicOverlay(metadataOutput = output)
+        }
 
         return true
     }
@@ -258,13 +272,55 @@ class CameraUiKitViewController(
         updatePreviewOrientation()
     }
 
-    data class BarcodeCorner(val x: Double, val y: Double)
 
+    @OptIn(ExperimentalForeignApi::class)
+    /**
+     * Converts the rectOfInterest of [metadataOutput] from metadata object coordinate space to [previewLayer] coordinate space.
+     *
+     * Expects that [previewLayer] is initialized at the point of calling this function.
+     *
+     * @return the origin of the converted rectOfInterest of [metadataOutput]
+     */
+    private fun updateGraphicOverlay(metadataOutput: AVCaptureMetadataOutput): Offset {
+        return previewLayer
+            .rectForMetadataOutputRectOfInterest(rectInMetadataOutputCoordinates = metadataOutput.rectOfInterest)
+            .useContents {
+                println(
+                    "CameraUiKitViewController::captureOutput() - " +
+                            "rectOfInterest: Rect(origin: (x: ${origin.x}, y: ${origin.y}), " +
+                            "size: (width: ${size.width}, height: ${size.height}))"
+                )
+
+                val width: Int = (size.width).roundToInt()
+                val height: Int = (size.height).roundToInt()
+                updateGraphicOverlay(width, height, false)
+
+                Offset(
+                    x = (origin.x).toFloat(),
+                    y = (origin.y).toFloat(),
+                )
+            }
+    }
+
+    private fun updateGraphicOverlay(width: Int, height: Int, isFlipped: Boolean) {
+        graphicOverlay?.setImageSourceInfo(
+            imageWidth = width,
+            imageHeight = height,
+            isFlipped = isFlipped,
+        )
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
     override fun captureOutput(
         output: AVCaptureOutput,
         didOutputMetadataObjects: List<*>,
         fromConnection: AVCaptureConnection,
     ) {
+        val previewOffset = when(val metadataOutput = output as? AVCaptureMetadataOutput) {
+            null -> Offset(0f, 0f)
+            else -> updateGraphicOverlay(metadataOutput)
+        }
+
         if (::previewLayer.isInitialized && scanningEnabled && onBarcodes != null) {
             didOutputMetadataObjects
                 .filterIsInstance<AVMetadataMachineReadableCodeObject>()
@@ -275,6 +331,14 @@ class CameraUiKitViewController(
                     isRequestedFormat(barcode.type)
                 }
                 .mapNotNull { barcode ->
+                    val barcodeCorners = barcode.corners
+                        .filterIsInstance<NSDictionary>()
+                        .map { pointDict ->
+                            Offset(
+                                x = (pointDict.objectForKey("X") as? CGFloat ?: 0.0).toFloat(),
+                                y = (pointDict.objectForKey("Y") as? CGFloat ?: 0.0).toFloat(),
+                            ) - previewOffset
+                        }
                     if (barcode.stringValue != null) {
                         BarcodeData(
                             info = BarcodeInfo(
@@ -282,15 +346,22 @@ class CameraUiKitViewController(
                                 format = barcode.type.toFormat().toString(),
                                 rawBytes = barcode.stringValue!!.encodeToByteArray(),
                             ),
-                            box = barcode.corners
-                                .filterIsInstance<NSDictionary>()
-                                .map { pointDict ->
-                                    BarcodeCorner(
-                                        x = pointDict.objectForKey("X") as? CGFloat ?: 0.0,
-                                        y = pointDict.objectForKey("Y") as? CGFloat ?: 0.0,
-                                    )
-                                }
+                            box = barcodeCorners
                                 .toBoundingBox(),
+                            rect = barcode.bounds.useContents {
+                                val r = this
+                                Rect(
+                                    offset = Offset(
+                                        x = r.origin.x.toFloat(),
+                                        y = r.origin.y.toFloat(),
+                                    ) - previewOffset,
+                                    size = Size(
+                                        width = r.size.width.toFloat(),
+                                        height = r.size.height.toFloat(),
+                                    ),
+                                )
+                            },
+                            corners = barcodeCorners,
                         )
                     } else {
                         null
@@ -360,7 +431,8 @@ class CameraUiKitViewController(
 
         val connection = previewLayer.connection ?: return
 
-        val uiOrientation: UIInterfaceOrientation = UIApplication.sharedApplication().statusBarOrientation
+        val uiOrientation: UIInterfaceOrientation =
+            UIApplication.sharedApplication().statusBarOrientation
 
         val videoOrientation: AVCaptureVideoOrientation =
             when (uiOrientation) {
@@ -419,6 +491,7 @@ class CameraUiKitViewController(
     private fun startSession() = externalScope.launch {
         session.startRunning()
     }
+
     private fun stopSession() = externalScope.launch {
         session.stopRunning()
     }
@@ -445,23 +518,23 @@ class CameraUiKitViewController(
     }
 }
 
-fun List<CameraUiKitViewController.BarcodeCorner>.toBoundingBox(): BarcodeBoundingBox {
+fun List<Offset>.toBoundingBox(): BarcodeBoundingBox {
     val corners = toMutableList().sortedBy { corner -> corner.y }
     val topCorners = corners.slice(0..1).sortedBy { corner -> corner.x }
     val botCorners = corners.slice(2..3).sortedBy { corner -> corner.x }
 
     return BarcodeBoundingBox(
         topLeft = topCorners[0].let { corner ->
-            Offset(corner.x.toFloat(), corner.y.toFloat())
+            Offset(corner.x, corner.y)
         },
         topRight = topCorners[1].let { corner ->
-            Offset(corner.x.toFloat(), corner.y.toFloat())
+            Offset(corner.x, corner.y)
         },
         botLeft = botCorners[0].let { corner ->
-            Offset(corner.x.toFloat(), corner.y.toFloat())
+            Offset(corner.x, corner.y)
         },
         botRight = botCorners[1].let { corner ->
-            Offset(corner.x.toFloat(), corner.y.toFloat())
+            Offset(corner.x, corner.y)
         },
     )
 }

@@ -25,6 +25,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
@@ -86,6 +88,34 @@ inline fun <reified T> rememberMutableStateOf(key1: Any?, value: T): MutableStat
 @Composable
 inline fun <reified T> rememberStateOf(value: T): State<T> {
     return remember { mutableStateOf(value) }
+}
+
+@Composable
+fun rememberCameraViewSize(): State<DpSize> {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+
+    val (leftInset, rightInset) = remember(density, layoutDirection) {
+        val insets = WindowInsets()
+
+        val leftToRight = insets.getLeft(density, layoutDirection) to insets.getRight(
+            density,
+            layoutDirection
+        )
+
+        leftToRight
+    }
+    val windowSize = LocalWindowInfo.current.containerSize
+
+    val cameraViewWidthPx = windowSize.width - (rightInset + leftInset)
+    val cameraViewHeightPx = cameraViewWidthPx * 5f / 4f
+
+    return rememberUpdatedState(
+        DpSize(
+            width = with(density) { cameraViewWidthPx.toDp() },
+            height = with(density) { cameraViewHeightPx.toDp() },
+        )
+    )
 }
 
 @Composable
