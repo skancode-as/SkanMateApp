@@ -20,6 +20,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.DpSize
@@ -28,6 +30,34 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+
+@Composable
+fun rememberCameraViewSize(): State<DpSize> {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+
+    val (leftInset, rightInset) = remember(density, layoutDirection) {
+        val insets = WindowInsets()
+
+        val leftToRight = insets.getLeft(density, layoutDirection) to insets.getRight(
+            density,
+            layoutDirection
+        )
+
+        leftToRight
+    }
+    val windowSize = LocalWindowInfo.current.containerSize
+
+    val cameraViewWidthPx = windowSize.width - (rightInset + leftInset)
+    val cameraViewHeightPx = cameraViewWidthPx * 5f / 4f
+
+    return rememberUpdatedState(
+        DpSize(
+            width = with(density) { cameraViewWidthPx.toDp() },
+            height = with(density) { cameraViewHeightPx.toDp() },
+        )
+    )
+}
 
 @Composable
 fun borderColorFor(color: Color, mix: Float = 0.3f): Color {

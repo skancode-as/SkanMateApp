@@ -36,6 +36,7 @@ kotlin {
 
             implementation(libs.android.mlkitBarcodeScanning)
             implementation(libs.camera.mlkit.vision)
+            implementation(libs.mlkit.objectdetection.common)
 
             implementation(libs.androidx.camera.core)
             implementation(libs.androidx.camera.camera2)
@@ -80,8 +81,8 @@ android {
         applicationId = "dk.skancode.skanmate"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 21
-        versionName = "1.0.0-beta.21"
+        versionCode = 22
+        versionName = "1.0.0-beta.22"
         multiDexEnabled = true
         setProperty("archivesBaseName", "SkanMate-${versionName}")
     }

@@ -18,6 +18,9 @@ fun<T> StateFlow<List<T>>.find(predicate: (T) -> Boolean): T? {
     return this.collectAsState().value.find(predicate)
 }
 
+fun<T> List<T>.applyEach(block: T.() -> Unit): List<T> =
+    map { it.apply(block = block) }
+
 val Color.Companion.Success: Color
     get() = Color(0xFF0D9A0D)
 

@@ -25,6 +25,7 @@ navigationCompose = "2.9.1"
 media3 = "1.8.0"
 mlkitBarcodeScanning-android = "17.3.0"
 cameraMlkitVision = "1.4.1"
+objectDetectionCommon = "17.0.2"
 
 [libraries]
 barcodescannermodule = { module = "com.github.TobiasTheDanish:BarcodeScannerModule", version.ref = "barcodeModuleVersion" }
@@ -58,6 +59,7 @@ navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-co
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 android-mlkitBarcodeScanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkitBarcodeScanning-android" }
 camera-mlkit-vision = { group = "androidx.camera", name = "camera-mlkit-vision", version.ref = "cameraMlkitVision" }
+mlkit-objectdetection-common = { group = "com.google.mlkit", name = "object-detection", version.ref = "objectDetectionCommon" }
 
 
 [plugins]
