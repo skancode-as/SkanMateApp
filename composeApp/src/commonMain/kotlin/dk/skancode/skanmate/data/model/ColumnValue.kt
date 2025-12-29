@@ -33,6 +33,8 @@ internal object ColumnValueSerializer : KSerializer<ColumnValue> {
     @OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
     override val descriptor: SerialDescriptor = ColumnValueSerialDescriptor()
 
+    private val locationDataSerializer = LocationData.serializer()
+
     @OptIn(ExperimentalSerializationApi::class)
     override fun serialize(
         encoder: Encoder,
@@ -45,7 +47,7 @@ internal object ColumnValueSerializer : KSerializer<ColumnValue> {
             is ColumnValue.Text -> encoder.encodeString(value.text)
             is ColumnValue.File -> if (value.objectUrl != null) encoder.encodeString(value.objectUrl) else if (value.localUrl != null) encoder.encodeString(value.localUrl) else encoder.encodeNull()
             is ColumnValue.OptionList -> if (value.selected != null) encoder.encodeString(value.selected) else encoder.encodeNull()
-            is ColumnValue.GPS -> TODO("Serialization of ColumnValue.GPS is not implemented")
+            is ColumnValue.GPS -> if (value.locationData != null) locationDataSerializer.serialize(encoder, value.locationData) else encoder.encodeNull()
         }
     }
 
