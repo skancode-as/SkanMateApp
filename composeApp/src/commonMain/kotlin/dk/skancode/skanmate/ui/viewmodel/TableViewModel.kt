@@ -385,6 +385,7 @@ class TableViewModel(
                                 is ColumnValue.Boolean,
                                 is ColumnValue.File,
                                 is ColumnValue.OptionList,
+                                is ColumnValue.GPS,
                                 ColumnValue.Null -> {
                                     AudioPlayerInstance.playError()
                                     UserMessageServiceImpl.displayError(

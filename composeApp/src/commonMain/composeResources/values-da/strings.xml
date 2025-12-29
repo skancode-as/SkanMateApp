@@ -45,9 +45,10 @@
     <string name="column_type_file">Fil</string>
     <string name="column_type_list">Liste</string>
     <string name="column_type_boolean">Ja/Nej</string>
+    <string name="column_type_gps">GPS</string>
     <string name="column_type_null">Ukendt</string>
 
-    <string name="constraint_error_invalid_type">Værdi af typen %1$s er ikke tilladt for validering %2$s</string>
+    <string name="constraint_error_invalid_type">Værdi af typen %1$s er ikke tilladt for validering '%2$s'</string>
     <string name="constraint_error_invalid_option">Værdien er ikke en af de angivne muligheder</string>
     <string name="constraint_error_min_length">Værdien skal være mindst %1$d tegn</string>
     <string name="constraint_error_max_length">Værdien kan ikke være længere end %1$d tegn</string>
@@ -60,6 +61,11 @@
     <string name="constraint_error_starts_with">Værdien skal starte med %1$s</string>
     <string name="constraint_error_ends_with">Værdien skal slutte med %1$s</string>
     <string name="constraint_error_server">%1$s</string>
+
+    <string name="constraint_name_constant_value">fast værdi</string>
+    <string name="constraint_name_required">påkrævet</string>
+    <string name="constraint_name_starts_with">starter med</string>
+    <string name="constraint_name_ends_with">slutter med</string>
 
     <string name="table_vm_could_not_upload_image">Kunne ikke uploade billede. Prøv venligst igen.</string>
     <string name="table_vm_could_not_submit_data">Data kunne ikke indsendes. %1$s</string>

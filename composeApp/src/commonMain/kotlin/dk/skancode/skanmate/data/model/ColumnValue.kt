@@ -1,5 +1,6 @@
 package dk.skancode.skanmate.data.model
 
+import dk.skancode.skanmate.location.LocationData
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -44,6 +45,7 @@ internal object ColumnValueSerializer : KSerializer<ColumnValue> {
             is ColumnValue.Text -> encoder.encodeString(value.text)
             is ColumnValue.File -> if (value.objectUrl != null) encoder.encodeString(value.objectUrl) else if (value.localUrl != null) encoder.encodeString(value.localUrl) else encoder.encodeNull()
             is ColumnValue.OptionList -> if (value.selected != null) encoder.encodeString(value.selected) else encoder.encodeNull()
+            is ColumnValue.GPS -> TODO("Serialization of ColumnValue.GPS is not implemented")
         }
     }
 
@@ -62,6 +64,7 @@ sealed class ColumnValue {
             is Numeric -> "Numeric($num)"
             is OptionList -> "OptionsList($selected, $options)"
             is Text -> "Text($text)"
+            is GPS -> "GPS(lat: ${locationData?.latitude}, lng: ${locationData?.longitude})"
         }
     }
 
@@ -183,6 +186,27 @@ sealed class ColumnValue {
         }
     }
 
+    data class GPS(val locationData: LocationData? = null): ColumnValue() {
+        override fun clone(): ColumnValue = this.copy()
+
+        override fun isEmpty(): kotlin.Boolean {
+            return locationData == null
+        }
+
+        override fun equals(other: Any?): kotlin.Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+
+            other as GPS
+
+            return locationData == other.locationData
+        }
+
+        override fun hashCode(): Int {
+            return locationData?.hashCode() ?: 0
+        }
+    }
+
     data object Null : ColumnValue() {
         override fun clone(): ColumnValue = this
         override fun isEmpty(): kotlin.Boolean = true
@@ -203,6 +227,7 @@ sealed class ColumnValue {
             ColumnType.Id -> Null
             ColumnType.File -> File()
             ColumnType.List -> OptionList(options = options)
+            ColumnType.GPS -> GPS()
         }
     }
 }
