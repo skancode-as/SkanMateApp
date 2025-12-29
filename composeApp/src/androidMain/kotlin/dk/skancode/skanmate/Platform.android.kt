@@ -1,9 +1,12 @@
 package dk.skancode.skanmate
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.net.Uri
+import android.provider.MediaStore
 import androidx.camera.core.impl.utils.Exif
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
@@ -17,6 +20,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.database.getStringOrNull
 import com.russhwolf.settings.Settings
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.barcodescannermodule.compose.LocalScannerModule
@@ -59,6 +63,60 @@ actual fun CameraView(
 }
 
 @SuppressLint("RestrictedApi")
+private suspend fun loadBitmapFromUri(uri: Uri, context: Context): Bitmap? {
+    var inputStream = context.contentResolver.openInputStream(uri)
+
+    val rotation = inputStream?.use { inputStream ->
+        val exif = Exif.createFromInputStream(inputStream)
+        exif.rotation
+    } ?: return null
+
+    inputStream = context.contentResolver.openInputStream(uri)
+
+    return inputStream?.use { inputStream ->
+        BitmapFactory.decodeStream(inputStream)?.rotate(rotation)
+    }
+}
+
+actual suspend fun loadLocalImage(imagePath: String): ImageData {
+    val context = SkanMateApplication.applicationContext
+
+    val uri: Uri = imagePath.toUri()
+    val name: String? = uri.scheme?.let { scheme ->
+        when (scheme) {
+            "content" -> {
+                context.contentResolver.query(
+                    uri,
+                    arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                )?.use { cursor ->
+                    println("RowCount: ${cursor.count}, ColumnCount: ${cursor.columnCount}, ColumnNames: ${cursor.columnNames.joinToString()}")
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+                        cursor.getStringOrNull(index)
+                    } else null
+                }
+            }
+
+            else -> uri.path
+        }
+    }
+
+    println("Image name ($name) for path: $imagePath")
+
+    val data: ByteArray? = context.contentResolver.openInputStream(uri)?.readBytes()
+
+    println("Image name: $name, byteCount: ${data?.size}")
+
+    return ImageData(
+        path = imagePath,
+        name = name,
+        data = data,
+    )
+}
+
 @Composable
 actual fun loadImage(imagePath: String?): ImageResource<Painter> {
     val resource = rememberImageResource(imagePath)
@@ -67,35 +125,16 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
     LaunchedEffect(context, resource) {
         if (imagePath == null) return@LaunchedEffect
         launch(Dispatchers.IO) {
-            var inputStream = context.contentResolver.openInputStream(imagePath.toUri())
-
-            if (inputStream == null) {
-                println("Could not open input stream at imagePath: $imagePath")
-                resource.error("Could not open input stream at imagePath: $imagePath")
-                return@launch
-            }
-
-            val rotation = inputStream.use { inputStream ->
-                val exif = Exif.createFromInputStream(inputStream)
-                exif.rotation
-            }
-            inputStream = context.contentResolver.openInputStream(imagePath.toUri())
-
-            if (inputStream == null) {
-                println("Could not open input stream at imagePath: $imagePath")
-                resource.error("Could not open input stream at imagePath: $imagePath")
-                return@launch
-            }
-            inputStream.use { inputStream ->
-                val bitmap: Bitmap? =
-                    BitmapFactory.decodeStream(inputStream)?.rotate(rotation)
-
-                if (bitmap != null) {
-                    resource.update(
-                        painter = BitmapPainter(bitmap.asImageBitmap())
-                    )
+            val bitmap: Bitmap =
+                loadBitmapFromUri(uri = imagePath.toUri(), context = context) ?: run {
+                    println("Could not open input stream at imagePath: $imagePath")
+                    resource.error("Could not open input stream at imagePath: $imagePath")
+                    return@launch
                 }
-            }
+
+            resource.update(
+                painter = BitmapPainter(bitmap.asImageBitmap())
+            )
         }
     }
 
@@ -104,7 +143,8 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
 
 fun Bitmap.rotate(degrees: Number): Bitmap {
     val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
-    val rotatedBitmap = Bitmap.createBitmap(this.copy(config!!, isMutable), 0, 0, width, height, matrix, true)
+    val rotatedBitmap =
+        Bitmap.createBitmap(this.copy(config!!, isMutable), 0, 0, width, height, matrix, true)
     this.recycle()
 
     return rotatedBitmap
@@ -147,6 +187,7 @@ actual class ScannerController {
     fun setMaxZoom(ratio: Float) {
         _maxZoomRatio = ratio
     }
+
     var onTorchChange: (Boolean) -> Unit = {}
     var onZoomChange: (Float) -> Unit = {}
 

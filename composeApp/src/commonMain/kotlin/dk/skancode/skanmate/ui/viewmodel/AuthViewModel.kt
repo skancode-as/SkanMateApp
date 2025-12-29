@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dk.skancode.skanmate.data.model.TenantModel
 import dk.skancode.skanmate.data.model.UserModel
 import dk.skancode.skanmate.data.service.AuthService
+import dk.skancode.skanmate.data.service.ConnectivityService
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.isValidEmail
 import dk.skancode.skanmate.util.snackbar.UserMessageService
@@ -21,6 +22,7 @@ import skanmate.composeapp.generated.resources.auth_screen_invalid_email
 class AuthViewModel(
     val authService: AuthService,
     val userMessageService: UserMessageService,
+    val connectivityService: ConnectivityService = ConnectivityService.instance,
 ) : ViewModel() {
     private val _authedUser = MutableStateFlow<UserModel?>(null)
     val authedUser: StateFlow<UserModel?>
@@ -100,6 +102,7 @@ class AuthViewModel(
 
     fun signOut() {
         viewModelScope.launch {
+            connectivityService.disableOfflineMode()
             authService.signOut()
         }
     }

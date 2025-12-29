@@ -25,7 +25,6 @@ import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.makeFromEncoded
@@ -100,6 +99,29 @@ actual fun CameraView(
         modifier = modifier,
         cameraUi = cameraUi,
     )
+}
+
+@OptIn(BetaInteropApi::class)
+actual suspend fun loadLocalImage(imagePath: String): ImageData {
+    val fileManager = NSFileManager.defaultManager
+    val documentDir =
+        NSSearchPathForDirectoriesInDomains(
+            NSDocumentDirectory,
+            NSUserDomainMask,
+            true
+        )[0] as? String
+
+    return if (documentDir != null && fileManager.fileExistsAtPath("$documentDir/$imagePath")) {
+        val data: NSData = NSData.create(contentsOfFile = "$documentDir/$imagePath")!!
+
+        ImageData(
+            path = imagePath,
+            name = imagePath,
+            data = data.toByteArray(),
+        )
+    } else {
+        ImageData(path = null, name = null, data = null)
+    }
 }
 
 @OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
@@ -185,6 +207,7 @@ actual fun SkanMateScannerView(
     )
 }
 
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class ScannerController {
     lateinit var captureDevice: AVCaptureDevice
 

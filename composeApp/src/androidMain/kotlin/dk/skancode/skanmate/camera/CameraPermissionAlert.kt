@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import dev.icerock.moko.permissions.PermissionState
@@ -20,6 +19,7 @@ import dk.skancode.skanmate.LocalPermissionsViewModel
 import dk.skancode.skanmate.R
 import dk.skancode.skanmate.ui.component.ContentDialog
 import dk.skancode.skanmate.ui.component.TextButton
+import dk.skancode.skanmate.util.titleTextStyle
 import dk.skancode.skanmate.util.unreachable
 
 @Composable
@@ -121,8 +121,7 @@ fun CameraPermissionAlert(
                 title = {
                     Text(
                         text = stringResource(R.string.camera_permissions_missing),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
+                        style = titleTextStyle(),
                     )
                 },
                 description = description,

@@ -1,10 +1,13 @@
 package dk.skancode.skanmate.util
 
 import androidx.annotation.FloatRange
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorModel
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import dk.skancode.skanmate.data.model.ColumnConstraint
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.max
@@ -17,6 +20,11 @@ import kotlin.math.roundToLong
 fun<T> StateFlow<List<T>>.find(predicate: (T) -> Boolean): T? {
     return this.collectAsState().value.find(predicate)
 }
+
+@Composable
+fun titleTextStyle(): TextStyle = MaterialTheme.typography.titleLarge.copy(
+    fontWeight = FontWeight.SemiBold,
+)
 
 val Color.Companion.Success: Color
     get() = Color(0xFF0D9A0D)

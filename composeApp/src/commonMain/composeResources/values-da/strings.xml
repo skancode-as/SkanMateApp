@@ -10,8 +10,9 @@
 
     <string name="main_screen_title">Tabeller</string>
     <string name="main_screen_could_not_update_tables">Kunne ikke opdatere tabeller. Prøv igen.</string>
+    <string name="main_screen_not_available_offline_tooltip">Denne tabel er ikke tilgængelig uden internet forbindelse</string>
 
-    <string name="table_screen_data_remembered">Gemt</string>
+    <string name="table_screen_data_remembered_tooltip">Feltet huskes efter indsendelse</string>
     <string name="table_screen_data_submitted">Data blev indsat succesfuldt!</string>
     <string name="table_screen_take_picture">Tag billede</string>
     <string name="table_screen_retake_picture">Nyt billede</string>
@@ -19,6 +20,11 @@
     <string name="table_screen_switch_off">Falsk</string>
     <string name="table_screen_multiple_barcodes">Flere stregkoder fundet</string>
     <string name="table_screen_multiple_barcodes_desc">Vælg den ønskede stregkode</string>
+    <string name="table_screen_connection_lost_title">Forbindelse mistet</string>
+    <string name="table_screen_connection_lost_content_text_1">Internet forbindelsen blev mistet, og denne tabel er ikke tilgængelig uden internet forbindelse.</string>
+    <string name="table_screen_connection_lost_content_text_2">Du skal genoprette forbindelsen for at færdiggøre denne dataindsendelse.\nHvis du ikke har mulighed for at genoprette forbindelsen nu, eller ikke ønsker at færdiggøre denne dataindsendelse, kan du gå tilbage til tabelmenuen med knappen nedenfor.</string>
+    <string name="table_screen_connection_lost_content_text_3">Bemærk, at data der ikke er indsendt, ikke vil blive gemt.</string>
+    <string name="table_screen_connection_lost_exit_btn">Gå tilbage</string>
 
     <string name="auth_screen_email_label">Email</string>
     <string name="auth_screen_email_placeholder">Indtast din email...</string>
@@ -31,6 +37,8 @@
     <string name="auth_screen_fill_email">Udfyld email før log ind.</string>
     <string name="auth_screen_invalid_email">Email er ikke gyldig.</string>
     <string name="auth_screen_fill_pin">Udfyld pinkode før log ind.</string>
+    <string name="auth_screen_no_connection_title">Ingen internet forbindelse</string>
+    <string name="auth_screen_no_connection_desc">Din enhed er ikke forbundet til internettet. For at logge ind, skal du forbinde til internettet igen.</string>
 
     <string name="column_type_text">Tekst</string>
     <string name="column_type_numeric">Tal</string>
@@ -56,8 +64,47 @@
     <string name="table_vm_could_not_upload_image">Kunne ikke uploade billede. Prøv venligst igen.</string>
     <string name="table_vm_could_not_submit_data">Data kunne ikke indsendes. %1$s</string>
     <string name="table_vm_could_not_submit_data_constraint">Data kunne ikke indsendes. Ret fejl og prøv igen.</string>
+    <string name="table_vm_could_not_store_data">Data kunne ikke gemmes på enheden.</string>
     <string name="table_vm_could_not_select_barcode">Den stregkode kunne ikke vælges</string>
     <string name="table_vm_scan_not_possible_for_col">Scanning er ikke muligt for %1$s kolonnen</string>
+
+    <string name="sync_screen_title">Synkronisering</string>
+    <plurals name="sync_screen_table_description">
+        <item quantity="one">%1$d række ikke synkroniseret</item>
+        <item quantity="other">%1$d rækker ikke synkroniseret</item>
+    </plurals>
+    <string name="sync_screen_fab_text">Synkroniser</string>
+    <string name="sync_screen_delete_row_alert_title">Slet række</string>
+    <string name="sync_screen_delete_row_alert_desc">Slet række fra enhed</string>
+    <string name="sync_screen_delete_row_alert_content_text">Du er ved at slette denne række fra enheden.\nDen vil IKKE blive synkroniseret med serveren!</string>
+    <string name="sync_screen_delete_row_alert_dismiss_btn">Afvis</string>
+    <string name="sync_screen_delete_row_alert_accept_btn">Acceptér</string>
+    <string name="sync_screen_could_not_delete_local_row">Kunne ikke slette række fra enhed</string>
+    <string name="sync_screen_delete_table_alert_title">Slet tabeldata</string>
+    <string name="sync_screen_delete_table_alert_desc">Slet tabeldata fra enhed</string>
+    <string name="sync_screen_delete_table_alert_content_text">Du er ved at slette dataen fra denne tabel fra enheden.\nDen vil IKKE blive synkroniseret med serveren!</string>
+    <string name="sync_screen_could_not_delete_local_table_rows">Kunne ikke slette rækker fra enhed</string>
+    <string name="sync_screen_dropdown_item_delete">Slet</string>
+    <string name="sync_screen_dropdown_item_edit">Rediger</string>
+    <string name="sync_screen_data_synchronised">Data synkronisering succesfuld</string>
+    <string name="sync_screen_could_not_sync_data">Der skete en fejl ved data synkronisering</string>
+    <string name="sync_screen_no_local_data_title">Ingen data fundet på enheden</string>
+    <string name="sync_screen_no_local_data_content">Der er ingen data som mangler at blive synkroniseret med serveren.</string>
+
+    <string name="sync_vm_synchronisation_already_running">Synkronisering er allerede i gang. Vent på at den nuværende proces stopper.</string>
+
+    <plurals name="bottom_app_bar_title">
+        <item quantity="one">%1$d række gemt på enheden</item>
+        <item quantity="other">%1$d rækker gemt på enheden</item>
+    </plurals>
+
+    <string name="connectivity_dialog_offline_mode_dialog_title">Offline mode</string>
+    <string name="connectivity_dialog_enable_offline_mode">Vil du slå offline mode til?</string>
+    <string name="connectivity_dialog_disable_offline_mode">Vil du slå offline mode fra?</string>
+    <string name="connectivity_dialog_slow_internet_dialog_title">Langsom internet forbindelse</string>
+    <string name="connectivity_dialog_slow_internet_dialog_desc">Det ligner at der er langsom internet forbindelse.\nVil du slå offline mode til?</string>
+    <string name="connectivity_dialog_btn_yes">Ja</string>
+    <string name="connectivity_dialog_btn_no">Nej</string>
 
     <string name="ios_camera_not_available">Kunne ikke starte kameraet. Tjek at appen har adgang til kameraet.</string>
 </resources>

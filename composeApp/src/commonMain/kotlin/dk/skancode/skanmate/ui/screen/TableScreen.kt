@@ -64,6 +64,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -88,6 +89,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import androidx.compose.ui.window.DialogProperties
 import dk.skancode.skanmate.ImageData
 import dk.skancode.skanmate.ImageResource
 import dk.skancode.skanmate.ImageResourceState
@@ -112,13 +114,16 @@ import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.PanelButton
 import dk.skancode.skanmate.ui.component.AutoSizeText
 import dk.skancode.skanmate.ui.component.ContentDialog
+import dk.skancode.skanmate.ui.component.LocalAuthUser
 import dk.skancode.skanmate.ui.component.SizeValues
 import dk.skancode.skanmate.ui.component.SkanMateTopAppBar
 import dk.skancode.skanmate.ui.component.Switch
 import dk.skancode.skanmate.ui.component.SwitchDefaults
+import dk.skancode.skanmate.ui.component.TextButton
 import dk.skancode.skanmate.ui.component.fab.FloatingActionButton
 import dk.skancode.skanmate.ui.state.FetchStatus
 import dk.skancode.skanmate.ui.state.TableUiState
+import dk.skancode.skanmate.ui.viewmodel.LocalConnectionState
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.HapticKind
 import dk.skancode.skanmate.util.InternalStringResource
@@ -130,6 +135,7 @@ import dk.skancode.skanmate.util.keyboardVisibleAsState
 import dk.skancode.skanmate.util.measureText
 import dk.skancode.skanmate.util.rememberHaptic
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
+import dk.skancode.skanmate.util.titleTextStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -144,6 +150,7 @@ import skanmate.composeapp.generated.resources.save
 import skanmate.composeapp.generated.resources.select_placeholder
 import skanmate.composeapp.generated.resources.submit
 import skanmate.composeapp.generated.resources.table_not_found
+import skanmate.composeapp.generated.resources.table_screen_data_remembered_tooltip
 import skanmate.composeapp.generated.resources.table_screen_data_submitted
 import skanmate.composeapp.generated.resources.table_screen_multiple_barcodes
 import skanmate.composeapp.generated.resources.table_screen_multiple_barcodes_desc
@@ -151,6 +158,11 @@ import skanmate.composeapp.generated.resources.table_screen_retake_picture
 import skanmate.composeapp.generated.resources.table_screen_switch_off
 import skanmate.composeapp.generated.resources.table_screen_switch_on
 import skanmate.composeapp.generated.resources.table_screen_take_picture
+import skanmate.composeapp.generated.resources.table_screen_connection_lost_title
+import skanmate.composeapp.generated.resources.table_screen_connection_lost_content_text_1
+import skanmate.composeapp.generated.resources.table_screen_connection_lost_content_text_2
+import skanmate.composeapp.generated.resources.table_screen_connection_lost_content_text_3
+import skanmate.composeapp.generated.resources.table_screen_connection_lost_exit_btn
 import skanmate.composeapp.generated.resources.triangle_alert
 import kotlin.math.roundToInt
 
@@ -172,6 +184,11 @@ fun TableScreen(
     val audioPlayer = LocalAudioPlayer.current
     val successHaptic = rememberHaptic(HapticKind.Success)
     val errorHaptic = rememberHaptic(HapticKind.Error)
+    val user = LocalAuthUser.current
+
+    LaunchedEffect(user) {
+        viewModel.currentUsername = user.name
+    }
 
     val submitData = {
         focusManager.clearFocus(true)
@@ -203,6 +220,11 @@ fun TableScreen(
             dismiss = { viewModel.selectBarcode(-1) }
         )
     }
+
+    TableNotAvailableWhileOfflineDialog(
+        tableUiState = tableUiState,
+        navigateBack = navigateBack,
+    )
 
     KeyboardAwareScaffold(
         topBar = {
@@ -278,6 +300,70 @@ fun TableScreen(
                     },
                 ) { columns ->
                     viewModel.updateColumns(columns)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TableNotAvailableWhileOfflineDialog(
+    tableUiState: TableUiState,
+    navigateBack: () -> Unit,
+    hasConnectionState: State<Boolean> = LocalConnectionState.current,
+) {
+    val hasConnection by hasConnectionState
+
+    if (!(hasConnection || tableUiState.isAvailableOffline)) {
+        val contentPadding = PaddingValues(16.dp)
+
+        ContentDialog(
+            onDismissRequest = {},
+            properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+            closable = false,
+            contentPadding = contentPadding,
+            title = {
+                Text(
+                    text = stringResource(Res.string.table_screen_connection_lost_title),
+                    style = titleTextStyle(),
+                )
+            }
+        ) {
+            Column(
+                modifier = Modifier.padding(paddingValues = contentPadding),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.table_screen_connection_lost_content_text_1),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    text = stringResource(Res.string.table_screen_connection_lost_content_text_2),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    text = stringResource(Res.string.table_screen_connection_lost_content_text_3),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold,
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = navigateBack,
+                        colors = ButtonDefaults.textButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary,
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.table_screen_connection_lost_exit_btn),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
                 }
             }
         }
@@ -543,153 +629,158 @@ fun TableColumn(
         val modifier = Modifier.fillMaxWidth()
         val imeAction = if (isLast) ImeAction.Done else ImeAction.Next
 
-        if (col.type == ColumnType.Boolean && col.value is ColumnValue.Boolean) {
-            LaunchedEffect(focusManager, isFocused) {
-                if (isFocused) {
-                    focusManager.clearFocus()
+        when (col.type) {
+            ColumnType.Boolean if col.value is ColumnValue.Boolean -> {
+                LaunchedEffect(focusManager, isFocused) {
+                    if (isFocused) {
+                        focusManager.clearFocus()
+                    }
                 }
-            }
 
-            TableColumnBoolean(
-                modifier = modifier,
-                label = col.name,
-                checked = col.value.checked,
-                setChecked = { checked ->
-                    updateValue(col.value.copy(checked = checked))
-                },
-                enabled = enabled,
-                isFocused = isFocused,
-                height = inputHeight,
-            )
-        } else if (col.type == ColumnType.File && col.value is ColumnValue.File) {
-            LaunchedEffect(focusManager, isFocused) {
-                if (isFocused) {
-                    focusManager.clearFocus()
-                }
+                TableColumnBoolean(
+                    modifier = modifier,
+                    label = col.name,
+                    checked = col.value.checked,
+                    setChecked = { checked ->
+                        updateValue(col.value.copy(checked = checked))
+                    },
+                    enabled = enabled,
+                    isFocused = isFocused,
+                    height = inputHeight,
+                )
             }
+            ColumnType.File if col.value is ColumnValue.File -> {
+                LaunchedEffect(focusManager, isFocused) {
+                    if (isFocused) {
+                        focusManager.clearFocus()
+                    }
+                }
 
-            TableColumnFile(
-                modifier = modifier,
-                label = col.name,
-                value = if (col.value.localUrl == null) null
-                else ImageData(
-                    path = col.value.localUrl, name = col.value.fileName, data = col.value.bytes
-                ),
-                deleteFile = { path ->
-                    println("TableColumn::deleteFile($path)")
-                    if (path != null) deleteFile(path)
-                },
-                setValue = { data ->
-                    updateValue(
-                        col.value.copy(
-                            localUrl = data?.path,
-                            fileName = data?.name,
-                            bytes = data?.data,
-                            isUploaded = col.value.isUploaded && data != null
-                        )
-                    )
-                },
-                enabled = enabled,
-                isFocused = isFocused,
-                buttonHeight = inputHeight,
-            )
-        } else if (col.type == ColumnType.List && col.value is ColumnValue.OptionList) {
-            LaunchedEffect(focusRequester, isFocused) {
-                if (isFocused) {
-                    focusRequester.requestFocus()
-                }
-            }
-
-            TableColumnList(
-                modifier = modifier,
-                selectOption = { opt ->
-                    updateValue(
-                        col.value.copy(selected = opt)
-                    )
-                },
-                option = col.value.selected,
-                options = col.value.options,
-                label = col.name,
-                setFocus = {
-                    setFocus(col.id, it)
-                },
-                enabled = enabled,
-                focusRequester = focusRequester,
-                inputHeight = inputHeight,
-            )
-        } else {
-            LaunchedEffect(focusRequester, isFocused) {
-                if (isFocused) {
-                    focusRequester.requestFocus()
-                }
-            }
-            val prefixSuffix = { value: String ->
-                (@Composable {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.surface,
-                                shape = RoundedCornerShape(4.dp),
+                TableColumnFile(
+                    modifier = modifier,
+                    label = col.name,
+                    value = if (col.value.localUrl == null) null
+                    else ImageData(
+                        path = col.value.localUrl, name = col.value.fileName, data = col.value.bytes
+                    ),
+                    deleteFile = { path ->
+                        println("TableColumn::deleteFile($path)")
+                        if (path != null) deleteFile(path)
+                    },
+                    setValue = { data ->
+                        updateValue(
+                            col.value.copy(
+                                localUrl = data?.path,
+                                fileName = data?.name,
+                                bytes = data?.data,
+                                isUploaded = col.value.isUploaded && data != null
                             )
-                            .padding(horizontal = 4.dp),
-                    ) {
-                        Text(value)
-                    }
-                })
-            }
-
-            TableColumnInput(
-                modifier = modifier
-                    .heightIn(max = inputHeight),
-                borderColor =
-                    if (col.rememberValue)
-                        if (col.value.isNotEmpty()) Color.Success else MaterialTheme.colorScheme.error
-                    else Color.Unspecified,
-                label = col.name,
-                value = when (col.value) {
-                    is ColumnValue.Text -> col.value.text
-                    is ColumnValue.Numeric -> col.value.num?.toString() ?: ""
-                    else -> ""
-                },
-                setValue = {
-                    val newValue = when (col.value) {
-                        is ColumnValue.Text -> col.value.copy(text = it)
-                        is ColumnValue.Numeric -> col.value.copy(
-                            num = it.toIntOrNull() ?: it.toDoubleOrNull()
                         )
-
-                        else -> col.value
+                    },
+                    enabled = enabled,
+                    isFocused = isFocused,
+                    buttonHeight = inputHeight,
+                )
+            }
+            ColumnType.List if col.value is ColumnValue.OptionList -> {
+                LaunchedEffect(focusRequester, isFocused) {
+                    if (isFocused) {
+                        focusRequester.requestFocus()
                     }
-                    updateValue(newValue)
-                },
-                validateValue = {
-                    if (it.isNotEmpty()) {
-                        when (col.value) {
-                            is ColumnValue.Text -> validateValue(col.value.copy(text = it))
-                            is ColumnValue.Numeric -> validateValue(
-                                col.value.copy(
-                                    num = it.toIntOrNull() ?: it.toDoubleOrNull()
+                }
+
+                TableColumnList(
+                    modifier = modifier,
+                    selectOption = { opt ->
+                        updateValue(
+                            col.value.copy(selected = opt)
+                        )
+                    },
+                    option = col.value.selected,
+                    options = col.value.options,
+                    label = col.name,
+                    setFocus = {
+                        setFocus(col.id, it)
+                    },
+                    enabled = enabled,
+                    focusRequester = focusRequester,
+                    inputHeight = inputHeight,
+                )
+            }
+            else -> {
+                LaunchedEffect(focusRequester, isFocused) {
+                    if (isFocused) {
+                        focusRequester.requestFocus()
+                    }
+                }
+                val prefixSuffix = { value: String ->
+                    (@Composable {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(4.dp),
                                 )
+                                .padding(horizontal = 4.dp),
+                        ) {
+                            Text(value)
+                        }
+                    })
+                }
+
+                TableColumnInput(
+                    modifier = modifier
+                        .heightIn(max = inputHeight),
+                    borderColor =
+                        if (col.rememberValue)
+                            if (col.value.isNotEmpty()) Color.Success else MaterialTheme.colorScheme.error
+                        else Color.Unspecified,
+                    label = col.name,
+                    value = when (col.value) {
+                        is ColumnValue.Text -> col.value.text
+                        is ColumnValue.Numeric -> col.value.num?.toString() ?: ""
+                        else -> ""
+                    },
+                    setValue = {
+                        val newValue = when (col.value) {
+                            is ColumnValue.Text -> col.value.copy(text = it)
+                            is ColumnValue.Numeric -> col.value.copy(
+                                num = it.toIntOrNull() ?: it.toDoubleOrNull()
                             )
 
-                            else -> false
+                            else -> col.value
                         }
-                    } else {
-                        true
-                    }
-                },
-                type = col.type,
-                enabled = enabled,
-                setFocus = { setFocus(col.id, it) },
-                imeAction = imeAction,
-                keyboardType = if (col.hasConstraint<ColumnConstraint.Email>()) KeyboardType.Email else col.type.keyboardType(),
-                onKeyboardAction = { onKeyboardAction(imeAction) },
-                isError = errors.isNotEmpty(),
-                focusRequester = focusRequester,
-                prefix = if (!col.hasPrefix) null else prefixSuffix(col.prefix),
-                suffix = if (!col.hasSuffix) null else prefixSuffix(col.suffix),
-                rememberComposable = rememberComposable,
-            )
+                        updateValue(newValue)
+                    },
+                    validateValue = {
+                        if (it.isNotEmpty()) {
+                            when (col.value) {
+                                is ColumnValue.Text -> validateValue(col.value.copy(text = it))
+                                is ColumnValue.Numeric -> validateValue(
+                                    col.value.copy(
+                                        num = it.toIntOrNull() ?: it.toDoubleOrNull()
+                                    )
+                                )
+
+                                else -> false
+                            }
+                        } else {
+                            true
+                        }
+                    },
+                    type = col.type,
+                    enabled = enabled,
+                    setFocus = { setFocus(col.id, it) },
+                    imeAction = imeAction,
+                    keyboardType = if (col.hasConstraint<ColumnConstraint.Email>()) KeyboardType.Email else col.type.keyboardType(),
+                    onKeyboardAction = { onKeyboardAction(imeAction) },
+                    isError = errors.isNotEmpty(),
+                    focusRequester = focusRequester,
+                    prefix = if (!col.hasPrefix) null else prefixSuffix(col.prefix),
+                    suffix = if (!col.hasSuffix) null else prefixSuffix(col.suffix),
+                    rememberComposable = rememberComposable,
+                )
+            }
         }
     }
 }
@@ -711,7 +802,7 @@ fun TableRememberValueBadge() {
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shadowElevation = 4.dp,
             ) {
-                Text(text = "Feltet huskes efter indsendelse")
+                Text(text = stringResource(Res.string.table_screen_data_remembered_tooltip))
             }
         },
         state = tooltipState,

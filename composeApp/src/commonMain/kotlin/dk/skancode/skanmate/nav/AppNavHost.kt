@@ -11,9 +11,11 @@ import dk.skancode.skanmate.ui.component.AuthenticationRequired
 import dk.skancode.skanmate.ui.screen.AuthScreen
 import dk.skancode.skanmate.ui.screen.InitializerScreen
 import dk.skancode.skanmate.ui.screen.MainScreen
+import dk.skancode.skanmate.ui.screen.SyncScreen
 import dk.skancode.skanmate.ui.screen.TableScreen
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
+import dk.skancode.skanmate.ui.viewmodel.SyncViewModel
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 
 @Composable
@@ -23,6 +25,7 @@ fun AppNavHost(
     authViewModel: AuthViewModel,
     initializerViewModel: InitializerViewModel,
     tableViewModel: TableViewModel,
+    syncViewModel: SyncViewModel,
 ) {
     val onUnauthorized = {
         navController.navigate(NavRoute.AuthScreen) {
@@ -61,6 +64,19 @@ fun AppNavHost(
             }
         }
 
+        composable<NavRoute.App.SyncScreen> {
+            AuthenticationRequired(
+                authViewModel = authViewModel,
+                onUnauthorized = onUnauthorized,
+            ) {
+                SyncScreen(
+                    viewModel = syncViewModel,
+                ) {
+                    navController.popBackStack<NavRoute.App.MainScreen>(inclusive = false)
+                }
+            }
+        }
+
         composable<NavRoute.App.MainScreen> {
             AuthenticationRequired(
                 authViewModel = authViewModel,
@@ -70,6 +86,9 @@ fun AppNavHost(
                     tableViewModel = tableViewModel,
                     navigateTable = { route ->
                         navController.navigate(route)
+                    },
+                    navigateSyncPage = {
+                        navController.navigate(route = NavRoute.App.SyncScreen)
                     }
                 ) {
                     authViewModel.signOut()

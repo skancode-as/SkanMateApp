@@ -3,7 +3,6 @@ package dk.skancode.skanmate.ui.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.offset
@@ -20,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
@@ -37,7 +37,7 @@ fun Switch(
     checked: Boolean,
     onCheckedChange: ((Boolean) -> Unit)?,
     trackShape: Shape = RoundedCornerShape(4.dp),
-    thumbShape: Shape = RoundedCornerShape(4.dp),
+    thumbShape: Shape = trackShape,
     thumbContent: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
     colors: SwitchColors = SwitchDefaults.colors(),
@@ -75,7 +75,6 @@ fun Switch(
         thumbShape = thumbShape,
         style = style,
         thumbContent = thumbContent,
-        interactionSource = interactionSource,
     )
 }
 
@@ -89,7 +88,6 @@ private fun SwitchImpl(
     thumbShape: Shape,
     style: SwitchStyle,
     thumbContent: (@Composable () -> Unit)?,
-    interactionSource: MutableInteractionSource,
 ) {
     val containerColor = colors.containerColor(checked, enabled)
     val thumbColor = colors.thumbColor(checked, enabled)
@@ -99,22 +97,16 @@ private fun SwitchImpl(
         targetValue = if (checked) 0f else (style.trackWidth.value - style.thumbWidth.value),
     )
 
-    LaunchedEffect(thumbAnimator, interactionSource) {
-        var target = if (checked) 1f else 0f
-        interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is PressInteraction.Release -> {
-                    target = if (target == 1f) 0f else 1f
-                    thumbAnimator.animateTo(target * (style.trackWidth.value - style.thumbWidth.value))
-                }
-            }
-        }
+    LaunchedEffect(thumbAnimator, checked) {
+        val target = if (checked) 1f else 0f
+        thumbAnimator.animateTo(target * (style.trackWidth.value - style.thumbWidth.value))
     }
 
     Box(
         modifier = modifier
-            .border(style.trackOutlineWidth, borderColor, trackShape)
-            .background(containerColor, trackShape),
+            .clip(trackShape)
+            .border(style.trackOutlineWidth, borderColor)
+            .background(containerColor),
     ) {
         val animatedThumbOffset by thumbAnimator.value
         Box(
@@ -122,7 +114,8 @@ private fun SwitchImpl(
                 .size(width = style.thumbWidth, style.thumbHeight)
                 .aspectRatio(style.thumbAspectRatio)
                 .offset(x = animatedThumbOffset.dp)
-                .background(thumbColor, thumbShape),
+                .clip(thumbShape)
+                .background(thumbColor),
             contentAlignment = Alignment.Center,
         ) {
             if (thumbContent != null) {

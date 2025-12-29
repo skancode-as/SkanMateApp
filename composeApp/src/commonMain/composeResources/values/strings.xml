@@ -10,8 +10,9 @@
 
     <string name="main_screen_title">Tables</string>
     <string name="main_screen_could_not_update_tables">Could not refresh tables. Try again.</string>
+    <string name="main_screen_not_available_offline_tooltip">This table is not available without internet connection</string>
 
-    <string name="table_screen_data_remembered">Saved</string>
+    <string name="table_screen_data_remembered_tooltip">Data is remembered after submitting</string>
     <string name="table_screen_data_submitted">Data was submitted successfully</string>
     <string name="table_screen_take_picture">Take picture</string>
     <string name="table_screen_retake_picture">New picture</string>
@@ -19,6 +20,11 @@
     <string name="table_screen_switch_off">False</string>
     <string name="table_screen_multiple_barcodes">Multiple barcodes found</string>
     <string name="table_screen_multiple_barcodes_desc">Select the barcode you wish to use</string>
+    <string name="table_screen_connection_lost_title">Connection lost</string>
+    <string name="table_screen_connection_lost_content_text_1">Internet connection was lost, and this table is not available without internet connection.</string>
+    <string name="table_screen_connection_lost_content_text_2">You must reconnect in order to finish this data submission.\nIf you are not available to reconnect now, or do not wish to finish this data submission, you can exit to the table menu with the button below.</string>
+    <string name="table_screen_connection_lost_content_text_3">Beware, unsubmitted data will not be saved.</string>
+    <string name="table_screen_connection_lost_exit_btn">Exit</string>
 
     <string name="auth_screen_email_label">Email</string>
     <string name="auth_screen_email_placeholder">Enter Your Email...</string>
@@ -31,6 +37,8 @@
     <string name="auth_screen_fill_email">Fill email before signing in.</string>
     <string name="auth_screen_invalid_email">Email is not valid.</string>
     <string name="auth_screen_fill_pin">Fill pin before signing in.</string>
+    <string name="auth_screen_no_connection_title">No internet connection</string>
+    <string name="auth_screen_no_connection_desc">Your device is not connected to the internet. In order to sign in, you have to reconnect to the internet.</string>
 
     <string name="column_type_text">Text</string>
     <string name="column_type_numeric">Number</string>
@@ -56,8 +64,47 @@
     <string name="table_vm_could_not_upload_image">Could not upload image. Please try again.</string>
     <string name="table_vm_could_not_submit_data">Data could not be submitted. %1$s</string>
     <string name="table_vm_could_not_submit_data_constraint">Data could not be submitted. Fix errors, and try again.</string>
+    <string name="table_vm_could_not_store_data">Data could not be stored locally.</string>
     <string name="table_vm_could_not_select_barcode">That barcode could not be selected</string>
     <string name="table_vm_scan_not_possible_for_col">Scan is not possible for %1$s column</string>
+
+    <string name="sync_screen_title">Synchronisation</string>
+    <plurals name="sync_screen_table_description">
+        <item quantity="one">%1$d row not synchronised</item>
+        <item quantity="other">%1$d rows not synchronised</item>
+    </plurals>
+    <string name="sync_screen_fab_text">Synchronise</string>
+    <string name="sync_screen_delete_row_alert_title">Delete row</string>
+    <string name="sync_screen_delete_row_alert_desc">Delete row from device</string>
+    <string name="sync_screen_delete_row_alert_content_text">You are about to delete this row from the device.\nIt will NOT be synchronized with the server!</string>
+    <string name="sync_screen_delete_row_alert_dismiss_btn">Dismiss</string>
+    <string name="sync_screen_delete_row_alert_accept_btn">Accept</string>
+    <string name="sync_screen_could_not_delete_local_row">Could not delete row from device</string>
+    <string name="sync_screen_delete_table_alert_title">Delete table data</string>
+    <string name="sync_screen_delete_table_alert_desc">Delete table data from device</string>
+    <string name="sync_screen_delete_table_alert_content_text">You are about to delete the data of this table from the device.\nIt will NOT be synchronized with the server!</string>
+    <string name="sync_screen_could_not_delete_local_table_rows">Could not delete rows from device</string>
+    <string name="sync_screen_dropdown_item_delete">Delete</string>
+    <string name="sync_screen_dropdown_item_edit">Edit</string>
+    <string name="sync_screen_data_synchronised">Data synchronisation successful</string>
+    <string name="sync_screen_could_not_sync_data">An error occurred during data synchronisation</string>
+    <string name="sync_screen_no_local_data_title">No local data found</string>
+    <string name="sync_screen_no_local_data_content">There is no local data to synchronise with the server.</string>
+
+    <string name="sync_vm_synchronisation_already_running">Synchronisation is already in progress. Wait for the current process to stop.</string>
+
+    <plurals name="bottom_app_bar_title">
+        <item quantity="one">%1$d row stored locally</item>
+        <item quantity="other">%1$d rows stored locally</item>
+    </plurals>
+
+    <string name="connectivity_dialog_offline_mode_dialog_title">Offline mode</string>
+    <string name="connectivity_dialog_enable_offline_mode">Do you want to enable offline mode?</string>
+    <string name="connectivity_dialog_disable_offline_mode">Do you want to disable offline mode?</string>
+    <string name="connectivity_dialog_slow_internet_dialog_title">Slow internet connection</string>
+    <string name="connectivity_dialog_slow_internet_dialog_desc">It looks like the internet connection is slow.\nDo you want to enable offline mode?</string>
+    <string name="connectivity_dialog_btn_yes">Yes</string>
+    <string name="connectivity_dialog_btn_no">No</string>
 
     <string name="ios_camera_not_available">Could not start camera. Make sure the app has permission to access the camera.</string>
 </resources>

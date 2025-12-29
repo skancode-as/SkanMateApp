@@ -78,37 +78,115 @@ private object ColumnConstraintSerializer : KSerializer<ColumnConstraint> {
         encoder: Encoder,
         value: ColumnConstraint
     ) {
-        val jsonEncoder = encoder as? JsonEncoder
-            ?: error("ColumnConstraintSerializer can only be used with JSON")
+        when (encoder) {
+            is JsonEncoder -> {
+                encoder.encodeJsonElement(
+                    buildJsonObject {
+                        put("name", value.name)
+                        when (value) {
+                            is ColumnConstraint.MaxLength -> put( "value", JsonPrimitive(value.value))
+                            is ColumnConstraint.MaxValue -> put("value", JsonPrimitive(value.value))
+                            is ColumnConstraint.MinLength -> put( "value", JsonPrimitive(value.value))
+                            is ColumnConstraint.MinValue -> put("value", JsonPrimitive(value.value))
+                            is ColumnConstraint.Pattern -> put("value", JsonPrimitive(value.value))
+                            is ColumnConstraint.DefaultValue -> put( "value", JsonPrimitive(value.value))
+                            is ColumnConstraint.ConstantValue -> put( "value", JsonPrimitive(value.value))
+                            is ColumnConstraint.Prefix -> put("value", JsonPrimitive(value.value))
+                            is ColumnConstraint.Suffix -> put("value", JsonPrimitive(value.value))
+                            is ColumnConstraint.StartsWith -> put( "value", JsonPrimitive(value.value))
+                            is ColumnConstraint.EndsWith -> put("value", JsonPrimitive(value.value))
 
-        jsonEncoder.encodeJsonElement(
-            buildJsonObject {
-                put("name", value.name)
+                            ColumnConstraint.Email, ColumnConstraint.Required, ColumnConstraint.Unique -> {}
+                        }
+                    }
+                )
+            }
+
+            else -> {
+                val compositeEncoder = encoder.beginStructure(descriptor)
+                compositeEncoder.encodeStringElement(descriptor, descriptor.getElementIndex("name"), value.name)
+
                 when (value) {
-                    is ColumnConstraint.MaxLength     -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.MaxValue      -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.MinLength     -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.MinValue      -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.Pattern       -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.DefaultValue  -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.ConstantValue -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.Prefix        -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.Suffix        -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.StartsWith    -> put("value", JsonPrimitive(value.value))
-                    is ColumnConstraint.EndsWith      -> put("value", JsonPrimitive(value.value))
+                    is ColumnConstraint.MaxLength       -> compositeEncoder.encodeIntElement(descriptor, descriptor.getElementIndex("value"), value.value)
+                    is ColumnConstraint.MinLength       -> compositeEncoder.encodeIntElement(descriptor, descriptor.getElementIndex("value"), value.value)
+
+                    is ColumnConstraint.MaxValue        -> compositeEncoder.encodeFloatElement(descriptor, descriptor.getElementIndex("value"), value.value)
+                    is ColumnConstraint.MinValue        -> compositeEncoder.encodeFloatElement(descriptor, descriptor.getElementIndex("value"), value.value)
+
+                    is ColumnConstraint.Pattern         -> compositeEncoder.encodeStringElement(descriptor, descriptor.getElementIndex("value"), value.value)
+                    is ColumnConstraint.DefaultValue    -> compositeEncoder.encodeStringElement(descriptor, descriptor.getElementIndex("value"), value.value)
+                    is ColumnConstraint.ConstantValue   -> compositeEncoder.encodeStringElement(descriptor, descriptor.getElementIndex("value"), value.value)
+                    is ColumnConstraint.Prefix          -> compositeEncoder.encodeStringElement(descriptor, descriptor.getElementIndex("value"), value.value)
+                    is ColumnConstraint.Suffix          -> compositeEncoder.encodeStringElement(descriptor, descriptor.getElementIndex("value"), value.value)
+                    is ColumnConstraint.StartsWith      -> compositeEncoder.encodeStringElement(descriptor, descriptor.getElementIndex("value"), value.value)
+                    is ColumnConstraint.EndsWith        -> compositeEncoder.encodeStringElement(descriptor, descriptor.getElementIndex("value"), value.value)
 
                     ColumnConstraint.Email, ColumnConstraint.Required, ColumnConstraint.Unique -> {}
                 }
-            }
-        )
 
+                compositeEncoder.endStructure(descriptor)
+            }
+        }
     }
 
     override fun deserialize(decoder: Decoder): ColumnConstraint {
-        val jsonDecoder = decoder as? JsonDecoder
-            ?: error("ColumnConstraintSerializer can only be used with JSON")
+        return when (decoder) {
+            is JsonDecoder -> deserializeJson(decoder)
+            else -> defaultDeserializer(decoder)
+        }
+    }
 
-        val obj = jsonDecoder.decodeJsonElement().jsonObject
+    private fun defaultDeserializer(decoder: Decoder): ColumnConstraint {
+        val compositeDecoder = decoder.beginStructure(descriptor)
+        val name = compositeDecoder.decodeStringElement(descriptor, descriptor.getElementIndex("name"))
+
+        return when (name) {
+            MinLengthConstraintName -> ColumnConstraint.MinLength(
+                value = compositeDecoder.decodeIntElement(descriptor, descriptor.getElementIndex("value"))
+            )
+            MaxLengthConstraintName -> ColumnConstraint.MaxLength(
+                value = compositeDecoder.decodeIntElement(descriptor, descriptor.getElementIndex("value"))
+            )
+
+            MinValueConstraintName -> ColumnConstraint.MinValue(
+                value = compositeDecoder.decodeFloatElement(descriptor, descriptor.getElementIndex("value"))
+            )
+            MaxValueConstraintName -> ColumnConstraint.MaxValue(
+                value = compositeDecoder.decodeFloatElement(descriptor, descriptor.getElementIndex("value"))
+            )
+
+            PatternConstraintName -> ColumnConstraint.Pattern(
+                value = compositeDecoder.decodeStringElement(descriptor, descriptor.getElementIndex("value"))
+            )
+            DefaultValueConstraintName -> ColumnConstraint.DefaultValue(
+                value = compositeDecoder.decodeStringElement(descriptor, descriptor.getElementIndex("value"))
+            )
+            ConstantValueConstraintName -> ColumnConstraint.ConstantValue(
+                value = compositeDecoder.decodeStringElement(descriptor, descriptor.getElementIndex("value"))
+            )
+            PrefixConstraintName -> ColumnConstraint.Prefix(
+                value = compositeDecoder.decodeStringElement(descriptor, descriptor.getElementIndex("value"))
+            )
+            SuffixConstraintName -> ColumnConstraint.Suffix(
+                value = compositeDecoder.decodeStringElement(descriptor, descriptor.getElementIndex("value"))
+            )
+            StartsWithConstraintName -> ColumnConstraint.StartsWith(
+                value = compositeDecoder.decodeStringElement(descriptor, descriptor.getElementIndex("value"))
+            )
+            EndsWithConstraintName -> ColumnConstraint.EndsWith(
+                value = compositeDecoder.decodeStringElement(descriptor, descriptor.getElementIndex("value"))
+            )
+
+            EmailConstraintName -> ColumnConstraint.Email
+            RequiredConstraintName -> ColumnConstraint.Required
+            UniqueConstraintName -> ColumnConstraint.Unique
+
+            else -> unreachable("Unknown constraint name found: $name")
+        }
+    }
+
+    private fun deserializeJson(decoder: JsonDecoder): ColumnConstraint {
+        val obj = decoder.decodeJsonElement().jsonObject
 
         val name = obj["name"]?.jsonPrimitive?.contentOrNull
             ?: error("Missing 'name' in ColumnConstraint")

@@ -18,19 +18,26 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dk.skancode.skanmate.data.service.AuthServiceImpl
+import dk.skancode.skanmate.data.service.ConnectivityService
 import dk.skancode.skanmate.data.service.TableServiceImpl
 import dk.skancode.skanmate.data.store.AuthStore
+import dk.skancode.skanmate.data.store.LocalAuthStore
+import dk.skancode.skanmate.data.store.LocalTableStore
 import dk.skancode.skanmate.data.store.TableStore
 import dk.skancode.skanmate.nav.AppNavHost
 import dk.skancode.skanmate.ui.component.CameraOverlay
+import dk.skancode.skanmate.ui.component.ConnectivityDialog
 import dk.skancode.skanmate.ui.component.ImagePreview
 import dk.skancode.skanmate.ui.component.LocalLabelTextStyle
 import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.UiCameraController
-import dk.skancode.skanmate.ui.theme.SkanMateTheme
 import dk.skancode.skanmate.ui.viewmodel.AuthViewModel
+import dk.skancode.skanmate.ui.viewmodel.ConnectivityViewModel
 import dk.skancode.skanmate.ui.viewmodel.InitializerViewModel
+import dk.skancode.skanmate.ui.viewmodel.LocalConnectionState
+import dk.skancode.skanmate.ui.viewmodel.LocalConnectivityViewModel
+import dk.skancode.skanmate.ui.viewmodel.SyncViewModel
 import dk.skancode.skanmate.ui.viewmodel.TableViewModel
 import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.jsonSerializer
@@ -49,9 +56,11 @@ import kotlinx.coroutines.IO
 
 // TODO: Find less temporary way of initializing stores and services
 // TODO: Haptic feedback (IOS)
+// TODO: Lock screen orientation
+// TODO: Display reason for table not being available offline
 
 private const val BASE_URL =
-    "https://skanmate-git-feat-prefix-suffix-constraint-skan-code-team.vercel.app/api/v1"
+    "https://skanmate-git-stage-skan-code-team.vercel.app/api/v1"
 private val httpClient = HttpClient {
     install(ContentNegotiation) {
         json(jsonSerializer)
@@ -68,12 +77,15 @@ private val tableStore = TableStore(
 )
 private val authService = AuthServiceImpl(
     authStore = authStore,
+    localAuthStore = LocalAuthStore(),
     externalScope = CoroutineScope(Dispatchers.IO)
 )
 
 private val tableService = TableServiceImpl(
     tableStore = tableStore,
     tokenFlow = authService.tokenFlow,
+    tenantFlow = authService.tenantFlow,
+    localTableStore = LocalTableStore(),
     externalScope = CoroutineScope(Dispatchers.IO)
 )
 
@@ -96,91 +108,107 @@ fun App() {
     val tableViewModel = viewModel {
         TableViewModel(tableService, UserMessageServiceImpl)
     }
+    val connectivityViewModel = viewModel {
+        ConnectivityViewModel()
+    }
+    val syncViewModel = viewModel {
+        SyncViewModel(tableService)
+    }
 
-        val scanModule = rememberScanModule()
-        val uiCameraController = remember { UiCameraController() }
-        val showCamera by uiCameraController.isStarted.collectAsState()
-        val previewData by uiCameraController.preview.collectAsState()
-        val preview: ImageResource<Painter> = loadImage(previewData?.path)
+    val scanModule = rememberScanModule()
+    val uiCameraController = remember { UiCameraController() }
+    val showCamera by uiCameraController.isStarted.collectAsState()
+    val previewData by uiCameraController.preview.collectAsState()
+    val preview: ImageResource<Painter> = loadImage(previewData?.path)
 
-        CompositionLocalProvider(
-            LocalScanModule provides scanModule,
-            LocalUiCameraController provides uiCameraController,
-            LocalLabelTextStyle provides MaterialTheme.typography.labelLarge,
+    CompositionLocalProvider(
+        LocalScanModule provides scanModule,
+        LocalUiCameraController provides uiCameraController,
+        LocalLabelTextStyle provides MaterialTheme.typography.labelLarge,
+        LocalConnectionState provides connectivityViewModel.connectionFlow.collectAsState(),
+        LocalConnectivityViewModel provides connectivityViewModel,
+    ) {
+        ConnectivityDialog(
+            messageFlow = connectivityViewModel.dialogMessageFlow,
+            sendMessageResult = {
+                ConnectivityService.instance.connectivityMessageResultChannel.send(it)
+            }
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize(),
+            propagateMinConstraints = true,
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                propagateMinConstraints = true,
+            val snackbarHostState = snackbarHostStateProvider(adapter = snackbarAdapter)
+            SnackbarLayout(
+                snackbar = { SnackbarHostProvider(adapter = snackbarAdapter, snackbarHostState) }
             ) {
-                val snackbarHostState = snackbarHostStateProvider(adapter = snackbarAdapter)
-                SnackbarLayout(
-                    snackbar = { SnackbarHostProvider(adapter = snackbarAdapter, snackbarHostState) }
-                ) {
-                    SnackbarManagerProvider(hostState = snackbarHostState) {
-                        AppNavHost(
-                            authViewModel = authViewModel,
-                            initializerViewModel = initializerViewModel,
-                            tableViewModel = tableViewModel,
-                        )
-                    }
+                SnackbarManagerProvider(hostState = snackbarHostState) {
+                    AppNavHost(
+                        authViewModel = authViewModel,
+                        initializerViewModel = initializerViewModel,
+                        tableViewModel = tableViewModel,
+                        syncViewModel = syncViewModel,
+                    )
                 }
-                if (showCamera) {
-                    var scale by remember { mutableFloatStateOf(1f)}
-                    val transformableState = rememberTransformableState { zoomChange, _, _ ->
-                        scale = zoomChange
-                    }
-                    Scaffold { padding ->
-                        CameraView(
-                            modifier = Modifier
-                                .padding(padding)
-                                .transformable(state = transformableState),
-                            cameraUi = { controller ->
-                                CameraOverlay(controller = controller)
+            }
+            if (showCamera) {
+                var scale by remember { mutableFloatStateOf(1f)}
+                val transformableState = rememberTransformableState { zoomChange, _, _ ->
+                    scale = zoomChange
+                }
+                Scaffold { padding ->
+                    CameraView(
+                        modifier = Modifier
+                            .padding(padding)
+                            .transformable(state = transformableState),
+                        cameraUi = { controller ->
+                            CameraOverlay(controller = controller)
 
-                                LaunchedEffect(scale) {
-                                    controller.zoom = (controller.zoom * scale)
-                                        .clamp(minValue = controller.minZoom, maxValue = controller.maxZoom)
-                                }
-                            },
-                        )
-                    }
-                } else if (previewData != null) {
-                    val previewState by preview.state
+                            LaunchedEffect(scale) {
+                                controller.zoom = (controller.zoom * scale)
+                                    .clamp(minValue = controller.minZoom, maxValue = controller.maxZoom)
+                            }
+                        },
+                    )
+                }
+            } else if (previewData != null) {
+                val previewState by preview.state
 
-                    Scaffold { padding ->
-                        when (previewState) {
-                            is ImageResourceState.Image<Painter> -> {
-                                ImagePreview(
-                                    modifier = Modifier.padding(padding),
-                                    preview = (previewState as ImageResourceState.Image<Painter>).data,
-                                    resetPreviewImageResult = { preview.reset() }
+                Scaffold { padding ->
+                    when (previewState) {
+                        is ImageResourceState.Image<Painter> -> {
+                            ImagePreview(
+                                modifier = Modifier.padding(padding),
+                                preview = (previewState as ImageResourceState.Image<Painter>).data,
+                                resetPreviewImageResult = { preview.reset() }
+                            )
+                        }
+
+                        is ImageResourceState.Error -> {
+                            Box(
+                                modifier = Modifier.padding(padding).fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                                propagateMinConstraints = true
+                            ) {
+                                Text("Could not display image. ${(previewState as ImageResourceState.Error).error}")
+                            }
+                        }
+                        else -> {
+                            Box(
+                                modifier = Modifier.padding(padding).fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                                propagateMinConstraints = true
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.requiredSizeIn(minWidth = 64.dp, minHeight = 64.dp)
                                 )
-                            }
-
-                            is ImageResourceState.Error -> {
-                                Box(
-                                    modifier = Modifier.padding(padding).fillMaxSize(),
-                                    contentAlignment = Alignment.Center,
-                                    propagateMinConstraints = true
-                                ) {
-                                    Text("Could not display image. ${(previewState as ImageResourceState.Error).error}")
-                                }
-                            }
-                            else -> {
-                                Box(
-                                    modifier = Modifier.padding(padding).fillMaxSize(),
-                                    contentAlignment = Alignment.Center,
-                                    propagateMinConstraints = true
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.requiredSizeIn(minWidth = 64.dp, minHeight = 64.dp)
-                                    )
-                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
 }

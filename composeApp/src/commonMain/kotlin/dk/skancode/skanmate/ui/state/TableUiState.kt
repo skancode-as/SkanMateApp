@@ -3,10 +3,12 @@ package dk.skancode.skanmate.ui.state
 import dk.skancode.skanmate.data.model.ColumnModel
 import dk.skancode.skanmate.data.model.ColumnType
 import dk.skancode.skanmate.data.model.ColumnConstraint
+import dk.skancode.skanmate.data.model.ColumnLike
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.data.model.TableModel
 import dk.skancode.skanmate.data.model.ConstraintCheckResult
 import dk.skancode.skanmate.data.model.check
+import dk.skancode.skanmate.data.model.isAvailableOffline
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.reduceDefault
 import skanmate.composeapp.generated.resources.Res
@@ -29,6 +31,7 @@ interface TableUiState {
     val status: FetchStatus
     val constraintErrors: Map<String, List<InternalStringResource>>
     val scannedBarcodes: List<String>
+    val isAvailableOffline: Boolean
 }
 
 data class MutableTableUiState(
@@ -45,6 +48,9 @@ data class MutableTableUiState(
         get() = focusedColumnId != null && columns.any { col -> col.id == focusedColumnId }
     override val displayColumns: List<ColumnUiState>
         get() = columns.filter { col -> col.isDisplayColumn() }
+
+    override val isAvailableOffline: Boolean
+        get() = columns.isAvailableOffline()
 }
 
 fun TableModel?.toUiState(isFetching: Boolean): MutableTableUiState =
@@ -93,14 +99,14 @@ fun ColumnModel.toUiState(): ColumnUiState = ColumnUiState(
 
 data class ColumnUiState(
     val id: String,
-    val name: String,
-    val dbName: String,
+    override val name: String,
+    override val dbName: String,
     val value: ColumnValue,
-    val type: ColumnType,
-    val width: Float,
-    val constraints: List<ColumnConstraint>,
-    val rememberValue: Boolean,
-) {
+    override val type: ColumnType,
+    override val width: Float,
+    override val constraints: List<ColumnConstraint>,
+    override val rememberValue: Boolean,
+): ColumnLike {
     val hasConstantValue: Boolean
         get() = hasConstraint<ColumnConstraint.ConstantValue>()
     val constantValue: String
@@ -211,6 +217,27 @@ inline fun ColumnUiState.prepare(
         is ColumnValue.Text if hasSuffix -> {
             copy(
                 value = value.copy(text = value.text + this.suffix)
+            )
+        }
+
+        else -> this
+    }
+
+fun ColumnUiState.prepareLocal(username: String): ColumnUiState =
+    when {
+        value is ColumnValue.Text && hasPrefix -> {
+            copy(
+                value = value.copy(text = this.prefix + value.text)
+            )
+        }
+        value is ColumnValue.Text && hasSuffix -> {
+            copy(
+                value = value.copy(text = value.text + this.suffix)
+            )
+        }
+        type is ColumnType.User -> {
+            copy(
+                value = ColumnValue.Text(text = username)
             )
         }
 

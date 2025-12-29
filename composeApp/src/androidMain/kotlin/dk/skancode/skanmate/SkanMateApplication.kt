@@ -1,14 +1,20 @@
 package dk.skancode.skanmate
 
 import android.app.Application
+import android.content.Context
 import androidx.core.net.toUri
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
+import dk.skancode.skanmate.data.room.SkanMateDatabase
 
 class SkanMateApplication: Application() {
     companion object {
         private lateinit var instance: SkanMateApplication
         lateinit var settingsFactory: Settings.Factory
+        lateinit var roomDatabase: SkanMateDatabase
+
+        val applicationContext: Context
+            get() = instance
 
         fun deleteLocalFile(path: String) {
             instance.deleteLocalFile(path)
@@ -20,6 +26,7 @@ class SkanMateApplication: Application() {
         instance = this
 
         settingsFactory = SharedPreferencesSettings.Factory(this)
+        roomDatabase = getRoomDatabase(getDatabaseBuilder(this))
     }
 
     fun deleteLocalFile(path: String) {

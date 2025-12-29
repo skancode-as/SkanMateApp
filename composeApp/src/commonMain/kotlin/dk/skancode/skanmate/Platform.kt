@@ -100,6 +100,8 @@ fun rememberImageResource(path: String? = null): ImageResource<Painter> {
     }
 }
 
+expect suspend fun loadLocalImage(imagePath: String): ImageData
+
 @Composable
 expect fun loadImage(imagePath: String?): ImageResource<Painter>
 

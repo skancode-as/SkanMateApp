@@ -13,21 +13,80 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+
+sealed class BorderSide {
+    abstract fun start(size: Size): Offset
+    abstract fun end(size: Size): Offset
+
+    data object Left: BorderSide() {
+        override fun start(size: Size): Offset {
+            return Offset(
+                x = 0f,
+                y = 0f,
+            )
+        }
+
+        override fun end(size: Size): Offset {
+            return Offset(
+                x = 0f,
+                y = size.height,
+            )
+        }
+    }
+}
+
+fun Modifier.singleSideBorder(
+    width: Dp,
+    color: Color,
+    side: BorderSide,
+): Modifier {
+    return this then drawBehind {
+        val strokeWidth = width.toPx()
+
+        drawLine(
+            color = color,
+            start = side.start(size),
+            end = side.end(size),
+            strokeWidth = strokeWidth,
+        )
+    }
+}
+
+@Composable
+inline fun <reified T> rememberMutableStateOf(value: T): MutableState<T> {
+    return remember { mutableStateOf(value) }
+}
+
+@Composable
+inline fun <reified T> rememberMutableStateOf(key1: Any?, value: T): MutableState<T> {
+    return remember(key1 = key1) { mutableStateOf(value) }
+}
+
+@Composable
+inline fun <reified T> rememberStateOf(value: T): State<T> {
+    return remember { mutableStateOf(value) }
+}
 
 @Composable
 fun borderColorFor(color: Color, mix: Float = 0.3f): Color {

@@ -1,5 +1,8 @@
 package dk.skancode.skanmate.ui.viewmodel
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dk.skancode.skanmate.ScanEvent
@@ -7,25 +10,30 @@ import dk.skancode.skanmate.ScanEventHandler
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.data.model.ConstraintCheckResult
+import dk.skancode.skanmate.data.model.LocalTableData
 import dk.skancode.skanmate.data.model.rowDataOf
 import dk.skancode.skanmate.data.model.check
+import dk.skancode.skanmate.data.model.localRowDataOf
+import dk.skancode.skanmate.data.service.ConnectivityService
+import dk.skancode.skanmate.data.service.FileService
 import dk.skancode.skanmate.data.service.TableService
-import dk.skancode.skanmate.deleteFile
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.ui.state.MutableTableUiState
 import dk.skancode.skanmate.ui.state.TableUiState
 import dk.skancode.skanmate.ui.state.toUiState
 import dk.skancode.skanmate.ui.state.check
 import dk.skancode.skanmate.ui.state.prepare
+import dk.skancode.skanmate.ui.state.prepareLocal
 import dk.skancode.skanmate.util.AudioPlayerInstance
+import dk.skancode.skanmate.util.DefaultTimeouts
 import dk.skancode.skanmate.util.InternalStringResource
 import dk.skancode.skanmate.util.assert
 import dk.skancode.skanmate.util.snackbar.UserMessageService
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
+import dk.skancode.skanmate.util.withConnectivityTimeout
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +44,7 @@ import kotlinx.coroutines.launch
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.constraint_error_server
 import skanmate.composeapp.generated.resources.table_vm_could_not_select_barcode
+import skanmate.composeapp.generated.resources.table_vm_could_not_store_data
 import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data
 import skanmate.composeapp.generated.resources.table_vm_could_not_submit_data_constraint
 import skanmate.composeapp.generated.resources.table_vm_could_not_upload_image
@@ -44,10 +53,16 @@ import skanmate.composeapp.generated.resources.table_vm_scan_not_possible_for_co
 class TableViewModel(
     val tableService: TableService,
     val userMessageService: UserMessageService,
+    val connectivityService: ConnectivityService = ConnectivityService.instance,
+    val fileService: FileService = FileService.instance,
 ) : ViewModel(), ScanEventHandler {
     private val _tableFlow = MutableStateFlow<List<TableSummaryModel>>(emptyList())
     val tableFlow: StateFlow<List<TableSummaryModel>>
         get() = _tableFlow
+
+    private val _localDataFlow = MutableStateFlow<List<LocalTableData>>(emptyList())
+    val localDataFlow: StateFlow<List<LocalTableData>>
+        get() = _localDataFlow
 
     @OptIn(FlowPreview::class)
     private val _uiState = MutableStateFlow(MutableTableUiState())
@@ -58,10 +73,22 @@ class TableViewModel(
     val submitResultChannel: ReceiveChannel<Boolean>
         get() = _submitResultChannel
 
+    var currentUsername: String? by mutableStateOf(null)
+
     init {
         viewModelScope.launch {
             tableService.tableFlow.collect { tables ->
                 _tableFlow.update { tables }
+            }
+        }
+        viewModelScope.launch {
+            tableService.localDataFlow.collect { data ->
+                _localDataFlow.update { data }
+            }
+        }
+        viewModelScope.launch {
+            connectivityService.connectionFlow.collect {
+                tableService.updateTableFlow()
             }
         }
     }
@@ -95,15 +122,14 @@ class TableViewModel(
             )
         }
 
-        println("TableViewModel::setFocusedColumn($id) - new focused column id: ${newState.focusedColumnId}, name: ${newState.columns.find { it.id == newState.focusedColumnId}?.name}")
+        println("TableViewModel::setFocusedColumn($id) - new focused column id: ${newState.focusedColumnId}, name: ${newState.columns.find { it.id == newState.focusedColumnId }?.name}")
     }
 
-    fun deleteLocalImage(
-        path: String,
-        start: CoroutineStart = CoroutineStart.DEFAULT
-    ): Deferred<Unit> = viewModelScope.async(start = start) {
+    fun deleteLocalImage(path: String) {
         println("TableViewModel::deleteLocalImage")
-        deleteFile(path)
+        viewModelScope.launch {
+            fileService.deleteLocalFile(localFilePath = path)
+        }
     }
 
     fun validateColumn(column: ColumnUiState, value: ColumnValue): Boolean {
@@ -125,7 +151,6 @@ class TableViewModel(
         _uiState.update {
             it.copy(isSubmitting = true)
         }
-
         viewModelScope.launch {
             val state = _uiState.value
             val checkResults = state.columns.map { col -> col.check() }
@@ -147,95 +172,140 @@ class TableViewModel(
                 return@launch
             }
 
-            var res = false
-            var constraintErrors: Map<String, List<InternalStringResource>> = emptyMap()
-            try {
-                if (state.model != null) {
-                    val deferred = mutableListOf<Deferred<Unit>>()
-                    val columns: List<ColumnUiState> = state.columns.map { col ->
-                        col.prepare(
-                            uploadImage = { fileName, bytes ->
-                                val objectUrl = tableService.uploadImage(
-                                    tableId = state.model.id,
-                                    filename = fileName,
-                                    data = bytes,
-                                )
-                                if (objectUrl == null) {
-                                    println("Could not upload image")
-                                    userMessageService.displayError(
-                                        message = InternalStringResource(
-                                            resource = Res.string.table_vm_could_not_upload_image,
-                                        )
-                                    )
-                                    res = false
-                                    return@launch
-                                }
+            if (connectivityService.isConnected()) {
+                sendDataToServer(state)
+            } else {
+                storeDataLocally(state)
+            }
+        }
+    }
 
-                                objectUrl
-                            },
-                            queueImageDeletion = { localFileUrl ->
-                                deferred.add(
-                                    deleteLocalImage(
-                                        path = localFileUrl,
-                                        start = CoroutineStart.LAZY
-                                    )
-                                )
-                            },
+    private suspend fun storeDataLocally(state: MutableTableUiState) {
+        var res = false
+        try {
+            if (state.model != null) {
+                val columns: List<ColumnUiState> = state.columns.map { col -> col.prepareLocal(currentUsername ?: "") }
+                println("Locally prepared columnValues: ${columns.joinToString { col -> "${col.name}: ${col.value}" }}")
+
+                val submitRes = tableService.storeRow(
+                    tableId = state.model.id,
+                    row = localRowDataOf(columns),
+                )
+
+                res = submitRes.ok.also { ok ->
+                    if (!ok) {
+                        println("Local insert of data failed with exception: ${submitRes.exception}")
+                        submitRes.exception?.printStackTrace()
+                        userMessageService.displayError(
+                            message = InternalStringResource(
+                                resource = Res.string.table_vm_could_not_store_data,
+                            )
                         )
                     }
+                }
+            }
+        } finally {
+            _uiState.update {
+                it.copy(
+                    isSubmitting = false,
+                )
+            }
+            _submitResultChannel.send(res)
+        }
+    }
 
-                    val submitRes = tableService.submitRow(
-                        tableId = state.model.id,
-                        row = rowDataOf(columns),
+    private suspend fun sendDataToServer(state: MutableTableUiState) = withConnectivityTimeout(
+        timeout = DefaultTimeouts.tableRowSubmit
+    ) {
+        var res = false
+        var constraintErrors: Map<String, List<InternalStringResource>> = emptyMap()
+        try {
+            if (state.model != null) {
+                val deferred = mutableListOf<Deferred<Unit>>()
+                val columns: List<ColumnUiState> = state.columns.map { col ->
+                    col.prepare(
+                        uploadImage = { fileName, bytes ->
+                            val objectUrl = tableService.uploadImage(
+                                tableId = state.model.id,
+                                filename = fileName,
+                                data = bytes,
+                            )
+                            if (objectUrl == null) {
+                                println("Could not upload image")
+                                userMessageService.displayError(
+                                    message = InternalStringResource(
+                                        resource = Res.string.table_vm_could_not_upload_image,
+                                    )
+                                )
+                                res = false
+                                return@withConnectivityTimeout
+                            }
+
+                            objectUrl
+                        },
+                        queueImageDeletion = { localFileUrl ->
+                            deferred.add(
+                                fileService.deleteLocalFileDeferred(
+                                    localFilePath = localFileUrl,
+                                    start = CoroutineStart.LAZY,
+                                    scope = viewModelScope,
+                                )
+                            )
+                        },
                     )
-                    val ok = submitRes.ok
-                    val msg = submitRes.msg
-                    val errors = submitRes.errors
+                }
 
-                    val err = errors?.columnErrors?.mapNotNull { (k, v) ->
-                        columns.find { col -> col.dbName == k }?.let { col ->
-                            println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}")
-                            col.name to v.map { serverError ->
-                                InternalStringResource(
-                                    Res.string.constraint_error_server,
-                                    listOf(serverError)
-                                )
-                            }
-                        }
-                    }?.toTypedArray()
-                    res = ok.also { ok ->
-                        if (ok) {
-                            deferred.forEach { it.await() }
-                        } else {
-                            if (err != null && err.isNotEmpty()) {
-                                constraintErrors = mapOf(*err)
-                                userMessageService.displayError(
-                                    message = InternalStringResource(
-                                        resource = Res.string.table_vm_could_not_submit_data_constraint,
-                                    )
-                                )
-                            } else {
-                                userMessageService.displayError(
-                                    message = InternalStringResource(
-                                        resource = Res.string.table_vm_could_not_submit_data,
-                                        args = listOf(msg)
-                                    )
-                                )
-                            }
+                val submitRes = tableService.submitRow(
+                    tableId = state.model.id,
+                    row = rowDataOf(columns),
+                )
+                val ok = submitRes.ok
+                val msg = submitRes.msg
+                val errors = submitRes.errors
 
-                            deferred.forEach { it.cancel() }
+                val err = errors?.columnErrors?.mapNotNull { (k, v) ->
+                    columns.find { col -> col.dbName == k }?.let { col ->
+                        println("Errors for col ${col.name}:\n\t${v.joinToString("\n\t")}")
+                        col.name to v.map { serverError ->
+                            InternalStringResource(
+                                Res.string.constraint_error_server,
+                                listOf(serverError)
+                            )
                         }
                     }
+                }?.toTypedArray()
+                res = ok.also { ok ->
+                    if (ok) {
+                        deferred.forEach { it.await() }
+                    } else {
+                        if (err != null && err.isNotEmpty()) {
+                            constraintErrors = mapOf(*err)
+                            userMessageService.displayError(
+                                message = InternalStringResource(
+                                    resource = Res.string.table_vm_could_not_submit_data_constraint,
+                                )
+                            )
+                        } else {
+                            userMessageService.displayError(
+                                message = InternalStringResource(
+                                    resource = Res.string.table_vm_could_not_submit_data,
+                                    args = listOf(msg)
+                                )
+                            )
+                        }
+
+                        deferred.forEach { it.cancel() }
+                    }
                 }
-            } finally {
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        constraintErrors = constraintErrors,
-                    )
-                }
-                _submitResultChannel.send(res)
             }
+        } finally {
+            _uiState.update {
+                it.copy(
+                    isSubmitting = false,
+                    constraintErrors = constraintErrors,
+                )
+            }
+            _submitResultChannel.send(res)
         }
     }
 
@@ -304,6 +374,7 @@ class TableViewModel(
                                     idx = i
                                     ColumnValue.Text(v)
                                 }
+
                                 is ColumnValue.Numeric -> {
                                     idx = i
                                     ColumnValue.Numeric(
@@ -369,7 +440,8 @@ class TableViewModel(
         val columns = _uiState.value.columns
         val displayColumns = _uiState.value.displayColumns
 
-        val isLast = displayColumns.isNotEmpty() && columns.getOrNull(idx)?.id == displayColumns.last().id
+        val isLast =
+            displayColumns.isNotEmpty() && columns.getOrNull(idx)?.id == displayColumns.last().id
         val isValid = columns.getOrNull(idx)?.check().let { it != null && it.ok }
 
         val newFocusIdx = when {

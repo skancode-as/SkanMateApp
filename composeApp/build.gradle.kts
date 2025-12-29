@@ -8,6 +8,12 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
@@ -42,6 +48,8 @@ kotlin {
             implementation(libs.androidx.camera.lifecycle)
             implementation(libs.androidx.camera.view)
             implementation(libs.androidx.media3.exoplayer)
+
+            implementation(libs.androidx.room.sqlite.wrapper)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -62,6 +70,12 @@ kotlin {
             implementation(libs.multiplatform.settings)
             implementation(libs.kotlinx.datetime)
             implementation(libs.material.icons.core)
+            implementation(libs.connectivity.core)
+            implementation(libs.connectivity.device)
+            implementation(libs.connectivity.compose.device)
+
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -80,8 +94,8 @@ android {
         applicationId = "dk.skancode.skanmate"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 21
-        versionName = "1.0.0-beta.21"
+        versionCode = 23
+        versionName = "1.0.0-beta.23"
         multiDexEnabled = true
         setProperty("archivesBaseName", "SkanMate-${versionName}")
     }
@@ -128,5 +142,9 @@ android {
 dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     debugImplementation(compose.uiTooling)
-}
 
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    //add("kspIosX64", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+}
