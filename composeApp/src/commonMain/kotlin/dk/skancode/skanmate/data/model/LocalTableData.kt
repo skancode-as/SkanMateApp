@@ -181,6 +181,7 @@ private object LocalColumnValueSerializer: KSerializer<LocalColumnValue> {
                         val content = value.contentOrNull
                         if (content != null) ColumnValue.Text(content) else ColumnValue.Null
                     }
+                    ColumnType.GPS -> TODO("Deserialization of LocalColumnValue for GPS Columns is not implemented yet")
                     ColumnType.Unknown,
                     ColumnType.Id -> ColumnValue.Null
                     ColumnType.List -> ColumnValue.OptionList(options = listOptions, selected = value.contentOrNull)
@@ -211,6 +212,7 @@ private object LocalColumnValueSerializer: KSerializer<LocalColumnValue> {
                     ColumnType.Numeric -> ColumnValue.Numeric(num = decodeDoubleOrNull(descriptor, descriptor.getElementIndex("value")))
                     ColumnType.Text -> ColumnValue.Text(decodeStringElement(descriptor, descriptor.getElementIndex("value")))
                     ColumnType.Timestamp -> ColumnValue.Text(decodeStringElement(descriptor, descriptor.getElementIndex("value")))
+                    ColumnType.GPS -> TODO("Deserialization of LocalColumnValue for GPS Columns is not implemented yet")
                     ColumnType.User,
                     ColumnType.Unknown,
                     ColumnType.Id -> {

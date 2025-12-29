@@ -754,6 +754,7 @@ fun DataRowContent(
                 }
                 is ColumnValue.Numeric -> value.num?.toString() ?: ""
                 is ColumnValue.OptionList -> value.selected ?: ""
+                is ColumnValue.GPS -> "Lat: ${value.locationData?.latitude}. Lng: ${value.locationData?.longitude}"
 
                 is ColumnValue.Boolean -> ""
                 is ColumnValue.File -> ""
