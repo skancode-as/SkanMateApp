@@ -51,6 +51,7 @@ kotlin {
             implementation(libs.androidx.media3.exoplayer)
 
             implementation(libs.androidx.room.sqlite.wrapper)
+            implementation(libs.play.services.location)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -62,7 +63,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.navigation.compose)
-            implementation(libs.moko.permissions)
+            implementation(libs.moko.permissions.camera)
+            implementation(libs.moko.permissions.location)
             implementation(libs.moko.permissions.compose)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
@@ -83,6 +85,9 @@ kotlin {
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+        }
+        all {
+            languageSettings.enableLanguageFeature("WhenGuards")
         }
     }
 }

@@ -110,8 +110,17 @@ class TableViewModel(
         }
     }
 
-    fun updateColumns(cols: List<ColumnUiState>) {
-        _uiState.update { it.copy(columns = cols) }
+    fun updateColumnValue(id: String, updater: (ColumnValue) -> ColumnValue) {
+        _uiState.update {
+            it.copy(
+                columns = it.columns.map { col ->
+                    when {
+                        col.id == id -> col.copy(value = updater(col.value))
+                        else         -> col
+                    }
+                }
+            )
+        }
     }
 
     fun setFocusedColumn(id: String?) {

@@ -30,6 +30,7 @@ room = "2.8.4"
 sqlite = "2.6.2"
 ksp = "2.3.3"
 objectDetectionCommon = "17.0.2"
+gms-location = "21.3.0"
 
 [libraries]
 barcodescannermodule = { module = "com.github.TobiasTheDanish:BarcodeScannerModule", version.ref = "barcodeModuleVersion" }
@@ -45,7 +46,8 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "materialIconsCore" }
-moko-permissions = { module = "dev.icerock.moko:permissions-camera", version.ref = "moko" }
+moko-permissions-camera = { module = "dev.icerock.moko:permissions-camera", version.ref = "moko" }
+moko-permissions-location = { module = "dev.icerock.moko:permissions-location", version.ref = "moko" }
 moko-permissions-compose = { module = "dev.icerock.moko:permissions-compose", version.ref = "moko" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
@@ -70,6 +72,7 @@ connectivity-compose-device = { module = "dev.jordond.connectivity:connectivity-
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "gms-location" }
 
 androidx-room-sqlite-wrapper = { module = "androidx.room:room-sqlite-wrapper", version.ref = "room" }
 
