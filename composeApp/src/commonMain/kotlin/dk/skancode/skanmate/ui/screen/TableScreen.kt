@@ -62,6 +62,7 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.State
@@ -102,6 +103,9 @@ import dk.skancode.skanmate.ui.component.ScanableInputField
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.loadImage
+import dk.skancode.skanmate.location.LocalLocationCollector
+import dk.skancode.skanmate.location.LocationCollectorListener
+import dk.skancode.skanmate.location.LocationData
 import dk.skancode.skanmate.ui.component.Badge
 import dk.skancode.skanmate.ui.component.ColumnWithErrorLayout
 import dk.skancode.skanmate.ui.component.CustomButtonElevation
@@ -271,9 +275,6 @@ fun TableScreen(
 
                 TableContent(
                     tableUiState = tableUiState,
-                    getUpdatedColumns = {
-                        viewModel.uiState.value.columns
-                    },
                     setFocusedColumn = { id, focused ->
                         if (focused && tableUiState.focusedColumnId != id) {
                             viewModel.setFocusedColumn(id)
@@ -298,8 +299,8 @@ fun TableScreen(
                         println("TableScreen::deleteLocalFile($path)")
                         viewModel.deleteLocalImage(path)
                     },
-                ) { columns ->
-                    viewModel.updateColumns(columns)
+                ) { id, updater ->
+                    viewModel.updateColumnValue(id, updater)
                 }
             }
         }
@@ -468,13 +469,12 @@ fun TableFloatingActionButton(
 fun TableContent(
     modifier: Modifier = Modifier,
     tableUiState: TableUiState,
-    getUpdatedColumns: () -> List<ColumnUiState>,
     setFocusedColumn: (String, Boolean) -> Unit = { _, _ -> },
     focusNextColumn: () -> Unit,
     submitData: () -> Unit = {},
     deleteLocalFile: (path: String) -> Unit,
     validateColumn: (ColumnUiState, ColumnValue) -> Boolean,
-    updateColumns: (List<ColumnUiState>) -> Unit,
+    updateColumnValue: (id: String, updater: (ColumnValue) -> ColumnValue) -> Unit,
 ) {
     val imageResourceMap = mapOf(
         *tableUiState.columns.mapNotNull { col ->
@@ -527,9 +527,8 @@ fun TableContent(
                             tableColumns(
                                 columns = tableUiState.displayColumns,
                                 constraintErrors = tableUiState.constraintErrors,
-                                updateCol = { col ->
-                                    updateColumns(
-                                        getUpdatedColumns().map { c -> if (c.id == col.id) col else c })
+                                updateCol = { id, updater ->
+                                    updateColumnValue(id, updater)
                                 },
                                 focusedColumnId = tableUiState.focusedColumnId,
                                 setFocus = setFocusedColumn,
@@ -564,7 +563,7 @@ fun LazyGridScope.tableColumns(
     columns: List<ColumnUiState>,
     validateColumn: (ColumnUiState, ColumnValue) -> Boolean,
     constraintErrors: Map<String, List<InternalStringResource>>,
-    updateCol: (ColumnUiState) -> Unit,
+    updateCol: (id: String, updater: (ColumnValue) -> ColumnValue) -> Unit,
     focusedColumnId: String?,
     setFocus: (String, Boolean) -> Unit = { _, _ -> },
     onNext: () -> Unit = {},
@@ -576,8 +575,19 @@ fun LazyGridScope.tableColumns(
         GridItemSpan((maxLineSpan * col.width).roundToInt())
     }, contentType = { _, col -> col.type }) { idx, col ->
         CompositionLocalProvider(LocalImageResource provides LocalImageResourceMap.current[col.name]) {
+            val colUpdater = remember(col.id) {
+                ({newColValue: (ColumnValue) -> ColumnValue -> updateCol(col.id, newColValue)})
+            }
+
             TableColumn(
-                col = col,
+                id = col.id,
+                name = col.name,
+                value = col.value,
+                type = col.type,
+                rememberValue = col.rememberValue,
+                isEmailCol = col.hasConstraint<ColumnConstraint.Email>(),
+                prefix = {if (col.hasPrefix) col.prefix else null},
+                suffix = {if (col.hasSuffix) col.suffix else null},
                 errors = constraintErrors[col.name] ?: emptyList(),
                 enabled = enabled,
                 isFocused = col.id == focusedColumnId,
@@ -593,7 +603,7 @@ fun LazyGridScope.tableColumns(
                 validateValue = { value ->
                     validateColumn(col, value)
                 }) { newColValue ->
-                updateCol(col.copy(value = newColValue))
+                colUpdater(newColValue)
             }
         }
     }
@@ -601,7 +611,14 @@ fun LazyGridScope.tableColumns(
 
 @Composable
 fun TableColumn(
-    col: ColumnUiState,
+    id: String,
+    name: String,
+    type: ColumnType,
+    value: ColumnValue,
+    rememberValue: Boolean,
+    isEmailCol: Boolean,
+    prefix: (() -> String?),
+    suffix: (() -> String?),
     errors: List<InternalStringResource>,
     enabled: Boolean = true,
     isLast: Boolean = false,
@@ -610,12 +627,12 @@ fun TableColumn(
     setFocus: (String, Boolean) -> Unit = { _, _ -> },
     deleteFile: (String) -> Unit,
     validateValue: (ColumnValue) -> Boolean,
-    updateValue: (ColumnValue) -> Unit = {},
+    updateValue: ((current: ColumnValue) -> ColumnValue) -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
-    val rememberComposable = if (col.rememberValue) (@Composable {
+    val rememberComposable = if (rememberValue) (@Composable {
         TableRememberValueBadge()
     }) else null
 
@@ -629,8 +646,8 @@ fun TableColumn(
         val modifier = Modifier.fillMaxWidth()
         val imeAction = if (isLast) ImeAction.Done else ImeAction.Next
 
-        when (col.type) {
-            ColumnType.Boolean if col.value is ColumnValue.Boolean -> {
+        when (type) {
+            ColumnType.Boolean if value is ColumnValue.Boolean -> {
                 LaunchedEffect(focusManager, isFocused) {
                     if (isFocused) {
                         focusManager.clearFocus()
@@ -639,17 +656,19 @@ fun TableColumn(
 
                 TableColumnBoolean(
                     modifier = modifier,
-                    label = col.name,
-                    checked = col.value.checked,
+                    label = name,
+                    checked = value.checked,
                     setChecked = { checked ->
-                        updateValue(col.value.copy(checked = checked))
+                        updateValue { value ->
+                            (value as ColumnValue.Boolean).copy(checked = checked)
+                        }
                     },
                     enabled = enabled,
                     isFocused = isFocused,
                     height = inputHeight,
                 )
             }
-            ColumnType.File if col.value is ColumnValue.File -> {
+            ColumnType.File if value is ColumnValue.File -> {
                 LaunchedEffect(focusManager, isFocused) {
                     if (isFocused) {
                         focusManager.clearFocus()
@@ -658,31 +677,31 @@ fun TableColumn(
 
                 TableColumnFile(
                     modifier = modifier,
-                    label = col.name,
-                    value = if (col.value.localUrl == null) null
+                    label = name,
+                    value = if (value.localUrl == null) null
                     else ImageData(
-                        path = col.value.localUrl, name = col.value.fileName, data = col.value.bytes
+                        path = value.localUrl, name = value.fileName, data = value.bytes
                     ),
                     deleteFile = { path ->
                         println("TableColumn::deleteFile($path)")
                         if (path != null) deleteFile(path)
                     },
                     setValue = { data ->
-                        updateValue(
-                            col.value.copy(
+                        updateValue { value ->
+                            (value as ColumnValue.File).copy(
                                 localUrl = data?.path,
                                 fileName = data?.name,
                                 bytes = data?.data,
-                                isUploaded = col.value.isUploaded && data != null
+                                isUploaded = value.isUploaded && data != null
                             )
-                        )
+                        }
                     },
                     enabled = enabled,
                     isFocused = isFocused,
                     buttonHeight = inputHeight,
                 )
             }
-            ColumnType.List if col.value is ColumnValue.OptionList -> {
+            ColumnType.List if value is ColumnValue.OptionList -> {
                 LaunchedEffect(focusRequester, isFocused) {
                     if (isFocused) {
                         focusRequester.requestFocus()
@@ -692,19 +711,41 @@ fun TableColumn(
                 TableColumnList(
                     modifier = modifier,
                     selectOption = { opt ->
-                        updateValue(
-                            col.value.copy(selected = opt)
-                        )
+                        updateValue { value ->
+                            (value as ColumnValue.OptionList).copy(
+                                selected = opt,
+                            )
+                        }
                     },
-                    option = col.value.selected,
-                    options = col.value.options,
-                    label = col.name,
+                    option = value.selected,
+                    options = value.options,
+                    label = name,
                     setFocus = {
-                        setFocus(col.id, it)
+                        setFocus(id, it)
                     },
                     enabled = enabled,
                     focusRequester = focusRequester,
                     inputHeight = inputHeight,
+                )
+            }
+            ColumnType.GPS if value is ColumnValue.GPS -> {
+                TableColumnGPS(
+                    modifier = modifier,
+                    label = name,
+                    value = value,
+                    setValue = { data ->
+                        println("TableColumnGPS::setValue - new value received: $data")
+                        updateValue { value ->
+                            val cur = (value as ColumnValue.GPS)
+
+                            val updatedValue = cur.copy(locationData = data)
+                            println("cur: ${cur}, updated: $updatedValue")
+
+                            updatedValue
+                        }
+
+                    },
+                    displayColumn = true,
                 )
             }
             else -> {
@@ -732,32 +773,34 @@ fun TableColumn(
                     modifier = modifier
                         .heightIn(max = inputHeight),
                     borderColor =
-                        if (col.rememberValue)
-                            if (col.value.isNotEmpty()) Color.Success else MaterialTheme.colorScheme.error
+                        if (rememberValue)
+                            if (value.isNotEmpty()) Color.Success else MaterialTheme.colorScheme.error
                         else Color.Unspecified,
-                    label = col.name,
-                    value = when (col.value) {
-                        is ColumnValue.Text -> col.value.text
-                        is ColumnValue.Numeric -> col.value.num?.toString() ?: ""
+                    label = name,
+                    value = when (value) {
+                        is ColumnValue.Text -> value.text
+                        is ColumnValue.Numeric -> value.num?.toString() ?: ""
                         else -> ""
                     },
                     setValue = {
-                        val newValue = when (col.value) {
-                            is ColumnValue.Text -> col.value.copy(text = it)
-                            is ColumnValue.Numeric -> col.value.copy(
-                                num = it.toIntOrNull() ?: it.toDoubleOrNull()
-                            )
+                        updateValue { value ->
+                            val newValue = when (value) {
+                                is ColumnValue.Text -> value.copy(text = it)
+                                is ColumnValue.Numeric -> value.copy(
+                                    num = it.toIntOrNull() ?: it.toDoubleOrNull()
+                                )
 
-                            else -> col.value
+                                else -> value
+                            }
+                            newValue
                         }
-                        updateValue(newValue)
                     },
                     validateValue = {
                         if (it.isNotEmpty()) {
-                            when (col.value) {
-                                is ColumnValue.Text -> validateValue(col.value.copy(text = it))
+                            when (value) {
+                                is ColumnValue.Text -> validateValue(value.copy(text = it))
                                 is ColumnValue.Numeric -> validateValue(
-                                    col.value.copy(
+                                    value.copy(
                                         num = it.toIntOrNull() ?: it.toDoubleOrNull()
                                     )
                                 )
@@ -768,16 +811,22 @@ fun TableColumn(
                             true
                         }
                     },
-                    type = col.type,
+                    type = type,
                     enabled = enabled,
-                    setFocus = { setFocus(col.id, it) },
+                    setFocus = { setFocus(id, it) },
                     imeAction = imeAction,
-                    keyboardType = if (col.hasConstraint<ColumnConstraint.Email>()) KeyboardType.Email else col.type.keyboardType(),
+                    keyboardType = if (isEmailCol) KeyboardType.Email else type.keyboardType(),
                     onKeyboardAction = { onKeyboardAction(imeAction) },
                     isError = errors.isNotEmpty(),
                     focusRequester = focusRequester,
-                    prefix = if (!col.hasPrefix) null else prefixSuffix(col.prefix),
-                    suffix = if (!col.hasSuffix) null else prefixSuffix(col.suffix),
+                    prefix = when(val p = prefix()) {
+                        null -> null
+                        else -> prefixSuffix(p)
+                    },
+                    suffix = when(val p = suffix()) {
+                        null -> null
+                        else -> prefixSuffix(p)
+                    },
                     rememberComposable = rememberComposable,
                 )
             }
@@ -854,7 +903,7 @@ fun TableColumnInput(
 
     val keyboardOptions = remember(type, keyboardVisible) {
         when (type) {
-            ColumnType.Unknown, ColumnType.Boolean, ColumnType.File, ColumnType.List, ColumnType.Id, ColumnType.Timestamp, ColumnType.User -> KeyboardOptions.Default.copy(
+            ColumnType.Unknown, ColumnType.Boolean, ColumnType.File, ColumnType.List, ColumnType.Id, ColumnType.Timestamp, ColumnType.User, ColumnType.GPS -> KeyboardOptions.Default.copy(
                 imeAction = imeAction
             )
 
@@ -1184,6 +1233,38 @@ fun TableColumnBoolean(
                     text = if (checked) onText else offText,
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun TableColumnGPS(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: ColumnValue.GPS,
+    setValue: (LocationData?) -> Unit,
+    displayColumn: Boolean = false,
+) {
+    val locationCollector = LocalLocationCollector.current
+    DisposableEffect(setValue, locationCollector) {
+        val listener = LocationCollectorListener { locationData ->
+            setValue(locationData)
+        }
+        locationCollector.addListener(listener)
+
+        onDispose {
+            println("TableScreen::TableColumnGPS - Disposing listener")
+            locationCollector.removeListener(listener)
+        }
+    }
+
+    if (displayColumn) {
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(text = label, style = LocalLabelTextStyle.current)
+            Text(text = "Lat: ${value.locationData?.latitude}    Lng: ${value.locationData?.longitude}")
         }
     }
 }
