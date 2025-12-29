@@ -1,3 +1,10 @@
 package dk.skancode.skanmate.location
 
-data class LocationData(val latitude: Double, val longitude: Double)
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class LocationData(
+    @SerialName("lat") val latitude: Double,
+    @SerialName("lng") val longitude: Double,
+)
