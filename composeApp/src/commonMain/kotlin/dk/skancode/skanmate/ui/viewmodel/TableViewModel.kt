@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dk.skancode.skanmate.ScanEvent
 import dk.skancode.skanmate.ScanEventHandler
+import dk.skancode.skanmate.data.model.ColumnType
 import dk.skancode.skanmate.data.model.ColumnValue
 import dk.skancode.skanmate.data.model.TableSummaryModel
 import dk.skancode.skanmate.data.model.ConstraintCheckResult
@@ -339,17 +340,18 @@ class TableViewModel(
     }
 
     fun resetColumnData() {
-        _uiState.update {
-            assert(it.columns.size == it.model?.columns?.size)
-            val resatColumns = it.model?.columns?.mapIndexed { idx, col ->
-                var colUiState = col.toUiState()
-                if (col.rememberValue) {
-                    colUiState = colUiState.copy(value = it.columns[idx].value)
+        _uiState.update { cur ->
+            assert(cur.columns.size == cur.model?.columns?.size)
+            val resatColumns = cur.model?.columns?.mapIndexed { idx, col ->
+                col.toUiState().let { colUiState ->
+                    if (col.rememberValue || col.type == ColumnType.GPS) {
+                        colUiState.copy(value = cur.columns[idx].value)
+                    } else {
+                        colUiState
+                    }
                 }
-
-                colUiState
             } ?: emptyList()
-            it.copy(
+            cur.copy(
                 columns = resatColumns,
                 focusedColumnId = resatColumns.firstOrNull { col -> !col.rememberValue }?.id
             )
