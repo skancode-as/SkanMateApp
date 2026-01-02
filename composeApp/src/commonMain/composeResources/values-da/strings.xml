@@ -7,6 +7,7 @@
     <string name="table_no_description">Ingen beskrivelse angivet</string>
     <string name="cannot_display_image">Kan ikke vise billede</string>
     <string name="signed_out">Du er blevet logget ud</string>
+    <string name="open_settings">Åbn indstillinger</string>
 
     <string name="main_screen_title">Tabeller</string>
     <string name="main_screen_could_not_update_tables">Kunne ikke opdatere tabeller. Prøv igen.</string>
@@ -113,4 +114,6 @@
     <string name="connectivity_dialog_btn_no">Nej</string>
 
     <string name="ios_camera_not_available">Kunne ikke starte kameraet. Tjek at appen har adgang til kameraet.</string>
+    <string name="ios_location_authorization_missing">Lokationsdata adgang mangler</string>
+    <string name="ios_location_authorization_for_what">Appen skal bruge adgang til lokationsdata, når en tabel bruger en GPS kolonne.\nGiv venligst appen adgang til lokationsdata fra indstillinger.</string>
 </resources>

@@ -32,7 +32,8 @@ fun LocationPermissionAlert(
     val locationState = permissionsViewModel.locationState
 
     when(locationState) {
-        PermissionState.Granted, PermissionState.NotDetermined -> return
+        PermissionState.Granted -> return
+        PermissionState.NotDetermined -> return permissionsViewModel.provideOrRequestLocationPermission(onGranted = onGranted)
         else -> {
             val onClick: () -> Unit = {
                 when (locationState) {

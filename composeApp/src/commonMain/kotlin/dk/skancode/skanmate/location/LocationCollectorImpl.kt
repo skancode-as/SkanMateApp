@@ -1,14 +1,14 @@
 package dk.skancode.skanmate.location
 
-import android.location.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-class AndroidLocationCollector(
-    val locationFlow: StateFlow<Location?>,
+class LocationCollectorImpl(
+    val locationFlow: StateFlow<LocationData?>,
     val startCollecting: () -> Unit,
     val stopCollecting: () -> Unit,
     val externalScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
@@ -20,12 +20,7 @@ class AndroidLocationCollector(
             locationFlow.collect { location ->
                 listeners.forEach { listener ->
                     listener.onLocationCollected(
-                        locationData = location?.let { loc ->
-                            LocationData(
-                                latitude = loc.latitude,
-                                longitude = loc.longitude,
-                            )
-                        }
+                        locationData = location,
                     )
                 }
             }
@@ -39,8 +34,8 @@ class AndroidLocationCollector(
         listeners.add(listener)
 
         externalScope.launch {
-            val cur = locationFlow.first()
-            listener.onLocationCollected(cur?.let { LocationData(it.latitude, it.longitude) })
+            val locationData = locationFlow.first()
+            listener.onLocationCollected(locationData)
         }
     }
 

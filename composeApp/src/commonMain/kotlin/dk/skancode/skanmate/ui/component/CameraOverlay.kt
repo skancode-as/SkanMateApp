@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dk.skancode.skanmate.CameraController
 import dk.skancode.skanmate.util.animator
-import dk.skancode.skanmate.util.toOneDecimalString
+import dk.skancode.skanmate.util.toString
 import org.jetbrains.compose.resources.vectorResource
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.camera
@@ -176,7 +176,7 @@ fun ZoomBadge(
         Text(
             modifier = Modifier
                 .padding(horizontal = 8.dp, vertical = 4.dp),
-            text = "${zoom.toOneDecimalString()}x",
+            text = "${zoom.toString(decimals = 1)}x",
             style = MaterialTheme.typography.labelLarge,
             color = contentColorFor(containerColor)
         )

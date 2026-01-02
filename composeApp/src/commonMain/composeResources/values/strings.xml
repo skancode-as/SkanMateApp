@@ -7,6 +7,7 @@
     <string name="table_no_description">No description provided</string>
     <string name="cannot_display_image">Cannot display image</string>
     <string name="signed_out">You have been signed out</string>
+    <string name="open_settings">Open settings</string>
 
     <string name="main_screen_title">Tables</string>
     <string name="main_screen_could_not_update_tables">Could not refresh tables. Try again.</string>
@@ -113,4 +114,6 @@
     <string name="connectivity_dialog_btn_no">No</string>
 
     <string name="ios_camera_not_available">Could not start camera. Make sure the app has permission to access the camera.</string>
+    <string name="ios_location_authorization_missing">Access to location data has been denied.</string>
+    <string name="ios_location_authorization_for_what">The app needs access to location data, when a table contains a GPS columns.\nPlease provide the app access to location data from settings.</string>
 </resources>

@@ -10,9 +10,7 @@ interface LocationCollector {
 
 private object StubLocationCollector: LocationCollector {
     override fun addListener(listener: LocationCollectorListener) { }
-
     override fun removeListener(listener: LocationCollectorListener) { }
-
 }
 
 val LocalLocationCollector: ProvidableCompositionLocal<LocationCollector> = compositionLocalOf { StubLocationCollector }

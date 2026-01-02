@@ -141,6 +141,7 @@ import dk.skancode.skanmate.util.measureText
 import dk.skancode.skanmate.util.rememberHaptic
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import dk.skancode.skanmate.util.titleTextStyle
+import dk.skancode.skanmate.util.toString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -668,7 +669,10 @@ fun TableColumn(
                     checked = value.checked,
                     setChecked = { checked ->
                         updateValue { value ->
-                            (value as ColumnValue.Boolean).copy(checked = checked)
+                            when (value) {
+                                is ColumnValue.Boolean -> value.copy(checked = checked)
+                                else -> value
+                            }
                         }
                     },
                     enabled = enabled,
@@ -696,12 +700,15 @@ fun TableColumn(
                     },
                     setValue = { data ->
                         updateValue { value ->
-                            (value as ColumnValue.File).copy(
-                                localUrl = data?.path,
-                                fileName = data?.name,
-                                bytes = data?.data,
-                                isUploaded = value.isUploaded && data != null
-                            )
+                            when(value) {
+                                is ColumnValue.File -> value.copy(
+                                    localUrl = data?.path,
+                                    fileName = data?.name,
+                                    bytes = data?.data,
+                                    isUploaded = value.isUploaded && data != null
+                                )
+                                else -> value
+                            }
                         }
                     },
                     enabled = enabled,
@@ -720,9 +727,12 @@ fun TableColumn(
                     modifier = modifier,
                     selectOption = { opt ->
                         updateValue { value ->
-                            (value as ColumnValue.OptionList).copy(
-                                selected = opt,
-                            )
+                            when(value) {
+                                is ColumnValue.OptionList -> value.copy(
+                                    selected = opt,
+                                )
+                                else -> value
+                            }
                         }
                     },
                     option = value.selected,
@@ -745,16 +755,12 @@ fun TableColumn(
                     label = name,
                     value = value,
                     setValue = { data ->
-                        println("TableColumnGPS::setValue - new value received: $data")
                         updateValue { value ->
-                            val cur = (value as ColumnValue.GPS)
-
-                            val updatedValue = cur.copy(locationData = data)
-                            println("cur: ${cur}, updated: $updatedValue")
-
-                            updatedValue
+                            when(value) {
+                                is ColumnValue.GPS -> value.copy(locationData = data)
+                                else -> value
+                            }
                         }
-
                     },
                     displayColumn = true,
                 )
@@ -814,7 +820,7 @@ fun TableColumn(
                     },
                     setValue = {
                         updateValue { value ->
-                            val newValue = when (value) {
+                            when (value) {
                                 is ColumnValue.Text -> value.copy(text = it)
                                 is ColumnValue.Numeric -> value.copy(
                                     num = it.toIntOrNull() ?: it.toDoubleOrNull()
@@ -822,7 +828,6 @@ fun TableColumn(
 
                                 else -> value
                             }
-                            newValue
                         }
                     },
                     validateValue = {
@@ -1262,7 +1267,7 @@ fun TableColumnGPS(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(text = label, style = LocalLabelTextStyle.current)
-            Text(text = "Lat: ${value.locationData?.latitude}    Lng: ${value.locationData?.longitude}")
+            Text(text = "Lat: ${value.locationData?.latitude?.toString(7)}    Lng: ${value.locationData?.longitude?.toString(7)}")
         }
     }
 }

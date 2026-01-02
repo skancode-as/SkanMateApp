@@ -24,8 +24,8 @@ import dev.icerock.moko.permissions.compose.rememberPermissionsControllerFactory
 import dk.skancode.barcodescannermodule.ScannerActivity
 import dk.skancode.barcodescannermodule.compose.ScannerModuleProvider
 import dk.skancode.skanmate.camera.CameraPermissionAlert
-import dk.skancode.skanmate.location.AndroidLocationCollector
 import dk.skancode.skanmate.location.LocalLocationCollector
+import dk.skancode.skanmate.location.LocationCollectorImpl
 import dk.skancode.skanmate.location.LocationPermissionAlert
 import dk.skancode.skanmate.location.LocationViewModel
 import dk.skancode.skanmate.ui.theme.SkanMateTheme
@@ -68,7 +68,7 @@ class MainActivity : ScannerActivity() {
             val showLocationPermissionAlert = rememberMutableStateOf(false)
 
             val locationCollector = remember {
-                AndroidLocationCollector(
+                LocationCollectorImpl(
                     locationFlow = locationViewModel.locationFlow,
                     startCollecting = {
                         if (permissionsViewModel.locationState != PermissionState.Granted) {

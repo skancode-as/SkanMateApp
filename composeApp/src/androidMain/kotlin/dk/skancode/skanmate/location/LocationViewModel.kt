@@ -19,8 +19,8 @@ class LocationViewModel(
     locationPermission: PermissionState,
     val fusedLocationClient: FusedLocationProviderClient,
 ): ViewModel(), LocationListener {
-    private val _locationFlow = MutableStateFlow<Location?>(null)
-    val locationFlow: StateFlow<Location?>
+    private val _locationFlow = MutableStateFlow<LocationData?>(null)
+    val locationFlow: StateFlow<LocationData?>
         get() = _locationFlow
     private val isRequestingLocation = AtomicBoolean(false)
     private val locationRequest: LocationRequest =
@@ -34,7 +34,7 @@ class LocationViewModel(
                 try {
                     fusedLocationClient.lastLocation.addOnSuccessListener { lastLocation ->
                         //println("LocationViewModel::init - lastLocation: (lat: ${lastLocation.latitude}, lng: ${lastLocation.longitude})")
-                        _locationFlow.update { lastLocation }
+                        _locationFlow.update { lastLocation?.let { LocationData(it.latitude, it.longitude) } }
                     }
                 } catch (_: SecurityException) {
                     println("LocationViewModel::init - Location permission was not granted, when accessing lastLocation")
@@ -68,6 +68,6 @@ class LocationViewModel(
 
     override fun onLocationChanged(location: Location) {
         println("LocationViewModel::onLocationChanged($location)")
-        _locationFlow.update { location }
+        _locationFlow.update { location.let { LocationData(it.latitude, it.longitude) } }
     }
 }

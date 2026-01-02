@@ -13,15 +13,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.String
-import kotlin.math.roundToInt
+import kotlin.math.pow
 import kotlin.math.roundToLong
 
 @Composable
-fun<T> StateFlow<List<T>>.find(predicate: (T) -> Boolean): T? {
+fun <T> StateFlow<List<T>>.find(predicate: (T) -> Boolean): T? {
     return this.collectAsState().value.find(predicate)
 }
 
-fun<T> List<T>.applyEach(block: T.() -> Unit): List<T> =
+fun <T> List<T>.applyEach(block: T.() -> Unit): List<T> =
     map { it.apply(block = block) }
 
 @Composable
@@ -76,13 +76,14 @@ fun Color.add(red: Float = 0f, green: Float = 0f, blue: Float = 0f): Color {
 }
 
 infix fun Number.equal(b: Number?): Boolean {
-    return b != null && this.toDouble() in (b.toDouble() - epsilon .. b.toDouble() + epsilon)
+    return b != null && this.toDouble() in (b.toDouble() - epsilon..b.toDouble() + epsilon)
 }
 
 /** Checks equality between floating point numbers, with a built in epsilon. For inequality see [Float.notEqual]. */
 infix fun Float.equal(b: Float?): Boolean {
-    return b != null && this in (b - epsilon .. b + epsilon)
+    return b != null && this in (b - epsilon..b + epsilon)
 }
+
 /** Checks inequality between floating point numbers, with a built in epsilon. For equality see [Float.notEqual]. */
 infix fun Float.notEqual(b: Float?): Boolean {
     return !this.equal(b)
@@ -90,8 +91,9 @@ infix fun Float.notEqual(b: Float?): Boolean {
 
 /** Checks equality between floating point numbers, with a built in epsilon. For inequality see [Double.notEqual]. */
 infix fun Double.equal(b: Double?): Boolean {
-    return b != null && this in (b - epsilon .. b + epsilon)
+    return b != null && this in (b - epsilon..b + epsilon)
 }
+
 /** Checks inequality between floating point numbers, with a built in epsilon. For equality see [Double.notEqual]. */
 infix fun Double.notEqual(b: Double?): Boolean {
     return !this.equal(b)
@@ -121,23 +123,13 @@ fun Int.clamp(minValue: Int, maxValue: Int): Int {
     )
 }
 
-fun Float.toOneDecimalString(): String {
-    var tmp = this * 10
+fun Number.toString(decimals: Number): String {
+    val p = 10.0.pow(decimals.toDouble())
 
-    tmp = tmp.roundToInt().toFloat() / 10
-
-    return tmp.toString()
+    return ((this.toDouble() * p).roundToLong().toDouble() / p).toString()
 }
 
-fun Double.toOneDecimalString(): String {
-    var tmp = this * 10
-
-    tmp = tmp.roundToLong().toDouble() / 10
-
-    return tmp.toString()
-}
-
-inline fun<reified S, T> Iterable<T>.reduceDefault(default: S, action: (S, T) -> S): S {
+inline fun <reified S, T> Iterable<T>.reduceDefault(default: S, action: (S, T) -> S): S {
     val iterator = this.iterator()
     var res = default
 
@@ -151,6 +143,8 @@ inline fun<reified S, T> Iterable<T>.reduceDefault(default: S, action: (S, T) ->
 fun String.isValidEmail(): Boolean = ColumnConstraint.Email.regex.matches(this)
 
 inline fun unreachable(): Nothing = throw UnreachableException()
-inline fun unreachable(reason: String): Nothing = throw UnreachableException(message = "An unreachable statement has been reached: $reason")
+inline fun unreachable(reason: String): Nothing =
+    throw UnreachableException(message = "An unreachable statement has been reached: $reason")
 
-class UnreachableException(override val message: String? = "An unreachable statement has been reached"): Exception()
+class UnreachableException(override val message: String? = "An unreachable statement has been reached") :
+    Exception()
