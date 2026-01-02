@@ -3,6 +3,7 @@ package dk.skancode.skanmate.location
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.compositionLocalOf
 
+// TODO: Implement LocationCollector for iOS
 interface LocationCollector {
     fun addListener(listener: LocationCollectorListener)
     fun removeListener(listener: LocationCollectorListener)

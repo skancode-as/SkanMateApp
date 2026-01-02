@@ -6,9 +6,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dk.skancode.skanmate.location.IosLocationCollector
+import dk.skancode.skanmate.location.LocalLocationCollector
 import dk.skancode.skanmate.ui.component.barcode.CameraBarcodeScanner
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.skanmate.ui.theme.SkanMateTheme
@@ -26,11 +29,13 @@ fun MainViewController() = ComposeUIViewController {
     }
 
     val cameraPowerViewModel = viewModel { CameraScanViewModel(cameraScanManager) }
+    val locationCollector = remember { IosLocationCollector() }
 
     val showCameraScanner by cameraPowerViewModel.cameraPowerState.collectAsState()
     CompositionLocalProvider(
         LocalCameraScanManager provides cameraScanManager,
         LocalAudioPlayer provides audioPlayer,
+        LocalLocationCollector provides locationCollector,
     ) {
         SkanMateTheme {
             Scaffold { padding ->
