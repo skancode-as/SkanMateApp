@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -614,10 +615,15 @@ fun TableColumn(
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-
-    val rememberComposable = if (col.rememberValue) (@Composable {
-        TableRememberValueBadge()
-    }) else null
+    val label = @Composable {
+        Row {
+            Text(text = col.name, style = LocalLabelTextStyle.current)
+            if (col.isRequired) {
+                Spacer(Modifier.width(2.dp))
+                Text(text = "*", style = LocalLabelTextStyle.current, color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
 
     val inputHeight = 56.dp
 
@@ -639,7 +645,7 @@ fun TableColumn(
 
                 TableColumnBoolean(
                     modifier = modifier,
-                    label = col.name,
+                    label = label,
                     checked = col.value.checked,
                     setChecked = { checked ->
                         updateValue(col.value.copy(checked = checked))
@@ -658,7 +664,7 @@ fun TableColumn(
 
                 TableColumnFile(
                     modifier = modifier,
-                    label = col.name,
+                    label = label,
                     value = if (col.value.localUrl == null) null
                     else ImageData(
                         path = col.value.localUrl, name = col.value.fileName, data = col.value.bytes
@@ -698,7 +704,10 @@ fun TableColumn(
                     },
                     option = col.value.selected,
                     options = col.value.options,
-                    label = col.name,
+                    label = label,
+                    placeholder = {
+                        Text(stringResource(Res.string.select_placeholder, col.name)) //"Select $label..."
+                    },
                     setFocus = {
                         setFocus(col.id, it)
                     },
@@ -727,6 +736,12 @@ fun TableColumn(
                         }
                     })
                 }
+                val placeholder: (@Composable () -> Unit) = {
+                    Text(
+                        text = stringResource(Res.string.input_placeholder, col.name), //"Input $label...",
+                        maxLines = 1,
+                    )
+                }
 
                 TableColumnInput(
                     modifier = modifier
@@ -735,7 +750,20 @@ fun TableColumn(
                         if (col.rememberValue)
                             if (col.value.isNotEmpty()) Color.Success else MaterialTheme.colorScheme.error
                         else Color.Unspecified,
-                    label = col.name,
+                    label = when (col.rememberValue) {
+                        true -> (@Composable {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Bottom,
+                            ) {
+                                label()
+                                TableRememberValueBadge()
+                            }
+                        })
+                        false -> label
+                    },
+                    placeholder = placeholder,
                     value = when (col.value) {
                         is ColumnValue.Text -> col.value.text
                         is ColumnValue.Numeric -> col.value.num?.toString() ?: ""
@@ -778,7 +806,6 @@ fun TableColumn(
                     focusRequester = focusRequester,
                     prefix = if (!col.hasPrefix) null else prefixSuffix(col.prefix),
                     suffix = if (!col.hasSuffix) null else prefixSuffix(col.suffix),
-                    rememberComposable = rememberComposable,
                 )
             }
         }
@@ -831,7 +858,8 @@ fun TableRememberValueBadge() {
 @Composable
 fun TableColumnInput(
     modifier: Modifier = Modifier,
-    label: String,
+    label: @Composable () -> Unit,
+    placeholder: @Composable () -> Unit,
     value: String,
     setValue: (String) -> Unit,
     validateValue: (String) -> Boolean,
@@ -848,7 +876,6 @@ fun TableColumnInput(
     focusRequester: FocusRequester,
     prefix: (@Composable () -> Unit)?,
     suffix: (@Composable () -> Unit)?,
-    rememberComposable: (@Composable () -> Unit)? = null,
 ) {
     val keyboardVisible by keyboardVisibleAsState()
 
@@ -873,34 +900,6 @@ fun TableColumnInput(
         validateValue(it)
         if (it.isEmpty() && value.isNotEmpty()) setValue(it)
     }
-    val labelComposable: (@Composable () -> Unit) = {
-        val labelText = @Composable {
-            Text(label, style = LocalLabelTextStyle.current)
-        }
-
-        when (rememberComposable) {
-            null -> {
-                labelText()
-            }
-
-            else -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    labelText()
-                    rememberComposable()
-                }
-            }
-        }
-    }
-    val placeholder: (@Composable () -> Unit) = {
-        Text(
-            text = stringResource(Res.string.input_placeholder, label), //"Input $label...",
-            maxLines = 1,
-        )
-    }
     val onFocusChange: (Boolean) -> Unit = {
         setFocus(it)
         if (!it) {
@@ -922,7 +921,7 @@ fun TableColumnInput(
             value = text,
             onValueChange = onValueChange,
             scanIconOnClick = { setFocus(true) },
-            label = labelComposable,
+            label = label,
             prefix = prefix,
             suffix = suffix,
             enabled = enabled,
@@ -941,7 +940,7 @@ fun TableColumnInput(
             modifier = modifier,
             value = text,
             onValueChange = onValueChange,
-            label = labelComposable,
+            label = label,
             prefix = prefix,
             suffix = suffix,
             enabled = enabled,
@@ -961,7 +960,7 @@ fun TableColumnInput(
 @Composable
 fun TableColumnFile(
     modifier: Modifier = Modifier,
-    label: String,
+    label: @Composable () -> Unit,
     value: ImageData?,
     setValue: (data: ImageData?) -> Unit,
     deleteFile: (String?) -> Unit,
@@ -997,7 +996,7 @@ fun TableColumnFile(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(label, style = LocalLabelTextStyle.current)
+        label()
 
         val buttonShape = RoundedCornerShape(4.dp)
         val buttonModifier = if (isFocused) {
@@ -1072,7 +1071,8 @@ fun TableColumnFile(
 @Composable
 fun TableColumnList(
     modifier: Modifier = Modifier,
-    label: String,
+    label: @Composable () -> Unit,
+    placeholder: @Composable () -> Unit,
     selectOption: (String) -> Unit,
     setFocus: (Boolean) -> Unit,
     option: String?,
@@ -1091,12 +1091,8 @@ fun TableColumnList(
         InputField(
             value = selected,
             onValueChange = { selected = it },
-            label = {
-                Text(text = label, style = LocalLabelTextStyle.current)
-            },
-            placeholder = {
-                Text(stringResource(Res.string.select_placeholder, label)) //"Select $label..."
-            },
+            label = label,
+            placeholder = placeholder,
             modifier = Modifier
                 .heightIn(max = inputHeight)
                 .fillMaxWidth()
@@ -1134,7 +1130,7 @@ fun TableColumnList(
 @Composable
 fun TableColumnBoolean(
     modifier: Modifier = Modifier,
-    label: String,
+    label: @Composable () -> Unit,
     checked: Boolean,
     setChecked: (Boolean) -> Unit,
     enabled: Boolean = true,
@@ -1146,7 +1142,7 @@ fun TableColumnBoolean(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(text = label, style = LocalLabelTextStyle.current)
+        label()
         Row(
             modifier = Modifier.height(height).border(
                 width = if (isFocused) 1.dp else Dp.Unspecified,
