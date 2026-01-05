@@ -586,6 +586,7 @@ fun LazyGridScope.tableColumns(
                 value = col.value,
                 type = col.type,
                 rememberValue = col.rememberValue,
+                isRequired = col.isRequired,
                 isEmailCol = col.hasConstraint<ColumnConstraint.Email>(),
                 prefix = {if (col.hasPrefix) col.prefix else null},
                 suffix = {if (col.hasSuffix) col.suffix else null},
@@ -726,7 +727,7 @@ fun TableColumn(
                     },
                     option = value.selected,
                     options = value.options,
-                    label = name,
+                    label = label,
                     placeholder = {
                         Text(stringResource(Res.string.select_placeholder, name)) //"Select $label..."
                     },
@@ -780,7 +781,7 @@ fun TableColumn(
                 }
                 val placeholder: (@Composable () -> Unit) = {
                     Text(
-                        text = stringResource(Res.string.input_placeholder, col.name), //"Input $label...",
+                        text = stringResource(Res.string.input_placeholder, name), //"Input $label...",
                         maxLines = 1,
                     )
                 }
@@ -1042,7 +1043,6 @@ fun TableColumnFile(
     }
 
     val hasImage = value != null
-    val buttonSize = buttonHeight
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -1067,7 +1067,7 @@ fun TableColumnFile(
                 }
             },
             textStyle = LocalTextStyle.current.copy(fontWeight = FontWeight.Medium),
-            heightValues = SizeValues(minHeight = buttonSize, maxHeight = buttonSize),
+            heightValues = SizeValues(minHeight = buttonHeight, maxHeight = buttonHeight),
             contentPadding = PaddingValues(0.dp),
             enabled = enabled,
             leftPanel = {
