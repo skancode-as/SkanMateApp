@@ -1,10 +1,13 @@
 package dk.skancode.skanmate.ui.component.barcode
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 
 data class BarcodeData(
-    val box: BarcodeBoundingBox,
     val info: BarcodeInfo,
+    val box: BarcodeBoundingBox,
+    val rect: Rect,
+    val corners: List<Offset>
 )
 
 data class BarcodeInfo(

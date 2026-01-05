@@ -20,15 +20,20 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.core.database.getStringOrNull
 import com.russhwolf.settings.Settings
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
 import dk.skancode.barcodescannermodule.compose.LocalScannerModule
 import androidx.core.net.toUri
+import dk.skancode.skanmate.barcode.BarcodeProcessorBase
+import dk.skancode.skanmate.barcode.BarcodeProcessorImpl
+import dk.skancode.skanmate.barcode.BoundingBoxGraphicOverlay
 import dk.skancode.skanmate.camera.AndroidCameraView
 import dk.skancode.skanmate.camera.CameraPermissionAlert
 import dk.skancode.skanmate.camera.barcode.AndroidScannerView
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
+import dk.skancode.skanmate.ui.component.barcode.BarcodeData
 import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
 import dk.skancode.skanmate.ui.component.barcode.BarcodeResult
 import dk.skancode.skanmate.util.clamp
@@ -163,11 +168,17 @@ actual fun SkanMateScannerView(
 ) {
     val scannerController = scannerController ?: remember { ScannerController() }
 
+    val textMeasurer = rememberTextMeasurer()
+    val processor: BarcodeProcessorBase<List<BarcodeData>> = remember(result) { BarcodeProcessorImpl(onResult = result, textMeasurer = textMeasurer) }
+
+    val barcodeOverlay = remember { BoundingBoxGraphicOverlay() }
+
     AndroidScannerView(
         modifier = modifier,
         codeTypes = codeTypes,
         scannerController = scannerController,
-        result = result,
+        processor = processor,
+        barcodeOverlay = barcodeOverlay,
     )
 }
 

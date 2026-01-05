@@ -42,6 +42,7 @@ kotlin {
 
             implementation(libs.android.mlkitBarcodeScanning)
             implementation(libs.camera.mlkit.vision)
+            implementation(libs.mlkit.objectdetection.common)
 
             implementation(libs.androidx.camera.core)
             implementation(libs.androidx.camera.camera2)

@@ -11,9 +11,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.text.rememberTextMeasurer
 import com.russhwolf.settings.NSUserDefaultsSettings
 import com.russhwolf.settings.Settings
+import dk.skancode.skanmate.barcode.BarcodeProcessorBase
+import dk.skancode.skanmate.barcode.BarcodeProcessorImpl
+import dk.skancode.skanmate.barcode.BoundingBoxGraphicOverlay
 import dk.skancode.skanmate.ui.component.LocalCameraScanManager
+import dk.skancode.skanmate.ui.component.barcode.BarcodeData
 import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
 import dk.skancode.skanmate.ui.component.barcode.BarcodeResult
 import dk.skancode.skanmate.util.CameraScanListener
@@ -199,11 +204,25 @@ actual fun SkanMateScannerView(
     result: (BarcodeResult) -> Unit
 ) {
     val scannerController = scannerController ?: remember { ScannerController() }
+
+    val textMeasurer = rememberTextMeasurer()
+    val processor: BarcodeProcessorBase<List<BarcodeData>> = remember(result) {
+        BarcodeProcessorImpl(
+            onResult = result,
+            textMeasurer = textMeasurer,
+            successThreshold = 30,
+            barcodeMinCount = 10,
+        )
+    }
+
+    val barcodeOverlay = remember { BoundingBoxGraphicOverlay() }
+
     IosCameraScannerView(
         modifier = modifier,
         codeTypes = codeTypes,
         scannerController = scannerController,
-        result = result,
+        barcodeOverlay = barcodeOverlay,
+        processor = processor,
     )
 }
 

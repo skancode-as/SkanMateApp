@@ -21,6 +21,9 @@ fun<T> StateFlow<List<T>>.find(predicate: (T) -> Boolean): T? {
     return this.collectAsState().value.find(predicate)
 }
 
+fun<T> List<T>.applyEach(block: T.() -> Unit): List<T> =
+    map { it.apply(block = block) }
+
 @Composable
 fun titleTextStyle(): TextStyle = MaterialTheme.typography.titleLarge.copy(
     fontWeight = FontWeight.SemiBold,
