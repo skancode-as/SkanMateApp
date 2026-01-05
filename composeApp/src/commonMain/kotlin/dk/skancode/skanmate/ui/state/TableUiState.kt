@@ -127,6 +127,8 @@ data class ColumnUiState(
     val suffix: String
         get() = constraint<ColumnConstraint.Suffix>().value
 
+    val isRequired: Boolean
+        get() = hasConstraint<ColumnConstraint.Required>()
     inline fun <reified T: ColumnConstraint>hasConstraint(): Boolean = constraints.any { v -> v is T }
     inline fun <reified T: ColumnConstraint>constraint(): T = constraints.first { v -> v is T } as T
 }
