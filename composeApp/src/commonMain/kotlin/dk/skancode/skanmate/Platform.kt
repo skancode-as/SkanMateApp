@@ -3,8 +3,9 @@ package dk.skancode.skanmate
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -12,8 +13,6 @@ import androidx.compose.ui.graphics.painter.Painter
 import com.russhwolf.settings.Settings
 import dk.skancode.skanmate.ui.component.barcode.BarcodeFormat
 import dk.skancode.skanmate.ui.component.barcode.BarcodeResult
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 
 typealias BarcodeType = String
 //typealias Gs1Object = MutableMap<String, String>
@@ -51,7 +50,6 @@ expect fun CameraView(
 interface ImageResource<T: Painter> {
     @get:Composable
     val isLoading: State<Boolean>
-    @get:Composable
     val state: State<ImageResourceState<T>>
 
     fun load()
@@ -68,36 +66,46 @@ sealed class ImageResourceState<T: Painter>() {
 }
 
 @Composable
-fun rememberImageResource(path: String? = null): ImageResource<Painter> {
-    return remember(path) {
+fun rememberImageResource(path: String?): ImageResource<Painter> {
+    val resource = remember(path) {
         object : ImageResource<Painter> {
-            private val stateFlow: MutableStateFlow<ImageResourceState<Painter>> = MutableStateFlow(ImageResourceState.Unspecified)
+            private val internalState = mutableStateOf<ImageResourceState<Painter>>(ImageResourceState.Unspecified)
 
-            @get:Composable
             override val state: State<ImageResourceState<Painter>>
-                get() = stateFlow.collectAsState()
+                get() = internalState
 
             @get:Composable
             override val isLoading: State<Boolean>
-                get() = rememberUpdatedState(stateFlow.collectAsState().value == ImageResourceState.Loading)
+                get() = rememberUpdatedState(internalState.value == ImageResourceState.Loading)
 
             override fun load() {
-                stateFlow.update { ImageResourceState.Loading }
+                internalState.value = ImageResourceState.Loading
             }
 
             override fun update(painter: Painter) {
-                stateFlow.update { ImageResourceState.Image(painter) }
+                internalState.value = ImageResourceState.Image(painter)
             }
 
             override fun error(error: String) {
-                stateFlow.update { ImageResourceState.Error(error) }
+                internalState.value = ImageResourceState.Error(error)
             }
 
             override fun reset() {
-                stateFlow.update { ImageResourceState.Unspecified }
+                internalState.value = ImageResourceState.Unspecified
             }
         }
     }
+
+    println("rememberImageResource($path) - resource: $resource")
+
+    DisposableEffect(resource) {
+        onDispose {
+            println("Resetting resource onDispose $resource")
+            resource.reset()
+        }
+    }
+
+    return resource
 }
 
 expect suspend fun loadLocalImage(imagePath: String): ImageData

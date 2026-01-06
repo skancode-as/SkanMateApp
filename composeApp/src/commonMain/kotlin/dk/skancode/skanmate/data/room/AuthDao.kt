@@ -2,15 +2,16 @@ package dk.skancode.skanmate.data.room
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy.Companion.REPLACE
 import androidx.room.Query
 
 @Dao
 interface AuthDao {
-    @Insert
+    @Insert(onConflict = REPLACE)
     suspend fun insertUser(userEntity: UserEntity)
-    @Insert
+    @Insert(onConflict = REPLACE)
     suspend fun insertTenant(tenantEntity: TenantEntity)
-    @Insert
+    @Insert(onConflict = REPLACE)
     suspend fun insertSession(sessionEntity: SessionEntity)
 
     @Query("DELETE FROM __auth_user")

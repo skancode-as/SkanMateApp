@@ -2,9 +2,6 @@ package dk.skancode.skanmate.ui.component
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeightIn
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +33,6 @@ fun ColumnWithErrorLayout(
             Box(
                 modifier = Modifier
                     .layoutId(ColumnWithErrorMeasurePolicy.CONTENT_ID)
-                    .wrapContentSize()
             ) {
                 content()
             }
@@ -47,8 +43,6 @@ fun ColumnWithErrorLayout(
                     modifier = Modifier
                         .layoutId(ColumnWithErrorMeasurePolicy.ERROR_ID)
                         .verticalScroll(rememberScrollState())
-                        .requiredHeightIn(min = 24.dp, max = 48.dp)
-                        .wrapContentHeight()
                 ) {
                     Text(
                         modifier = Modifier.padding(horizontal = 12.dp),

@@ -27,6 +27,7 @@ import dk.skancode.skanmate.util.clamp
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.autoreleasepool
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -116,7 +117,7 @@ actual suspend fun loadLocalImage(imagePath: String): ImageData {
             true
         )[0] as? String
 
-    return if (documentDir != null && fileManager.fileExistsAtPath("$documentDir/$imagePath")) {
+    return if (documentDir != null && fileManager.fileExistsAtPath("$documentDir/$imagePath")) autoreleasepool {
         val data: NSData = NSData.create(contentsOfFile = "$documentDir/$imagePath")!!
 
         ImageData(
@@ -132,7 +133,7 @@ actual suspend fun loadLocalImage(imagePath: String): ImageData {
 @OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
 @Composable
 actual fun loadImage(imagePath: String?): ImageResource<Painter> {
-    val imageResource = rememberImageResource()
+    val imageResource = rememberImageResource(imagePath)
 
     val fileManager = remember { NSFileManager.defaultManager }
     val documentDir = remember {
@@ -143,20 +144,21 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
         )[0] as? String
     }
 
-    LaunchedEffect(fileManager, documentDir, imagePath) {
+    LaunchedEffect(fileManager, documentDir, imageResource, imagePath) {
         launch(Dispatchers.IO) {
             if (documentDir != null && fileManager.fileExistsAtPath("$documentDir/$imagePath")) {
-                val data: NSData = NSData.create(contentsOfFile = "$documentDir/$imagePath")!!
+                autoreleasepool {
+                    val data: NSData = NSData.create(contentsOfFile = "$documentDir/$imagePath")!!
 
-                val imageBitmap = try {
-                    Image.makeFromEncoded(data).toComposeImageBitmap()
-                } catch (e: Exception) {
-                    println(e)
-                    imageResource.error(e.message ?: "Could not make Image bitmap from NSData")
-                    return@launch
+                    try {
+                        val imageBitmap = Image.makeFromEncoded(data).toComposeImageBitmap()
+
+                        imageResource.update(BitmapPainter(imageBitmap))
+                    } catch (e: Exception) {
+                        println(e)
+                        imageResource.error(e.message ?: "Could not make Image bitmap from NSData")
+                    }
                 }
-
-                imageResource.update(BitmapPainter(imageBitmap))
             }
         }
     }
