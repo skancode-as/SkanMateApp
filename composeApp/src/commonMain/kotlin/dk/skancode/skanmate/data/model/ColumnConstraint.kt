@@ -26,6 +26,7 @@ import org.jetbrains.compose.resources.StringResource
 import skanmate.composeapp.generated.resources.Res
 import skanmate.composeapp.generated.resources.column_type_boolean
 import skanmate.composeapp.generated.resources.column_type_file
+import skanmate.composeapp.generated.resources.column_type_gps
 import skanmate.composeapp.generated.resources.column_type_list
 import skanmate.composeapp.generated.resources.column_type_null
 import skanmate.composeapp.generated.resources.column_type_numeric
@@ -40,6 +41,10 @@ import skanmate.composeapp.generated.resources.constraint_error_min_value
 import skanmate.composeapp.generated.resources.constraint_error_regex
 import skanmate.composeapp.generated.resources.constraint_error_required
 import skanmate.composeapp.generated.resources.constraint_error_starts_with
+import skanmate.composeapp.generated.resources.constraint_name_constant_value
+import skanmate.composeapp.generated.resources.constraint_name_ends_with
+import skanmate.composeapp.generated.resources.constraint_name_required
+import skanmate.composeapp.generated.resources.constraint_name_starts_with
 import kotlin.math.roundToInt
 
 @OptIn(SealedSerializationApi::class)
@@ -373,11 +378,13 @@ sealed class ColumnConstraint(val name: String) {
                             is ColumnValue.File -> Res.string.column_type_file
                             is ColumnValue.OptionList -> Res.string.column_type_list
                             is ColumnValue.Boolean -> Res.string.column_type_boolean
+                            is ColumnValue.GPS -> Res.string.column_type_gps
                             is ColumnValue.Null -> Res.string.column_type_null
 
                             is ColumnValue.Numeric,
                             is ColumnValue.Text -> unreachable()
-                        }
+                        },
+                        Res.string.constraint_name_constant_value,
                     )
                 )
 
@@ -421,11 +428,15 @@ sealed class ColumnConstraint(val name: String) {
                 is ColumnValue.OptionList -> !value.selected.isNullOrBlank() || value.options.contains(
                     value.selected
                 )
+                is ColumnValue.GPS -> value.locationData != null
 
                 is ColumnValue.Boolean -> true
                 ColumnValue.Null -> return ConstraintCheckResult.Error(
                     resource = Res.string.constraint_error_invalid_type,
-                    args = listOf(Res.string.column_type_null)
+                    args = listOf(
+                        Res.string.column_type_null,
+                        Res.string.constraint_name_required,
+                    )
                 )
             }
             return if (ok) {
@@ -460,18 +471,46 @@ sealed class ColumnConstraint(val name: String) {
         override fun check(value: ColumnValue): ConstraintCheckResult {
             val ok = when (value) {
                 is ColumnValue.Text -> value.text.startsWith(prefix = this.value)
-                is ColumnValue.File,
-                is ColumnValue.Numeric,
-                is ColumnValue.OptionList,
-                is ColumnValue.Boolean,
+                is ColumnValue.File -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_file,
+                        Res.string.constraint_name_starts_with,
+                    )
+                )
+                is ColumnValue.Numeric -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_numeric,
+                        Res.string.constraint_name_starts_with,
+                    )
+                )
+                is ColumnValue.OptionList -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_list,
+                        Res.string.constraint_name_starts_with,
+                    )
+                )
+                is ColumnValue.Boolean -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_boolean,
+                        Res.string.constraint_name_starts_with,
+                    )
+                )
+                is ColumnValue.GPS -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_gps,
+                        Res.string.constraint_name_starts_with,
+                    )
+                )
                 ColumnValue.Null -> return ConstraintCheckResult.Error(
                     resource = Res.string.constraint_error_invalid_type,
                     args = listOf(
                         Res.string.column_type_null,
-                        Res.string.column_type_file,
-                        Res.string.column_type_numeric,
-                        Res.string.column_type_list,
-                        Res.string.column_type_boolean
+                        Res.string.constraint_name_starts_with,
                     )
                 )
             }
@@ -490,18 +529,46 @@ sealed class ColumnConstraint(val name: String) {
         override fun check(value: ColumnValue): ConstraintCheckResult {
             val ok = when (value) {
                 is ColumnValue.Text -> value.text.endsWith(suffix = this.value)
-                is ColumnValue.File,
-                is ColumnValue.Numeric,
-                is ColumnValue.OptionList,
-                is ColumnValue.Boolean,
+                is ColumnValue.File -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_file,
+                        Res.string.constraint_name_ends_with,
+                    )
+                )
+                is ColumnValue.Numeric -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_numeric,
+                        Res.string.constraint_name_ends_with,
+                    )
+                )
+                is ColumnValue.OptionList -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_list,
+                        Res.string.constraint_name_ends_with,
+                    )
+                )
+                is ColumnValue.Boolean -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_boolean,
+                        Res.string.constraint_name_ends_with,
+                    )
+                )
+                is ColumnValue.GPS -> return ConstraintCheckResult.Error(
+                    resource = Res.string.constraint_error_invalid_type,
+                    args = listOf(
+                        Res.string.column_type_gps,
+                        Res.string.constraint_name_ends_with,
+                    )
+                )
                 ColumnValue.Null -> return ConstraintCheckResult.Error(
                     resource = Res.string.constraint_error_invalid_type,
                     args = listOf(
                         Res.string.column_type_null,
-                        Res.string.column_type_file,
-                        Res.string.column_type_numeric,
-                        Res.string.column_type_list,
-                        Res.string.column_type_boolean
+                        Res.string.constraint_name_ends_with,
                     )
                 )
             }

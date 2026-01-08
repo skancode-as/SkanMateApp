@@ -45,7 +45,7 @@ class LocalTableStore(
                 databaseName = entity.databaseName,
                 name = entity.name,
                 description = entity.description,
-                columns = jsonSerializer.decodeFromString(entity.serializedColumns)
+                columns = jsonSerializer.decodeFromString(entity.serializedColumns),
             )
         }
     }

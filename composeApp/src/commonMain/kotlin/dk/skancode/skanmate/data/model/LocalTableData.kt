@@ -2,6 +2,7 @@
 
 package dk.skancode.skanmate.data.model
 
+import dk.skancode.skanmate.location.LocationData
 import dk.skancode.skanmate.ui.state.ColumnUiState
 import dk.skancode.skanmate.util.currentDateTimeUTC
 import dk.skancode.skanmate.util.formatISO
@@ -11,7 +12,6 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -22,6 +22,7 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeStructure
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
@@ -169,21 +170,42 @@ private object LocalColumnValueSerializer: KSerializer<LocalColumnValue> {
                 val type = jsonSerializer.decodeFromJsonElement(columnTypeSerializer, obj["type"] ?: error("'type' missing in LocalColumnValue deserialization"))
                 val constraints = jsonSerializer.decodeFromJsonElement(constraintListSerializer, obj["constraints"] ?: error("'constraints' missing in LocalColumnValue deserialization"))
                 val listOptions = jsonSerializer.decodeFromJsonElement(optionsListSerializer, obj["listOptions"] ?: error("'listOptions' missing in LocalColumnValue deserialization"))
-                val value = obj["value"]?.jsonPrimitive?: error("'value' missing in LocalColumnValue deserialization")
+                val value = obj["value"] ?: error("'value' missing in LocalColumnValue deserialization")
 
                 val columnValue = when(type) {
-                    ColumnType.Boolean -> ColumnValue.Boolean(checked = value.boolean)
-                    ColumnType.File -> ColumnValue.File(localUrl = value.contentOrNull)
-                    ColumnType.Numeric -> ColumnValue.Numeric(num = value.intOrNull ?: value.doubleOrNull)
-                    ColumnType.Text -> ColumnValue.Text(value.contentOrNull ?: "")
-                    ColumnType.Timestamp -> ColumnValue.Text(value.contentOrNull ?: currentDateTimeUTC().formatISO())
+                    ColumnType.Boolean -> ColumnValue.Boolean(checked = value.jsonPrimitive.boolean)
+                    ColumnType.File -> ColumnValue.File(localUrl = value.jsonPrimitive.contentOrNull)
+                    ColumnType.Numeric -> ColumnValue.Numeric(num = value.jsonPrimitive.intOrNull ?: value.jsonPrimitive.doubleOrNull)
+                    ColumnType.Text -> ColumnValue.Text(value.jsonPrimitive.contentOrNull ?: "")
+                    ColumnType.Timestamp -> ColumnValue.Text(value.jsonPrimitive.contentOrNull ?: currentDateTimeUTC().formatISO())
                     ColumnType.User -> {
-                        val content = value.contentOrNull
+                        val content = value.jsonPrimitive.contentOrNull
                         if (content != null) ColumnValue.Text(content) else ColumnValue.Null
+                    }
+                    ColumnType.GPS -> {
+                        when (value) {
+                            is JsonObject -> {
+                                val obj = value.jsonObject
+                                val lat = obj["lat"]?.jsonPrimitive?.doubleOrNull
+                                val lng = obj["lng"]?.jsonPrimitive?.doubleOrNull
+                                if (lat == null || lng == null) {
+                                    ColumnValue.GPS(locationData = null)
+                                } else {
+                                    ColumnValue.GPS(
+                                        LocationData(
+                                            latitude = lat,
+                                            longitude = lng,
+                                        )
+                                    )
+                                }
+                            }
+                            else -> ColumnValue.GPS(locationData = null)
+                        }
+
                     }
                     ColumnType.Unknown,
                     ColumnType.Id -> ColumnValue.Null
-                    ColumnType.List -> ColumnValue.OptionList(options = listOptions, selected = value.contentOrNull)
+                    ColumnType.List -> ColumnValue.OptionList(options = listOptions, selected = value.jsonPrimitive.contentOrNull)
                 }
 
                 LocalColumnValue(
@@ -211,6 +233,7 @@ private object LocalColumnValueSerializer: KSerializer<LocalColumnValue> {
                     ColumnType.Numeric -> ColumnValue.Numeric(num = decodeDoubleOrNull(descriptor, descriptor.getElementIndex("value")))
                     ColumnType.Text -> ColumnValue.Text(decodeStringElement(descriptor, descriptor.getElementIndex("value")))
                     ColumnType.Timestamp -> ColumnValue.Text(decodeStringElement(descriptor, descriptor.getElementIndex("value")))
+                    ColumnType.GPS -> ColumnValue.GPS(locationData = decodeOrNull<LocationData>(descriptor, descriptor.getElementIndex("value")))
                     ColumnType.User,
                     ColumnType.Unknown,
                     ColumnType.Id -> {
@@ -235,10 +258,14 @@ private object LocalColumnValueSerializer: KSerializer<LocalColumnValue> {
     }
 
     @OptIn(ExperimentalSerializationApi::class)
+    private inline fun <reified T> CompositeDecoder.decodeOrNull(descriptor: SerialDescriptor, index: Int, previousValue: T? = null): T? =
+        decodeNullableSerializableElement(descriptor, index, serializersModule.serializer(), previousValue)
+
+    @OptIn(ExperimentalSerializationApi::class)
     private fun CompositeDecoder.decodeStringOrNull(descriptor: SerialDescriptor, index: Int, previousValue: String? = null): String? =
-        decodeNullableSerializableElement(descriptor, index, String.serializer(), previousValue)
+        decodeOrNull(descriptor, index, previousValue)
 
     @OptIn(ExperimentalSerializationApi::class)
     private fun CompositeDecoder.decodeDoubleOrNull(descriptor: SerialDescriptor, index: Int, previousValue: Double? = null): Double? =
-        decodeNullableSerializableElement(descriptor, index, Double.serializer(), previousValue)
+        decodeOrNull(descriptor, index, previousValue)
 }

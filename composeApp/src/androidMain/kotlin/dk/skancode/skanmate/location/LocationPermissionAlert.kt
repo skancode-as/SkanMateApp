@@ -1,4 +1,4 @@
-package dk.skancode.skanmate.camera
+package dk.skancode.skanmate.location
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,21 +23,23 @@ import dk.skancode.skanmate.util.titleTextStyle
 import dk.skancode.skanmate.util.unreachable
 
 @Composable
-fun CameraPermissionAlert(
+fun LocationPermissionAlert(
     onDismissRequest: () -> Unit,
+    onGranted: () -> Unit,
     closeable: Boolean = true,
 ) {
     val permissionsViewModel = LocalPermissionsViewModel.current ?: error("LocalPermissionsViewModel not provided in CameraView on Android")
-    val cameraState = permissionsViewModel.cameraState
+    val locationState = permissionsViewModel.locationState
 
-    when(cameraState) {
-        PermissionState.Granted, PermissionState.NotDetermined -> return
+    when(locationState) {
+        PermissionState.Granted -> return
+        PermissionState.NotDetermined -> return permissionsViewModel.provideOrRequestLocationPermission(onGranted = onGranted)
         else -> {
             val onClick: () -> Unit = {
-                when (cameraState) {
+                when (locationState) {
                     PermissionState.Denied,
                     PermissionState.NotGranted -> {
-                        permissionsViewModel.provideOrRequestCameraPermission()
+                        permissionsViewModel.provideOrRequestLocationPermission(onGranted = onGranted)
                     }
                     PermissionState.DeniedAlways -> {
                         permissionsViewModel.openAppSettings()
@@ -49,15 +51,15 @@ fun CameraPermissionAlert(
             val padding = PaddingValues(16.dp)
 
             val description = @Composable {
-                val text = when (cameraState) {
+                val text = when (locationState) {
                     PermissionState.NotGranted -> {
-                        stringResource(R.string.camera_permissions_not_granted)
+                        stringResource(R.string.location_permissions_not_granted)
                     }
                     PermissionState.Denied -> {
-                        stringResource(R.string.camera_permissions_denied)
+                        stringResource(R.string.location_permissions_denied)
                     }
                     PermissionState.DeniedAlways -> {
-                        stringResource(R.string.camera_permissions_denied)
+                        stringResource(R.string.location_permissions_denied)
                     }
                     else -> unreachable()
                 }
@@ -69,10 +71,10 @@ fun CameraPermissionAlert(
             }
 
             val content: @Composable ColumnScope.() -> Unit = {
-                val buttonText = when (cameraState) {
+                val buttonText = when (locationState) {
                     PermissionState.Denied,
                     PermissionState.NotGranted -> {
-                        stringResource(R.string.camera_permissions_give_permissions)
+                        stringResource(R.string.location_permissions_give_permissions)
                     }
                     PermissionState.DeniedAlways -> {
                         stringResource(R.string.open_settings)
@@ -85,15 +87,15 @@ fun CameraPermissionAlert(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    if (cameraState == PermissionState.DeniedAlways) {
+                    if (locationState == PermissionState.DeniedAlways) {
                         Text(
-                            text = stringResource(R.string.camera_permissions_always_denied),
+                            text = stringResource(R.string.location_permissions_always_denied),
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     }
 
                     Text(
-                        text = stringResource(R.string.camera_permissions_for_what),
+                        text = stringResource(R.string.location_permissions_for_what),
                         style = MaterialTheme.typography.bodyLarge,
                     )
 
@@ -119,7 +121,7 @@ fun CameraPermissionAlert(
                 contentPadding = padding,
                 title = {
                     Text(
-                        text = stringResource(R.string.camera_permissions_missing),
+                        text = stringResource(R.string.location_permissions_missing),
                         style = titleTextStyle(),
                     )
                 },

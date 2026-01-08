@@ -7,4 +7,11 @@
     <string name="camera_permissions_denied">Kamera adgang er nægtet</string>
     <string name="camera_permissions_not_granted">Kamera adgang er ikke givet endnu</string>
     <string name="camera_permissions_for_what">Appen skal have adgang til kameraet for at kunne tage billeder.</string>
+
+    <string name="location_permissions_missing">Lokationstilladelser mangler</string>
+    <string name="location_permissions_always_denied">Tilladelse til lokation er permanent blevet afvist. Åbn indstillingerne for at ændre tilladelser.</string>
+    <string name="location_permissions_give_permissions">Giv tilladelse</string>
+    <string name="location_permissions_denied">Adgang til lokation er blevet afvist</string>
+    <string name="location_permissions_not_granted">Adgang til lokation er endnu ikke givet</string>
+    <string name="location_permissions_for_what">Appen har brug for adgang til den aktuelle lokation, når GPS-kolonnetypen bruges.</string>
 </resources>

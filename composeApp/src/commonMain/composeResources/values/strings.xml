@@ -7,6 +7,7 @@
     <string name="table_no_description">No description provided</string>
     <string name="cannot_display_image">Cannot display image</string>
     <string name="signed_out">You have been signed out</string>
+    <string name="open_settings">Open settings</string>
 
     <string name="main_screen_title">Tables</string>
     <string name="main_screen_could_not_update_tables">Could not refresh tables. Try again.</string>
@@ -45,9 +46,10 @@
     <string name="column_type_file">File</string>
     <string name="column_type_list">List</string>
     <string name="column_type_boolean">Yes/No</string>
+    <string name="column_type_gps">GPS</string>
     <string name="column_type_null">Unknown</string>
 
-    <string name="constraint_error_invalid_type">Value of type %1$s is not allowed for validation %2$s</string>
+    <string name="constraint_error_invalid_type">Value of type %1$s is not allowed for validation '%2$s'</string>
     <string name="constraint_error_invalid_option">Value is not one of the provided options</string>
     <string name="constraint_error_min_length">Value must be at least %1$d characters</string>
     <string name="constraint_error_max_length">Value cannot be longer than %1$d characters</string>
@@ -60,6 +62,11 @@
     <string name="constraint_error_starts_with">Value must start with %1$s</string>
     <string name="constraint_error_ends_with">Value must end with %1$s</string>
     <string name="constraint_error_server">%1$s</string>
+
+    <string name="constraint_name_constant_value">constant value</string>
+    <string name="constraint_name_required">required</string>
+    <string name="constraint_name_starts_with">starts with</string>
+    <string name="constraint_name_ends_with">ends with</string>
 
     <string name="table_vm_could_not_upload_image">Could not upload image. Please try again.</string>
     <string name="table_vm_could_not_submit_data">Data could not be submitted. %1$s</string>
@@ -107,4 +114,6 @@
     <string name="connectivity_dialog_btn_no">No</string>
 
     <string name="ios_camera_not_available">Could not start camera. Make sure the app has permission to access the camera.</string>
+    <string name="ios_location_authorization_missing">Access to location data has been denied.</string>
+    <string name="ios_location_authorization_for_what">The app needs access to location data, when a table contains a GPS columns.\nPlease provide the app access to location data from settings.</string>
 </resources>

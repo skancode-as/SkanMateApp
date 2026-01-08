@@ -576,7 +576,10 @@ fun LocalTableDataItem(
                         else -> {
                             val columnDef = columns[colIdx - 1]
                             val cell = row[columnDef.dbName]
-                                ?: error("Could not find element at col: $colIdx, row: $rowIndex")
+                                ?: run {
+                                    println("Could not find element at col: $colIdx, row: $rowIndex")
+                                    return@Table
+                                }
                             val containerColor = rowColors.containerColor()
                             val errors = rowErrors[columnDef.dbName] ?: emptyList()
 
@@ -754,6 +757,7 @@ fun DataRowContent(
                 }
                 is ColumnValue.Numeric -> value.num?.toString() ?: ""
                 is ColumnValue.OptionList -> value.selected ?: ""
+                is ColumnValue.GPS -> "Lat: ${value.locationData?.latitude}. Lng: ${value.locationData?.longitude}"
 
                 is ColumnValue.Boolean -> ""
                 is ColumnValue.File -> ""
