@@ -378,19 +378,29 @@ class TableViewModel(
                 columns = it.columns.mapIndexed { i, col ->
                     if (col.id != id) col
                     else {
-                        idx = i
                         col.copy(
                             value = when (col.value) {
                                 is ColumnValue.Text -> {
                                     idx = i
-                                    ColumnValue.Text(v)
+
+                                    val newValue = ColumnValue.Text(v)
+                                    if(validateColumn(col, newValue)) {
+                                        newValue
+                                    } else {
+                                        col.value
+                                    }
                                 }
 
                                 is ColumnValue.Numeric -> {
                                     idx = i
-                                    ColumnValue.Numeric(
+                                    val newValue = ColumnValue.Numeric(
                                         v.toIntOrNull() ?: v.toDoubleOrNull()
                                     )
+                                    if(validateColumn(col, newValue)) {
+                                        newValue
+                                    } else {
+                                        col.value
+                                    }
                                 }
 
                                 is ColumnValue.Boolean,
