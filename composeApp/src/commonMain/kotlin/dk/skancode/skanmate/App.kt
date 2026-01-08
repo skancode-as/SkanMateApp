@@ -60,7 +60,7 @@ import kotlinx.coroutines.IO
 // TODO: Display reason for table not being available offline
 
 private const val BASE_URL =
-    "https://skanmate-git-feat-gps-column-skan-code-team.vercel.app/api/v1"
+    "https://skanmate.vercel.app/api/v1"
 private val httpClient = HttpClient {
     install(ContentNegotiation) {
         json(jsonSerializer)
