@@ -33,3 +33,4 @@ jobs:
         files: composeApp/build/outputs/apk/**/*.apk
         prelease: true
         fail_on_unmatched_files: true
+        generate_release_notes: true
