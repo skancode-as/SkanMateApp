@@ -1,5 +1,7 @@
 package dk.skancode.skanmate.ui.component
 
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import dk.skancode.skanmate.ImageData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +35,9 @@ class UiCameraController() {
     private val _preview = MutableStateFlow<ImageData?>(null)
     val preview: StateFlow<ImageData?>
         get() = _preview
+    private val _isPreviewShowing = mutableStateOf(false)
+    val isPreviewShowing: State<Boolean>
+        get() = _isPreviewShowing
 
     fun startCamera(listener: ImageCaptureListener) {
         println("Starting camera")
@@ -46,6 +51,7 @@ class UiCameraController() {
 
     fun showPreview(p: ImageData?, listener: ImageCaptureListener? = null) {
         println("Showing preview")
+        _isPreviewShowing.value = true
         _preview.update { p }
         if (listener != null) {
             activeListener.store(listener)
@@ -54,7 +60,8 @@ class UiCameraController() {
 
     fun acceptPreview() {
         println("Accepting preview")
-        val old = _preview.getAndUpdate { null }
+        _isPreviewShowing.value = false
+        val old = _preview.value
         if (old != null) {
             activeListener.load()?.handleAction(res = ImageCaptureAction.Accept(data = old))
         }
@@ -63,6 +70,7 @@ class UiCameraController() {
 
     fun discardPreview() {
         println("Discarding preview")
+        _isPreviewShowing.value = false
         val old = _preview.getAndUpdate { null }
         val listener = activeListener.load()
         if (old != null) {

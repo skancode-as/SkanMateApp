@@ -39,6 +39,7 @@ import dk.skancode.skanmate.ui.component.barcode.BarcodeResult
 import dk.skancode.skanmate.util.clamp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 @Composable
 actual fun rememberScanModule(): ScanModule {
@@ -67,20 +68,33 @@ actual fun CameraView(
     )
 }
 
-@SuppressLint("RestrictedApi")
-private suspend fun loadBitmapFromUri(uri: Uri, context: Context): Bitmap? {
-    var inputStream = context.contentResolver.openInputStream(uri)
+private object LocalImageLoader {
+    private val map = ConcurrentHashMap<String, Bitmap>()
 
-    val rotation = inputStream?.use { inputStream ->
-        val exif = Exif.createFromInputStream(inputStream)
-        exif.rotation
-    } ?: return null
+    @SuppressLint("RestrictedApi")
+    suspend fun loadBitmapFromUri(uri: Uri, context: Context): Bitmap? {
+        if (map.containsKey(uri.toString())) {
+            return map.getValue(uri.toString())
+        }
 
-    inputStream = context.contentResolver.openInputStream(uri)
+        var inputStream = context.contentResolver.openInputStream(uri)
 
-    return inputStream?.use { inputStream ->
-        BitmapFactory.decodeStream(inputStream)?.rotate(rotation)
+        val rotation = inputStream?.use { inputStream ->
+            val exif = Exif.createFromInputStream(inputStream)
+            exif.rotation
+        } ?: return null
+
+        inputStream = context.contentResolver.openInputStream(uri)
+
+        return inputStream?.use { inputStream ->
+            BitmapFactory.decodeStream(inputStream)?.rotate(rotation)
+        }.also { bitmap ->
+            if (bitmap != null) {
+                map[uri.toString()] = bitmap
+            }
+        }
     }
+
 }
 
 actual suspend fun loadLocalImage(imagePath: String): ImageData {
@@ -127,11 +141,13 @@ actual fun loadImage(imagePath: String?): ImageResource<Painter> {
     val resource = rememberImageResource(imagePath)
 
     val context = LocalContext.current
-    LaunchedEffect(context, resource) {
+    LaunchedEffect(context, resource, imagePath) {
+        println("loadImage::LaunchedEffect($context, $resource)")
+
         if (imagePath == null) return@LaunchedEffect
         launch(Dispatchers.IO) {
             val bitmap: Bitmap =
-                loadBitmapFromUri(uri = imagePath.toUri(), context = context) ?: run {
+                LocalImageLoader.loadBitmapFromUri(uri = imagePath.toUri(), context = context) ?: run {
                     println("Could not open input stream at imagePath: $imagePath")
                     resource.error("Could not open input stream at imagePath: $imagePath")
                     return@launch

@@ -985,6 +985,7 @@ fun TableColumnFile(
                 is ImageCaptureAction.Discard -> {
                     deleteFile(res.data.path)
                     setValue(null)
+                    imageResource?.reset()
                 }
             }
         }

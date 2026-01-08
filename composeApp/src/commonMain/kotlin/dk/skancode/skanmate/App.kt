@@ -119,6 +119,7 @@ fun App() {
     val uiCameraController = remember { UiCameraController() }
     val showCamera by uiCameraController.isStarted.collectAsState()
     val previewData by uiCameraController.preview.collectAsState()
+    val previewIsShowing by uiCameraController.isPreviewShowing
     val preview: ImageResource<Painter> = loadImage(previewData?.path)
 
     CompositionLocalProvider(
@@ -173,7 +174,7 @@ fun App() {
                         },
                     )
                 }
-            } else if (previewData != null) {
+            } else if (previewIsShowing) {
                 val previewState by preview.state
 
                 Scaffold { padding ->
