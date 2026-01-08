@@ -1,5 +1,6 @@
 package dk.skancode.skanmate
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
@@ -42,6 +43,8 @@ class MainActivity : ScannerActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         audioPlayer = AndroidAudioPlayer(
             context = this,
