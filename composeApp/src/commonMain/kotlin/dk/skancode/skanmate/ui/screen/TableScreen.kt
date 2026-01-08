@@ -139,6 +139,7 @@ import dk.skancode.skanmate.util.find
 import dk.skancode.skanmate.util.keyboardVisibleAsState
 import dk.skancode.skanmate.util.measureText
 import dk.skancode.skanmate.util.rememberHaptic
+import dk.skancode.skanmate.util.rememberMutableStateOf
 import dk.skancode.skanmate.util.snackbar.UserMessageServiceImpl
 import dk.skancode.skanmate.util.titleTextStyle
 import dk.skancode.skanmate.util.toString
@@ -180,11 +181,11 @@ private val LocalImageResource: ProvidableCompositionLocal<ImageResource<Painter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TableScreen(
-    id: String,
+    tableId: String,
     viewModel: TableViewModel,
     navigateBack: () -> Unit,
 ) {
-    val table = viewModel.tableFlow.find { it.id == id }
+    val table = viewModel.tableFlow.find { it.id == tableId }
     val tableUiState by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
     val audioPlayer = LocalAudioPlayer.current
@@ -270,7 +271,7 @@ fun TableScreen(
                 modifier = Modifier.padding(paddingValues),
             ) {
                 LaunchedEffect(viewModel) {
-                    viewModel.setCurrentTableId(id)
+                    viewModel.setCurrentTableId(tableId)
                 }
 
                 RegisterScanEventHandler(handler = viewModel)
@@ -278,6 +279,7 @@ fun TableScreen(
                 TableContent(
                     tableUiState = tableUiState,
                     setFocusedColumn = { id, focused ->
+                        println("TableContent::setFocusedColumn($id, $focused) - focusedColumnId: ${tableUiState.focusedColumnId}")
                         if (focused && tableUiState.focusedColumnId != id) {
                             viewModel.setFocusedColumn(id)
                         } else if (!focused && tableUiState.focusedColumnId == id) {
@@ -291,6 +293,7 @@ fun TableScreen(
                                     tableUiState.columns.getOrNull((idx + 1) % tableUiState.columns.size)?.id
                                 }
 
+                        println("TableContent::focusNextColumn - nextId: $nextId")
                         viewModel.setFocusedColumn(nextId)
                     },
                     submitData = submitData,
@@ -493,6 +496,7 @@ fun TableContent(
         Box(
             modifier = modifier.fillMaxSize().pointerInput(focusManager, tableUiState) {
                 detectTapGestures {
+                    println("TableContent::detectTapGestures - Tap detected clearing focus!")
                     focusManager.clearFocus()
                     tableUiState.focusedColumnId?.also { focusedColumnId ->
                         setFocusedColumn(focusedColumnId, false)
@@ -594,7 +598,10 @@ fun LazyGridScope.tableColumns(
                 errors = constraintErrors[col.name] ?: emptyList(),
                 enabled = enabled,
                 isFocused = col.id == focusedColumnId,
-                setFocus = setFocus,
+                setFocus = { id, focus ->
+                    setFocus(id, focus)
+                    println("New focus($focus) for col: ${col.name}")
+                },
                 isLast = idx == columns.size - 1,
                 deleteFile = deleteFile,
                 onKeyboardAction = { action ->
@@ -643,6 +650,11 @@ fun TableColumn(
                 Text(text = "*", style = LocalLabelTextStyle.current, color = MaterialTheme.colorScheme.error)
             }
         }
+    }
+
+    val setColFocus = { focus: Boolean ->
+        setFocus(id, focus)
+        println("TableColumnInput::setColFocus - setFocus($focus) for col: $name")
     }
 
     val inputHeight = 56.dp
@@ -741,9 +753,7 @@ fun TableColumn(
                     placeholder = {
                         Text(stringResource(Res.string.select_placeholder, name)) //"Select $label..."
                     },
-                    setFocus = {
-                        setFocus(id, it)
-                    },
+                    setFocus = setColFocus,
                     enabled = enabled,
                     focusRequester = focusRequester,
                     inputHeight = inputHeight,
@@ -848,7 +858,7 @@ fun TableColumn(
                     },
                     type = type,
                     enabled = enabled,
-                    setFocus = { setFocus(id, it) },
+                    setFocus = setColFocus,
                     imeAction = imeAction,
                     keyboardType = if (isEmailCol) KeyboardType.Email else type.keyboardType(),
                     onKeyboardAction = { onKeyboardAction(imeAction) },
@@ -1137,16 +1147,16 @@ fun TableColumnList(
     inputHeight: Dp = 56.dp,
     focusRequester: FocusRequester,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    val expanded = remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
+        expanded = expanded.value,
+        onExpandedChange = { expanded.value = it },
         modifier = modifier,
     ) {
-        var selected = remember(option) { option ?: "" }
+        val selected = rememberMutableStateOf(option ?: "")
         InputField(
-            value = selected,
-            onValueChange = { selected = it },
+            value = selected.value,
+            onValueChange = { selected.value = it },
             label = label,
             placeholder = placeholder,
             modifier = Modifier
@@ -1157,14 +1167,15 @@ fun TableColumnList(
             readOnly = true,
             enabled = enabled,
             onFocusChange = {
-                expanded = it
+                expanded.value = it
                 setFocus(it)
             },
             focusRequester = focusRequester,
         )
         ExposedDropdownMenu(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            expanded = expanded, onDismissRequest = { expanded = false }) {
+            expanded = expanded.value,
+            onDismissRequest = { expanded.value = false }) {
             repeat(options.size) { idx ->
                 val option = options[idx]
                 DropdownMenuItem(
@@ -1172,9 +1183,9 @@ fun TableColumnList(
                         Text(option)
                     },
                     onClick = {
-                        selected = option
+                        selected.value = option
                         selectOption(option)
-                        expanded = false
+                        expanded.value = false
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                 )
