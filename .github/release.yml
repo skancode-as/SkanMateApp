@@ -1,0 +1,13 @@
+changelog:
+  categories:
+    - title: Major Features
+      labels:
+        - 'Major Feature'
+
+    - title: Minor Changes
+      labels:
+        - 'Minor Change'
+
+    - title: Bug fixes
+      labels:
+        - 'Bug Fix'
