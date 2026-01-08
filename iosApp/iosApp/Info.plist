@@ -16,5 +16,11 @@
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSLocationUsageDescription</key>
+	<string>Location data is needed when Tables with the GPS column type are in use. Location data is therefore not collected by default and can be ignored if not necesary for your usecase. Location data is only collected when the app is in use.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Location data is needed when Tables with the GPS column type are in use. Location data is therefore not collected by default and can be ignored if not necesary for your usecase. Location data is only collected when the app is in use.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Location data is needed when Tables with the GPS column type are in use. Location data is therefore not collected by default and can be ignored if not necesary for your usecase. Location data is only collected when the app is in use.</string>
 </dict>
 </plist>
