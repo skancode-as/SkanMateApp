@@ -103,7 +103,7 @@ fun AppNavHost(
                 onUnauthorized = onUnauthorized,
             ) {
                 TableScreen(
-                    id = route.tableId,
+                    tableId = route.tableId,
                     viewModel = tableViewModel,
                     navigateBack = {
                         navController.popBackStack<NavRoute.App.MainScreen>(inclusive = false)

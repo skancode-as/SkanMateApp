@@ -105,7 +105,6 @@ import androidx.compose.ui.util.fastFirst
 import androidx.compose.ui.util.fastFirstOrNull
 import dk.skancode.skanmate.ScanModule
 import dk.skancode.skanmate.util.borderColorFor
-import dk.skancode.skanmate.util.keyboardVisibleAsState
 import dk.skancode.skanmate.util.snackbar.LocalSnackbarManager
 import dk.skancode.skanmate.util.unreachable
 import kotlinx.coroutines.launch
@@ -147,12 +146,7 @@ fun ScanableInputField(
 ) {
     val trailingIcon: (@Composable () -> Unit)? = if (!scanModule.isHardwareScanner()) {
         (@Composable {
-            val focusManager = LocalFocusManager.current
-            val isImeVisible by keyboardVisibleAsState()
             IconButton({
-                if (isImeVisible) {
-                    focusManager.clearFocus()
-                }
                 scanIconOnClick()
                 scanModule.enableScan()
             }) {

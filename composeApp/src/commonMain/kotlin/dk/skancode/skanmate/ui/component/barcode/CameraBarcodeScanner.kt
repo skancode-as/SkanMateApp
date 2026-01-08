@@ -21,9 +21,9 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import dk.skancode.skanmate.ScannerController
 import dk.skancode.skanmate.SkanMateScannerView
 import dk.skancode.skanmate.util.HapticKind
-import dk.skancode.skanmate.util.clamp
 import dk.skancode.skanmate.util.keyboardVisibleAsState
 import dk.skancode.skanmate.util.rememberHaptic
+import dk.skancode.skanmate.util.rememberMutableStateOf
 
 @Composable
 fun CameraBarcodeScanner(
@@ -34,11 +34,14 @@ fun CameraBarcodeScanner(
     onCancelled: () -> Unit = {},
 ) {
     if (showScanner) {
-        val isKeyboardVisible by keyboardVisibleAsState()
-        if (isKeyboardVisible) {
-            val localSoftwareKeyboardController = LocalSoftwareKeyboardController.current
-            LaunchedEffect(localSoftwareKeyboardController) {
-                localSoftwareKeyboardController?.hide()
+        val softwareKeyboardController = LocalSoftwareKeyboardController.current
+        val keyboardVisible by keyboardVisibleAsState()
+        val keyboardHideCounter = rememberMutableStateOf(0L)
+        LaunchedEffect(softwareKeyboardController, keyboardVisible, keyboardHideCounter.value) {
+            println("CameraBarcodeScanner::LaunchedEffect($softwareKeyboardController, $keyboardVisible, ${keyboardHideCounter.value})")
+            if (keyboardVisible) {
+                softwareKeyboardController?.hide()
+                keyboardHideCounter.value++
             }
         }
         val successHaptic = rememberHaptic(kind = HapticKind.Success)
