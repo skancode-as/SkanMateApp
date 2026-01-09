@@ -55,6 +55,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
@@ -217,6 +218,7 @@ fun InputField(
     colors: TextFieldColors = TextFieldDefaults.colors(),
     onFocusChange: (Boolean) -> Unit = {},
     focusRequester: FocusRequester? = null,
+    clearInputProperties: ClearInputProperties = ClearInputProperties(),
 ) {
     val focusRequester = focusRequester ?: remember { FocusRequester() }
     val snackbarManager = LocalSnackbarManager.current
@@ -332,40 +334,44 @@ fun InputField(
                                     }
                                 }
 
-                                val clearOpacity by
-                                transition.animateFloat(
-                                    label = "ClearOpacity",
-                                    transitionSpec = {
-                                        if (InputPhase.FocusedEmpty isTransitioningTo InputPhase.UnfocusedEmpty) {
-                                            tween(
-                                                durationMillis = PlaceholderAnimationDelayOrDuration,
-                                                easing = LinearEasing
-                                            )
-                                        } else if (InputPhase.FocusedNotEmpty isTransitioningTo InputPhase.UnfocusedEmpty) {
-                                            tween(
-                                                durationMillis = PlaceholderAnimationDelayOrDuration,
-                                                easing = LinearEasing
-                                            )
-                                        } else if (
-                                            InputPhase.UnfocusedEmpty isTransitioningTo InputPhase.FocusedEmpty ||
-                                            InputPhase.UnfocusedEmpty isTransitioningTo InputPhase.FocusedNotEmpty ||
-                                            InputPhase.UnfocusedNotEmpty isTransitioningTo InputPhase.UnfocusedEmpty
+                                val clearOpacity by when {
+                                    !clearInputProperties.enabled -> mutableStateOf(.0f)
+                                    else -> {
+                                        transition.animateFloat(
+                                            label = "ClearOpacity",
+                                            transitionSpec = {
+                                                if (InputPhase.FocusedEmpty isTransitioningTo InputPhase.UnfocusedEmpty) {
+                                                    tween(
+                                                        durationMillis = PlaceholderAnimationDelayOrDuration,
+                                                        easing = LinearEasing
+                                                    )
+                                                } else if (InputPhase.FocusedNotEmpty isTransitioningTo InputPhase.UnfocusedEmpty) {
+                                                    tween(
+                                                        durationMillis = PlaceholderAnimationDelayOrDuration,
+                                                        easing = LinearEasing
+                                                    )
+                                                } else if (
+                                                    InputPhase.UnfocusedEmpty isTransitioningTo InputPhase.FocusedEmpty ||
+                                                    InputPhase.UnfocusedEmpty isTransitioningTo InputPhase.FocusedNotEmpty ||
+                                                    InputPhase.UnfocusedNotEmpty isTransitioningTo InputPhase.UnfocusedEmpty
+                                                ) {
+                                                    tween(
+                                                        durationMillis = PlaceholderAnimationDuration,
+                                                        delayMillis = PlaceholderAnimationDelayOrDuration,
+                                                        easing = LinearEasing
+                                                    )
+                                                } else {
+                                                    spring()
+                                                }
+                                            }
                                         ) {
-                                            tween(
-                                                durationMillis = PlaceholderAnimationDuration,
-                                                delayMillis = PlaceholderAnimationDelayOrDuration,
-                                                easing = LinearEasing
-                                            )
-                                        } else {
-                                            spring()
+                                            when (it) {
+                                                InputPhase.FocusedNotEmpty -> 1f
+                                                InputPhase.FocusedEmpty -> 0f
+                                                InputPhase.UnfocusedEmpty -> 0f
+                                                InputPhase.UnfocusedNotEmpty -> 1f
+                                            }
                                         }
-                                    }
-                                ) {
-                                    when (it) {
-                                        InputPhase.FocusedNotEmpty -> 1f
-                                        InputPhase.FocusedEmpty -> 0f
-                                        InputPhase.UnfocusedEmpty -> 0f
-                                        InputPhase.UnfocusedNotEmpty -> 1f
                                     }
                                 }
 
@@ -520,45 +526,48 @@ fun InputField(
                                     }
                                 }
 
-                                Box(
-                                    modifier = Modifier
-                                        .layoutId(ClearId)
-                                        .graphicsLayer { alpha = clearOpacity }
-                                ) {
-                                    val shape = CircleShape
-                                    IconButton(
+                                if (clearInputProperties.enabled) {
+                                    Box(
                                         modifier = Modifier
-                                            .border(
-                                                1.dp,
-                                                borderColorFor(
-                                                    colors.containerColor(
-                                                        enabled,
-                                                        isError,
-                                                        focused
-                                                    )
-                                                ),
-                                                shape,
-                                            ),
-                                        onClick = {
-                                            baseInputFieldState.clearText()
-                                            focusRequester.requestFocus()
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = colors.containerColor(
-                                                enabled,
-                                                isError,
-                                                focused
-                                            ),
-                                        ),
-                                        shape = shape,
-                                        sizeValues = SizeValues(max = 20.dp),
-                                        contentPadding = PaddingValues(2.dp),
+                                            .layoutId(ClearId)
+                                            .graphicsLayer { alpha = clearOpacity }
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Clear,
-                                            contentDescription = "Clear input field icon",
-                                            tint = MaterialTheme.colorScheme.error,
-                                        )
+                                        val shape = CircleShape
+                                        IconButton(
+                                            modifier = Modifier
+                                                .border(
+                                                    1.dp,
+                                                    borderColorFor(
+                                                        colors.containerColor(
+                                                            enabled,
+                                                            isError,
+                                                            focused
+                                                        )
+                                                    ),
+                                                    shape,
+                                                ),
+                                            onClick = {
+                                                baseInputFieldState.clearText()
+                                                focusRequester.requestFocus()
+                                                clearInputProperties.onClear()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = colors.containerColor(
+                                                    enabled,
+                                                    isError,
+                                                    focused
+                                                ),
+                                            ),
+                                            shape = shape,
+                                            sizeValues = SizeValues(max = 20.dp),
+                                            contentPadding = PaddingValues(2.dp),
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Clear,
+                                                contentDescription = "Clear input field icon",
+                                                tint = MaterialTheme.colorScheme.error,
+                                            )
+                                        }
                                     }
                                 }
 
@@ -667,6 +676,22 @@ fun BaseInputField(
         // Last parameter must not be a function unless it's intended to be commonly used as a trailing
         // lambda.
     )
+}
+
+interface ClearInputProperties{
+    val enabled: Boolean
+    fun onClear()
+}
+
+fun ClearInputProperties(enabled: Boolean = true, onClear: (() -> Unit)? = null): ClearInputProperties {
+    return object: ClearInputProperties {
+        override val enabled = enabled
+        private val internalOnClear = onClear
+
+        override fun onClear() {
+            internalOnClear?.invoke()
+        }
+    }
 }
 
 @Composable
