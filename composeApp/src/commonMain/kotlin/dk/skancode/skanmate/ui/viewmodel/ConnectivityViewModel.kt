@@ -12,7 +12,6 @@ import dk.skancode.skanmate.data.service.ConnectivityService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class ConnectivityViewModel(
@@ -33,38 +32,32 @@ class ConnectivityViewModel(
             }
         }
         viewModelScope.launch {
-            var channelIsOpen = true
-            while (channelIsOpen && this.isActive) {
-                val result = connectivityService.connectivityMessageChannel.receiveCatching()
-                if (result.isClosed) {
-                    channelIsOpen = false
-                } else {
-                    dialogMessageFlow.update {
-                        result.getOrNull()
-                    }
-                }
+            connectivityService.connectivityMessageFlow.collect { message ->
+                dialogMessageFlow.update { message }
             }
         }
     }
 
     fun enableOfflineMode() {
         viewModelScope.launch {
-            val res = connectivityService
+            connectivityService
                 .sendConnectivityMessage(ConnectivityMessage.OfflineModeRequested(true))
-                .await()
-            if (res is ConnectivityMessageResult.Accepted) {
-                connectivityService.enableOfflineMode()
-            }
+                .collect { res ->
+                    if (res is ConnectivityMessageResult.Accepted) {
+                        connectivityService.enableOfflineMode()
+                    }
+                }
         }
     }
     fun disableOfflineMode() {
         viewModelScope.launch {
-            val res = connectivityService
+            connectivityService
                 .sendConnectivityMessage(ConnectivityMessage.OfflineModeRequested(false))
-                .await()
-            if (res is ConnectivityMessageResult.Accepted) {
-                connectivityService.disableOfflineMode()
-            }
+                .collect { res ->
+                    if (res is ConnectivityMessageResult.Accepted) {
+                        connectivityService.disableOfflineMode()
+                    }
+                }
         }
     }
 }

@@ -6,6 +6,7 @@ import dk.skancode.skanmate.data.service.ConnectivityService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.onSuccess
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -30,28 +31,33 @@ suspend inline fun <reified T> withConnectivityTimeout(timeout: Duration, noinli
     val timeoutChannel = produce {
         delay(duration = timeout)
         launch {
-            val result = ConnectivityService
+            ConnectivityService
                 .sendConnectivityMessage(msg = ConnectivityMessage.RequestTimeout())
-                .await()
-            when(result) {
-                is ConnectivityMessageResult.Accepted -> {
-                    ConnectivityService.enableOfflineMode()
-                    send(null)
+                .collect { result ->
+                    when(result) {
+                        is ConnectivityMessageResult.Accepted -> {
+                            ConnectivityService.enableOfflineMode()
+                            send(null)
+                        }
+                        is ConnectivityMessageResult.Dismissed -> {
+                            println("withConnectivityTimeout - Connectivity dialog was dismissed")
+                        }
+                    }
                 }
-                is ConnectivityMessageResult.Dismissed -> {}
-            }
         }
     }
 
     select {
-        resultChannel.onReceive {
-            timeoutChannel.cancel()
-            it
+        resultChannel.onReceiveCatching {
+            it.onSuccess {
+                timeoutChannel.cancel()
+            }.getOrNull()
         }
-        timeoutChannel.onReceive {
-            deferred.cancel()
-            resultChannel.cancel()
-            it
+        timeoutChannel.onReceiveCatching {
+            it.onSuccess {
+                deferred.cancel()
+                resultChannel.cancel()
+            }.getOrNull()
         }
     }
 }

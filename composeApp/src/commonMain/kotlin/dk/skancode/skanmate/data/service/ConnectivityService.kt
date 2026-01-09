@@ -2,38 +2,34 @@ package dk.skancode.skanmate.data.service
 
 import dev.jordond.connectivity.Connectivity
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.async
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 interface ConnectivityService {
-    val connectivityMessageChannel: ReceiveChannel<ConnectivityMessage>
-    val connectivityMessageResultChannel: SendChannel<ConnectivityMessageResult>
+    val connectivityMessageFlow: SharedFlow<ConnectivityMessage>
     val connectionFlow: SharedFlow<Boolean>
     val offlineMode: StateFlow<Boolean>
 
     suspend fun isConnected(): Boolean
     suspend fun enableOfflineMode()
     suspend fun disableOfflineMode()
-    suspend fun sendConnectivityMessage(msg: ConnectivityMessage): Deferred<ConnectivityMessageResult>
+    suspend fun sendConnectivityMessage(msg: ConnectivityMessage): Flow<ConnectivityMessageResult>
+    suspend fun sendConnectivityMessageResult(result: ConnectivityMessageResult)
 
     companion object {
         val instance: ConnectivityService = ConnectivityServiceInstance
-        suspend fun isConnected(): Boolean = instance.isConnected()
         suspend fun enableOfflineMode() = instance.enableOfflineMode()
-        suspend fun disableOfflineMode() = instance.disableOfflineMode()
-        suspend fun sendConnectivityMessage(msg: ConnectivityMessage): Deferred<ConnectivityMessageResult> = instance.sendConnectivityMessage(msg)
+        suspend fun sendConnectivityMessage(msg: ConnectivityMessage): Flow<ConnectivityMessageResult> = instance.sendConnectivityMessage(msg)
+        suspend fun sendConnectivityMessageResult(result: ConnectivityMessageResult) = instance.sendConnectivityMessageResult(result)
     }
 }
 
@@ -54,15 +50,13 @@ private object ConnectivityServiceInstance: ConnectivityService {
         autoStart = true
     }
 
-    private val _connectivityMessageChannel = Channel<ConnectivityMessage>(capacity = Channel.BUFFERED)
-    private val _connectivityMessageResultChannel = Channel<ConnectivityMessageResult>(capacity = Channel.BUFFERED)
+    private val _connectivityMessageChannel = MutableSharedFlow<ConnectivityMessage>()
+    private val _connectivityMessageResultFlow = MutableSharedFlow<ConnectivityMessageResult>()
     private val _offlineMode = MutableStateFlow(false)
     private val _connectionFlow = MutableSharedFlow<Boolean>(1)
 
-    override val connectivityMessageChannel: ReceiveChannel<ConnectivityMessage>
+    override val connectivityMessageFlow: SharedFlow<ConnectivityMessage>
         get() = _connectivityMessageChannel
-    override val connectivityMessageResultChannel: SendChannel<ConnectivityMessageResult>
-        get() = _connectivityMessageResultChannel
     override val offlineMode: StateFlow<Boolean>
         get() = _offlineMode
     override val connectionFlow: SharedFlow<Boolean>
@@ -87,22 +81,15 @@ private object ConnectivityServiceInstance: ConnectivityService {
         _connectionFlow.emit(connectivity.status().isConnected)
     }
 
-    override suspend fun sendConnectivityMessage(msg: ConnectivityMessage): Deferred<ConnectivityMessageResult> {
-        _connectivityMessageChannel.send(msg)
-        return scope.async {
-            while (true) {
-                val result = _connectivityMessageResultChannel.receiveCatching().getOrNull() ?: break
+    override suspend fun sendConnectivityMessage(msg: ConnectivityMessage) = flow {
+       _connectivityMessageChannel.emit(msg)
 
-                when (result.message) {
-                    msg -> {
-                        return@async result
-                    }
+        emit(
+            value = _connectivityMessageResultFlow.first { it.message == msg }
+        )
+    }
 
-                    else -> _connectivityMessageResultChannel.send(result)
-                }
-            }
-
-            throw IllegalStateException("ConnectivityService::sendConnectivityMessage() - connectivity message result channel was closed unexpectedly")
-        }
+    override suspend fun sendConnectivityMessageResult(result: ConnectivityMessageResult) {
+        _connectivityMessageResultFlow.emit(result)
     }
 }
