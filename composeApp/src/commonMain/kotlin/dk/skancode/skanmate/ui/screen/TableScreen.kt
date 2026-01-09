@@ -118,6 +118,7 @@ import dk.skancode.skanmate.ui.component.LocalScanModule
 import dk.skancode.skanmate.ui.component.LocalUiCameraController
 import dk.skancode.skanmate.ui.component.PanelButton
 import dk.skancode.skanmate.ui.component.AutoSizeText
+import dk.skancode.skanmate.ui.component.ClearInputProperties
 import dk.skancode.skanmate.ui.component.ContentDialog
 import dk.skancode.skanmate.ui.component.LocalAuthUser
 import dk.skancode.skanmate.ui.component.SizeValues
@@ -680,10 +681,10 @@ fun TableColumn(
                     label = label,
                     checked = value.checked,
                     setChecked = { checked ->
-                        updateValue { value ->
-                            when (value) {
-                                is ColumnValue.Boolean -> value.copy(checked = checked)
-                                else -> value
+                        updateValue { cur ->
+                            when (cur) {
+                                is ColumnValue.Boolean -> cur.copy(checked = checked)
+                                else -> cur
                             }
                         }
                     },
@@ -711,15 +712,15 @@ fun TableColumn(
                         if (path != null) deleteFile(path)
                     },
                     setValue = { data ->
-                        updateValue { value ->
-                            when(value) {
-                                is ColumnValue.File -> value.copy(
+                        updateValue { cur ->
+                            when(cur) {
+                                is ColumnValue.File -> cur.copy(
                                     localUrl = data?.path,
                                     fileName = data?.name,
                                     bytes = data?.data,
-                                    isUploaded = value.isUploaded && data != null
+                                    isUploaded = cur.isUploaded && data != null
                                 )
-                                else -> value
+                                else -> cur
                             }
                         }
                     },
@@ -738,12 +739,21 @@ fun TableColumn(
                 TableColumnList(
                     modifier = modifier,
                     selectOption = { opt ->
-                        updateValue { value ->
-                            when(value) {
-                                is ColumnValue.OptionList -> value.copy(
+                        updateValue { cur ->
+                            when(cur) {
+                                is ColumnValue.OptionList -> cur.copy(
                                     selected = opt,
                                 )
-                                else -> value
+                                else -> cur
+                            }
+                        }
+                    },
+                    clearSelectedOption = {
+                        println("TableColumn::TableColumnList::clearSelectedOption - col: $name")
+                        updateValue { cur ->
+                            when(cur) {
+                                is ColumnValue.OptionList -> cur.copy(selected = null)
+                                else -> cur
                             }
                         }
                     },
@@ -765,10 +775,10 @@ fun TableColumn(
                     label = name,
                     value = value,
                     setValue = { data ->
-                        updateValue { value ->
-                            when(value) {
-                                is ColumnValue.GPS -> value.copy(locationData = data)
-                                else -> value
+                        updateValue { cur ->
+                            when(cur) {
+                                is ColumnValue.GPS -> cur.copy(locationData = data)
+                                else -> cur
                             }
                         }
                     },
@@ -829,14 +839,14 @@ fun TableColumn(
                         else -> ""
                     },
                     setValue = {
-                        updateValue { value ->
-                            when (value) {
-                                is ColumnValue.Text -> value.copy(text = it)
-                                is ColumnValue.Numeric -> value.copy(
+                        updateValue { cur ->
+                            when (cur) {
+                                is ColumnValue.Text -> cur.copy(text = it)
+                                is ColumnValue.Numeric -> cur.copy(
                                     num = it.toIntOrNull() ?: it.toDoubleOrNull()
                                 )
 
-                                else -> value
+                                else -> cur
                             }
                         }
                     },
@@ -1140,6 +1150,7 @@ fun TableColumnList(
     label: @Composable () -> Unit,
     placeholder: @Composable () -> Unit,
     selectOption: (String) -> Unit,
+    clearSelectedOption: () -> Unit,
     setFocus: (Boolean) -> Unit,
     option: String?,
     options: List<String>,
@@ -1171,6 +1182,10 @@ fun TableColumnList(
                 setFocus(it)
             },
             focusRequester = focusRequester,
+            clearInputProperties = ClearInputProperties {
+                selected.value = ""
+                clearSelectedOption()
+            },
         )
         ExposedDropdownMenu(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
