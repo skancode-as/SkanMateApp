@@ -131,8 +131,8 @@ fun App() {
     ) {
         ConnectivityDialog(
             messageFlow = connectivityViewModel.dialogMessageFlow,
-            sendMessageResult = {
-                ConnectivityService.instance.connectivityMessageResultChannel.send(it)
+            sendMessageResult = { result ->
+                ConnectivityService.sendConnectivityMessageResult(result)
             }
         )
 
